@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Key, Lock, User, Bell, Database, Save, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Shield, Key, Lock, User, Bell, Database, Save, AlertCircle, Loader2 } from 'lucide-react';
 import { leakRadarApi } from '../api/leakRadar';
 
 const Settings = () => {
@@ -25,6 +25,14 @@ const Settings = () => {
     setMessage({ type: 'success', content: '设置已成功保存（模拟）' });
     setTimeout(() => setMessage({ type: '', content: '' }), 3000);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-accent animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
