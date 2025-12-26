@@ -54,18 +54,25 @@ const Dashboard = () => {
 
           // 尝试多种可能的路径获取总数
           const statsObj = (stats as any).data || stats;
-          const total = 
-            statsObj.raw_lines?.total || 
-            statsObj.total_lines || 
-            statsObj.leaks?.total || 
-            statsObj.total_leaks || 
-            statsObj.total_indexed ||
-            statsObj.total;
+          
+          // 核心逻辑：官网显示的 "BREACHED RECORDS INDEXED" 通常是 Raw Lines 和 Leaks 的总和
+          // 从用户反馈看，151B (Raw) + 8B (Leaks) ≈ 159B (官网显示的数字)
+          const rawTotal = statsObj.raw_lines?.total || statsObj.total_lines || 0;
+          const leaksTotal = statsObj.leaks?.total || statsObj.total_leaks || 0;
+          
+          let total = 0;
+          if (statsObj.total_indexed) {
+            total = statsObj.total_indexed;
+          } else if (rawTotal > 0 || leaksTotal > 0) {
+            total = rawTotal + leaksTotal;
+          } else {
+            total = statsObj.total || 0;
+          }
 
-          if (total) {
+          if (total > 0) {
             // 默认显示完整数字，这样与官网对比更准确
             setTotalLeaks(total.toLocaleString());
-            console.log('[Dashboard] Set total leaks to:', total);
+            console.log('[Dashboard] Set total leaks (sum of raw and leaks) to:', total);
           } else {
             console.warn('[Dashboard] Could not find total leaks in stats response');
           }
