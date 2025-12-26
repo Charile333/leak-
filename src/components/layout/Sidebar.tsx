@@ -165,8 +165,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
                     {/* High-priority Monitoring Module */}
                     <motion.div
                       animate={{
-                        paddingLeft: effectiveCollapsed ? 20 : 12,
-                        paddingRight: effectiveCollapsed ? 20 : 12,
+                        paddingLeft: effectiveCollapsed ? 16 : 12,
+                        paddingRight: effectiveCollapsed ? 16 : 12,
                       }}
                       transition={smoothTransition}
                       className="w-full"
@@ -175,6 +175,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
                         to="/monitor"
                         className={({ isActive }) => cn(
                           "flex items-center rounded-xl text-sm font-bold transition-all duration-400 group shadow-lg overflow-hidden whitespace-nowrap w-full py-2.5",
+                          effectiveCollapsed ? "justify-center" : "px-3",
                           isActive 
                             ? "bg-gradient-to-r from-accent to-accent/80 text-white shadow-accent/20 scale-[1.02]" 
                             : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -202,8 +203,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
                 <div className="space-y-1">
                   <motion.div
                     animate={{
-                      paddingLeft: effectiveCollapsed ? 20 : 12,
-                      paddingRight: effectiveCollapsed ? 20 : 12,
+                      paddingLeft: effectiveCollapsed ? 16 : 12,
+                      paddingRight: effectiveCollapsed ? 16 : 12,
                     }}
                     transition={smoothTransition}
                     className="w-full"
@@ -214,7 +215,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
                         aria-expanded={openMenus.includes(group.name)}
                         aria-controls={`menu-${group.name}`}
                         className={cn(
-                          "w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-xl transition-all duration-400 group overflow-hidden whitespace-nowrap",
+                          "w-full flex items-center py-2.5 text-sm font-medium rounded-xl transition-all duration-400 group overflow-hidden whitespace-nowrap",
+                          effectiveCollapsed ? "justify-center" : "justify-between px-3",
                           openMenus.includes(group.name)
                             ? "bg-white/10 text-white shadow-lg border border-white/10"
                             : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
@@ -299,8 +301,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
             <motion.div
               key={item.path}
               animate={{
-                paddingLeft: effectiveCollapsed ? 20 : 12,
-                paddingRight: effectiveCollapsed ? 20 : 12,
+                paddingLeft: effectiveCollapsed ? 16 : 12,
+                paddingRight: effectiveCollapsed ? 16 : 12,
               }}
               transition={smoothTransition}
               className="w-full"
@@ -309,6 +311,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
                 to={item.path}
                 className={({ isActive }) => cn(
                   "flex items-center py-2.5 text-sm font-medium transition-all duration-400 rounded-xl group border border-transparent overflow-hidden whitespace-nowrap w-full",
+                  effectiveCollapsed ? "justify-center" : "px-3",
                   isActive 
                     ? "text-accent font-bold bg-accent/10 shadow-[inset_0_0_15px_rgba(168,85,247,0.1)] border-accent/20" 
                     : "text-gray-500 hover:text-white hover:bg-white/5"
