@@ -56,83 +56,61 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         console.log('[Dashboard] Fetching stats...');
+        // 强制刷新统计数据
         const stats = await leakRadarApi.getStats();
-        console.log('[Dashboard] Stats Response:', stats);
+        console.log('[Dashboard] Stats Response received:', !!stats);
         
         if (stats) {
-          // 调试日志：输出完整统计数据结构
-          console.log('[Dashboard] Stats data structure:', JSON.stringify(stats, null, 2));
-
-          // 尝试多种可能的路径获取总数
+          // 调试日志：输出 API 返回的原始结构（仅限开发环境）
+          console.log('[Dashboard] Stats keys:', Object.keys(stats));
+          
+          // 统一处理 API 返回格式，有些 API 包装在 .data 中
           const statsObj = (stats as any).data || stats;
           
-          // 核心逻辑：官网显示的 "BREACHED RECORDS INDEXED" 通常是 Raw Lines 和 Leaks 的总和
-          // 从用户反馈看，151B (Raw) + 8B (Leaks) ≈ 159B (官网显示的数字)
+          // 1. 处理总数 (Total Leaks)
           const rawTotal = statsObj.raw_lines?.total || statsObj.total_lines || 0;
           const leaksTotal = statsObj.leaks?.total || statsObj.total_leaks || 0;
-          
-          let total = 0;
-          if (statsObj.total_indexed) {
-            total = statsObj.total_indexed;
-          } else if (rawTotal > 0 || leaksTotal > 0) {
-            total = rawTotal + leaksTotal;
-          } else {
-            total = statsObj.total || 0;
-          }
+          const total = statsObj.total_indexed || (rawTotal + leaksTotal) || statsObj.total || 0;
 
           if (total > 0) {
-            // 默认显示完整数字，这样与官网对比更准确
             setTotalLeaks(total.toLocaleString());
-            console.log('[Dashboard] Set total leaks (sum of raw and leaks) to:', total);
-          } else {
-            console.warn('[Dashboard] Could not find total leaks in stats response');
+            console.log('[Dashboard] Total leaks set from API:', total);
           }
 
-          // 处理每周增长数据 (Weekly Database Growth)
-          // 官网显示的是过去 12 个月的周增长
-          // 这里的逻辑：优先使用 leaks.per_week，如果没有则尝试 raw_lines.per_week，如果都有则相加
-          const leaksPerWeek = statsObj.leaks?.per_week || [];
-          const rawPerWeek = statsObj.raw_lines?.per_week || [];
+          // 2. 处理每周增长数据 (Weekly Growth)
+          // 优先合并 leaks 和 raw_lines 的周数据
+          const leaksWeekly = statsObj.leaks?.per_week || [];
+          const rawWeekly = statsObj.raw_lines?.per_week || [];
           
-          let growthData: number[] = [];
+          let combinedGrowth: number[] = [];
           
-          if (leaksPerWeek.length > 0 && rawPerWeek.length > 0) {
-            // 如果两个都有，取最长的那个长度，并对应相加
-            const maxLen = Math.max(leaksPerWeek.length, rawPerWeek.length);
-            growthData = Array.from({ length: maxLen }, (_, i) => {
-              const v1 = leaksPerWeek[leaksPerWeek.length - 1 - i] || 0;
-              const v2 = rawPerWeek[rawPerWeek.length - 1 - i] || 0;
+          if (leaksWeekly.length > 0 || rawWeekly.length > 0) {
+            const maxLen = Math.max(leaksWeekly.length, rawWeekly.length);
+            combinedGrowth = Array.from({ length: maxLen }, (_, i) => {
+              const v1 = leaksWeekly[leaksWeekly.length - 1 - i] || 0;
+              const v2 = rawWeekly[rawWeekly.length - 1 - i] || 0;
               return v1 + v2;
             }).reverse();
-          } else {
-            growthData = leaksPerWeek.length > 0 ? leaksPerWeek : rawPerWeek;
           }
 
-          console.log('[Dashboard] Final growth data length:', growthData.length);
-
-          if (growthData && Array.isArray(growthData) && growthData.length > 0) {
-            const formattedGrowth = growthData.slice(-52).map((value: number, index: number) => ({
-              week: index + 1, // 使用数字索引，方便 XAxis 处理
-              value: value
-            }));
-            setWeeklyGrowth(formattedGrowth);
+          if (combinedGrowth.length > 0) {
+            console.log('[Dashboard] API growth data found, length:', combinedGrowth.length);
+            setWeeklyGrowth(combinedGrowth.slice(-52).map((val, i) => ({
+              week: i + 1,
+              value: val
+            })));
           } else {
-            console.warn('[Dashboard] No growth data found in stats');
-            // 如果确实没数据，提供一组模拟数据以确保 UI 不为空（仅用于演示效果）
-            const mockData = Array.from({ length: 52 }, (_, i) => ({
+            console.warn('[Dashboard] No growth data in API response, using fallback');
+            // Fallback: 仅在 API 确实没数据时使用
+            setWeeklyGrowth(Array.from({ length: 52 }, (_, i) => ({
               week: i + 1,
               value: Math.floor(Math.random() * 5000000) + 1000000
-            }));
-            setWeeklyGrowth(mockData);
+            })));
           }
         }
       } catch (error: any) {
-        console.error('[Dashboard] Error fetching stats:', error);
-        if (error.message.includes('401')) {
-          setTotalLeaks('Auth Error');
-        } else {
-          setTotalLeaks('Error');
-        }
+        console.error('[Dashboard] API stats fetch error:', error);
+        setTotalLeaks('API Error');
       }
     };
     fetchStats();
