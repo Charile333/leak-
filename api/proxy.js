@@ -20,10 +20,14 @@ module.exports = async (req, res) => {
   const API_KEY = process.env.LEAKRADAR_API_KEY;
 
   if (!API_KEY) {
-    return res.status(500).json({ error: 'Missing LEAKRADAR_API_KEY environment variable' });
+    return res.status(500).json({ 
+      error: 'Missing LEAKRADAR_API_KEY', 
+      details: 'Please set LEAKRADAR_API_KEY in Vercel Environment Variables and redeploy.' 
+    });
   }
 
   try {
+    console.log(`Proxying request to: https://api.leakradar.io${targetPath}`);
     const response = await axios({
       method: req.method,
       url: `https://api.leakradar.io${targetPath}`,
@@ -37,10 +41,20 @@ module.exports = async (req, res) => {
 
     res.status(response.status).json(response.data);
   } catch (error) {
+    console.error('Proxy Error:', error.message);
     if (error.response) {
-      res.status(error.response.status).json(error.response.data);
+      // 转发 LeakRadar API 返回的具体错误
+      res.status(error.response.status).json({
+        error: 'Upstream API Error',
+        message: error.message,
+        data: error.response.data
+      });
     } else {
-      res.status(500).json({ error: 'Proxy error', message: error.message });
+      res.status(500).json({ 
+        error: 'Proxy execution error', 
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   }
 };
