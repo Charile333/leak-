@@ -13,12 +13,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // 3. 构建目标 URL
-  // 我们需要把请求转发到 https://api.leakradar.io
-  // 比如前端请求 /api/leakradar/profile，这里 path 应该是 profile
-  const targetPath = req.url?.replace('/api/proxy', '').replace('/api/leakradar', '') || '/';
+  // 更加鲁棒的路径解析：从原始 URL 中提取路径和查询参数
+  const fullUrl = req.url || '';
+  // 移除 /api/proxy 或 /api/leakradar 前缀
+  let targetPath = fullUrl.replace(/^\/api\/proxy/, '').replace(/^\/api\/leakradar/, '');
+  
+  // 确保以 / 开头
+  if (!targetPath.startsWith('/')) {
+    targetPath = '/' + targetPath;
+  }
+
   const targetUrl = `https://api.leakradar.io${targetPath}`;
 
-  console.log(`[Proxy] Proxying ${req.method} ${req.url} -> ${targetUrl}`);
+  console.log(`[Proxy] Target: ${targetUrl} (Original: ${fullUrl})`);
 
   try {
     const response = await fetch(targetUrl, {

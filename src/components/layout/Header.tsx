@@ -42,13 +42,17 @@ const Header = () => {
           name = (profile as any).data.username || name;
         } else if ((profile as any).remaining !== undefined) {
           remaining = (profile as any).remaining;
+        } else if ((profile as any).credits !== undefined) {
+          remaining = (profile as any).credits;
         }
 
+        // 如果找到了积分，或者是 0，都进行设置
         if (remaining !== null && remaining !== undefined) {
           setPoints(remaining);
-          setUsername(name);
+          if (name) setUsername(name);
         } else {
-          console.warn('[Header] Could not find quota in profile response, using 0');
+          // 兜底：如果 API 成功但没找到积分字段，可能是免费账户或结构变了
+          console.warn('[Header] Could not find quota fields in profile:', profile);
           setPoints(0);
         }
       } catch (error: any) {
