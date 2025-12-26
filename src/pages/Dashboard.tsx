@@ -722,24 +722,28 @@ const Dashboard = () => {
                     <Tooltip 
                       cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
                       content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
+                        if (active && payload && payload.length >= 3) {
+                          const totalItem = payload.find(p => p.dataKey === 'total');
+                          const leaksItem = payload.find(p => p.dataKey === 'leaks');
+                          const rawItem = payload.find(p => p.dataKey === 'raw');
+                          
                           return (
                             <div className="bg-[#1a1a1f] border border-white/10 p-5 rounded-xl shadow-2xl backdrop-blur-2xl min-w-[240px]">
                               <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-white/5">
-                                Week of {label}
+                                Week of {label || '---'}
                               </p>
                               <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-[#6366f1]">Total :</span>
-                                  <span className="text-sm font-black text-white">{payload.find(p => p.dataKey === 'total')?.value?.toLocaleString()}</span>
+                                  <span className="text-sm font-black text-white">{(totalItem?.value as number)?.toLocaleString() || '0'}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-[#22d3ee]">url:user:pass :</span>
-                                  <span className="text-sm font-black text-white">{payload.find(p => p.dataKey === 'leaks')?.value?.toLocaleString()}</span>
+                                  <span className="text-sm font-black text-white">{(leaksItem?.value as number)?.toLocaleString() || '0'}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-[#f59e0b]">Raw lines :</span>
-                                  <span className="text-sm font-black text-white">{payload.find(p => p.dataKey === 'raw')?.value?.toLocaleString()}</span>
+                                  <span className="text-sm font-black text-white">{(rawItem?.value as number)?.toLocaleString() || '0'}</span>
                                 </div>
                               </div>
                             </div>
@@ -753,9 +757,10 @@ const Dashboard = () => {
                       height={36} 
                       content={(props) => {
                         const { payload } = props;
+                        if (!payload) return null;
                         return (
                           <div className="flex items-center justify-center gap-8 mt-8">
-                            {payload?.map((entry: any, index: number) => (
+                            {payload.map((entry: any, index: number) => (
                               <div key={`item-${index}`} className="flex items-center gap-2">
                                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{entry.value}</span>
