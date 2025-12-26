@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/leakradar/:path*",
-      "destination": "/api/proxy"
+      "source": "/api/(.*)",
+      "destination": "/api/proxy.js"
     },
     {
       "source": "/(.*)",

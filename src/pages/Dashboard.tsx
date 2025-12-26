@@ -45,46 +45,8 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Report');
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
-  const [totalLeaks, setTotalLeaks] = useState<string>('40,212,433,857');
-  const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>(() => {
-    // 初始生成 52 周的模拟数据，确保图表从第一帧开始就有内容
-    const finalTotal = 40212433857;
-    const data = [];
-    let currentTotal = finalTotal;
-    const now = new Date();
-    
-    // 逆向生成 52 周的数据，模拟从 350亿 增长到 402亿
-    for (let i = 0; i < 52; i++) {
-      const d = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
-      // 获取周一的日期
-      const day = d.getDay() || 7;
-      const monday = new Date(d);
-      monday.setDate(d.getDate() - day + 1);
-      const dateStr = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
-      
-      // 每周增长量
-      const weeklyInc = Math.floor(100000000 + Math.random() * 200000000);
-      const leaksInc = Math.floor(weeklyInc * 0.19); // 约 19% 是 leaks
-      const rawInc = weeklyInc - leaksInc;
-      
-      // 计算增长率 (模拟官网的 +14%)
-      const growthRate = (Math.random() * 5 + 10).toFixed(0); // 10% - 15% 之间的随机数
-      
-      data.push({
-        date: dateStr,
-        displayDate: i === 0 ? '本周' : (i % 8 === 0 ? monday.toLocaleDateString() : ''),
-        total: currentTotal,
-        leaks: leaksInc,
-        raw: rawInc,
-        weeklyTotal: weeklyInc,
-        growth: growthRate
-      });
-      
-      currentTotal -= weeklyInc;
-    }
-    
-    return data.reverse();
-  });
+  const [totalLeaks, setTotalLeaks] = useState<string>('---,---,---,---');
+  const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
@@ -97,51 +59,37 @@ const Dashboard = () => {
         console.log('[Dashboard] Fetching stats from /api/leakradar/stats...');
         const stats = await leakRadarApi.getStats();
         
-        if (stats) {
-          // 深度兼容不同的 API 响应结构
-          const statsObj = (stats as any).data || (stats as any).stats || stats;
-          console.log('[Dashboard] API Response data:', statsObj);
-          
-          const safeNumber = (val: any) => {
-            const n = Number(val);
-            return isNaN(n) ? 0 : n;
-          };
+        const safeNumber = (val: any) => {
+          const n = Number(val);
+          return isNaN(n) ? 0 : n;
+        };
 
+        if (stats) {
+          const statsObj = (stats as any).data || (stats as any).stats || stats;
           const rawTotal = safeNumber(statsObj.raw_lines?.total || statsObj.total_lines);
           const leaksTotal = safeNumber(statsObj.leaks?.total || statsObj.total_leaks);
           const total = safeNumber(statsObj.total_indexed || (rawTotal + leaksTotal) || statsObj.total);
 
-          console.log('[Dashboard] Parsed totals:', { rawTotal, leaksTotal, total });
-
-          // 只有当 API 返回的数据量级正常（超过 1 亿）时才更新总数
-          // 否则保持默认的 152 亿量级，避免数据“缩水”感
-          if (total > 100000000) {
+          if (total > 0) {
             setTotalLeaks(total.toLocaleString());
           }
 
           const leaksWeekly = statsObj.leaks?.per_week || [];
           const rawWeekly = statsObj.raw_lines?.per_week || [];
           const maxLen = Math.max(leaksWeekly.length, rawWeekly.length);
-          
-          console.log('[Dashboard] Weekly data lengths:', { leaksWeekly: leaksWeekly.length, rawWeekly: rawWeekly.length });
 
-          // 只有当 API 返回的数据周数足够多，且确实含有有效数据时才更新图表
-          if (maxLen > 5) {
-            // 基准总数 (官网数据)
-            const OFFICIAL_TOTAL = 40212433857;
-            // 实时总数 (API 数据)
-            const currentApiTotal = total;
+          if (maxLen > 0) {
+            let runningTotal = total;
+            // 为 leaks 和 raw 也建立累积计数，使它们在图表中比例一致
+            const currentLeaksTotal = safeNumber(statsObj.leaks?.total || (total * 0.19));
+            const currentRawTotal = safeNumber(statsObj.raw_lines?.total || (total * 0.81));
             
-            // 计算比例因子，将 API 的量级映射到 402亿 基准
-            // 如果 API 返回的 total 已经是正常量级，则比例为 1
-            const scaleFactor = (currentApiTotal > 10000000000) ? 1 : (OFFICIAL_TOTAL / (currentApiTotal || 1));
-
-            let runningTotal = (currentApiTotal > 10000000000) ? currentApiTotal : OFFICIAL_TOTAL;
+            let runningLeaks = currentLeaksTotal;
+            let runningRaw = currentRawTotal;
 
             const growthData = Array.from({ length: maxLen }, (_, i) => {
               const lIdx = leaksWeekly.length - 1 - i;
               const rIdx = rawWeekly.length - 1 - i;
-              
               const leaksInc = lIdx >= 0 ? safeNumber(leaksWeekly[lIdx]) : 0;
               const rawInc = rIdx >= 0 ? safeNumber(rawWeekly[rIdx]) : 0;
               const weeklyInc = leaksInc + rawInc;
@@ -152,73 +100,78 @@ const Dashboard = () => {
               monday.setDate(d.getDate() - day + 1);
               const dateStr = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
 
-              const growthRate = (Math.random() * 5 + 10).toFixed(0);
+              const previousTotal = runningTotal - weeklyInc;
+              const growthRate = previousTotal > 0 ? ((weeklyInc / previousTotal) * 100).toFixed(1) : '0';
 
-              const dataPoint = {
+              const dp = {
                 date: dateStr,
                 displayDate: i === 0 ? '本周' : (i % 8 === 0 ? monday.toLocaleDateString() : ''),
                 total: Math.floor(runningTotal),
-                leaks: Math.floor(leaksInc * (scaleFactor > 10 ? 1 : scaleFactor)),
-                raw: Math.floor(rawInc * (scaleFactor > 10 ? 1 : scaleFactor)),
-                weeklyTotal: Math.floor(weeklyInc * (scaleFactor > 10 ? 1 : scaleFactor)),
+                leaks: Math.floor(runningLeaks),
+                raw: Math.floor(runningRaw),
+                weeklyTotal: Math.floor(weeklyInc),
                 growth: growthRate
               };
+
+              // 逆向递减，生成历史轨迹
+              runningTotal -= weeklyInc;
+              runningLeaks -= leaksInc;
+              runningRaw -= rawInc;
               
-              runningTotal -= weeklyInc * scaleFactor;
-              return dataPoint;
+              return dp;
             }).reverse();
 
-            const hasValidData = growthData.some(d => d.weeklyTotal > 0);
-            
-            if (hasValidData) {
-              if (growthData.length < 52) {
-                const paddingCount = 52 - growthData.length;
-                let paddingRunningTotal = growthData[0].total;
-                const lastDate = new Date(Date.now() - (growthData.length - 1) * 7 * 24 * 60 * 60 * 1000);
+            if (growthData.length < 52) {
+              const paddingCount = 52 - growthData.length;
+              let paddingRunningTotal = growthData[0].total;
+              let paddingRunningLeaks = growthData[0].leaks;
+              let paddingRunningRaw = growthData[0].raw;
+
+              const firstDate = new Date(Date.now() - (growthData.length - 1) * 7 * 24 * 60 * 60 * 1000);
+              const padded = Array.from({ length: paddingCount }, (_, i) => {
+                const weekNum = i + 1;
+                const d = new Date(firstDate.getTime() - weekNum * 7 * 24 * 60 * 60 * 1000);
+                const day = d.getDay() || 7;
+                const monday = new Date(d);
+                monday.setDate(d.getDate() - day + 1);
+                const dateStr = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
                 
-                const paddedData = Array.from({ length: paddingCount }, (_, i) => {
-                  const weekNum = i + 1;
-                  const d = new Date(lastDate.getTime() - weekNum * 7 * 24 * 60 * 60 * 1000);
-                  const day = d.getDay() || 7;
-                  const monday = new Date(d);
-                  monday.setDate(d.getDate() - day + 1);
-                  const dateStr = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
-                  
-                  const weeklyInc = Math.floor(100000000 + Math.random() * 200000000);
-                  const leaksInc = Math.floor(weeklyInc * 0.19);
-                  const rawInc = weeklyInc - leaksInc;
-                  
-                  paddingRunningTotal -= weeklyInc;
-                  
-                  return {
-                    date: dateStr,
-                    displayDate: (growthData.length + weekNum - 1) % 8 === 0 ? monday.toLocaleDateString() : '',
-                    total: paddingRunningTotal,
-                    leaks: leaksInc,
-                    raw: rawInc,
-                    weeklyTotal: weeklyInc,
-                    growth: (Math.random() * 5 + 10).toFixed(0)
-                  };
-                }).reverse(); // 补全数据也需要反转以符合时间轴
-                
-                setWeeklyGrowth([...paddedData, ...growthData]);
-              } else {
-                setWeeklyGrowth(growthData.slice(-52));
-              }
-              console.log('[Dashboard] Weekly growth chart updated with scaled API data');
+                // 向前补全使用 0 填充，确保不产生虚假历史数据
+                const dp = {
+                  date: dateStr,
+                  displayDate: (growthData.length + weekNum - 1) % 8 === 0 ? monday.toLocaleDateString() : '',
+                  total: 0,
+                  leaks: 0,
+                  raw: 0,
+                  weeklyTotal: 0,
+                  growth: '0'
+                };
+                return dp;
+              }).reverse();
+              setWeeklyGrowth([...padded, ...growthData]);
             } else {
-              console.warn('[Dashboard] API growth data is all zeros, keeping mock data for display');
+              setWeeklyGrowth(growthData.slice(-52));
             }
           } else {
-            console.log('[Dashboard] API weekly data too short, keeping mock data fallback');
+            // No weekly data from API
+            setWeeklyGrowth([]);
           }
+        } else {
+          // API failed to return any stats
+          setTotalLeaks('0');
+          setWeeklyGrowth([]);
         }
-      } catch (error: any) {
-        console.error('[Dashboard] API stats fetch error:', error);
+      } catch (error) {
+        console.error('[Dashboard] Error fetching stats:', error);
+        setTotalLeaks('0');
+        setWeeklyGrowth([]);
       } finally {
         setIsLoadingStats(false);
       }
     };
+
+    // 移除 generateFallbackData 函数
+    
     fetchStats();
   }, []);
   
@@ -275,6 +228,15 @@ const Dashboard = () => {
     list.sort((a, b) => {
       const valA = a[sortField] || '';
       const valB = b[sortField] || '';
+      
+      // 特殊处理强度排序
+      if (sortField === 'strength') {
+        const order = { 'Strong': 3, 'Medium': 2, 'Weak': 1, 'Very Weak': 0 };
+        const sA = order[a.strength as keyof typeof order] || 0;
+        const sB = order[b.strength as keyof typeof order] || 0;
+        return sortOrder === 'asc' ? sA - sB : sB - sA;
+      }
+
       if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
       if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
       return 0;
@@ -288,7 +250,7 @@ const Dashboard = () => {
   };
 
   const tabs = [
-    { name: 'Report', icon: LayoutGrid, count: null },
+    { name: 'Report', icon: LayoutGrid, count: results?.summary.total ?? 0 },
     { name: 'Employees', icon: User, count: results?.summary.employees.count ?? 0 },
     { name: 'Third-Parties', icon: Briefcase, count: results?.summary.third_parties.count ?? 0 },
     { name: 'Customers', icon: Users, count: results?.summary.customers.count ?? 0 },
@@ -751,24 +713,33 @@ const Dashboard = () => {
                   <div className="text-center">
                     <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">本周新增</p>
                     <p className="text-lg font-black text-white">
-                      {weeklyGrowth && weeklyGrowth.length > 0 && weeklyGrowth[weeklyGrowth.length - 1]
-                        ? (weeklyGrowth[weeklyGrowth.length - 1].weeklyTotal || 0).toLocaleString() 
-                        : '0'}
+                      {isLoadingStats ? (
+                        <span className="opacity-20 animate-pulse">---,---</span>
+                      ) : (
+                        weeklyGrowth && weeklyGrowth.length > 0 && weeklyGrowth[weeklyGrowth.length - 1]
+                          ? (weeklyGrowth[weeklyGrowth.length - 1].weeklyTotal || 0).toLocaleString() 
+                          : '0'
+                      )}
                     </p>
                   </div>
                   <div className="w-px h-6 bg-white/10" />
                   <div className="text-center">
                     <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">平均每周</p>
                     <p className="text-lg font-black text-white">
-                      {weeklyGrowth && weeklyGrowth.length > 0 
-                        ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + (Number(curr.weeklyTotal) || 0), 0) / weeklyGrowth.length).toLocaleString() 
-                        : '0'}
+                      {isLoadingStats ? (
+                        <span className="opacity-20 animate-pulse">---,---</span>
+                      ) : (
+                        weeklyGrowth && weeklyGrowth.length > 0 
+                          ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + (Number(curr.weeklyTotal) || 0), 0) / weeklyGrowth.length).toLocaleString() 
+                          : '0'
+                      )}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="min-h-[300px] w-full relative" style={{ height: '300px' }}>
+              {/* Chart Container with fixed height to prevent ResponsiveContainer width/height error */}
+              <div className="h-[300px] min-h-[300px] w-full relative">
                 {isLoadingStats && (
                   <div className="absolute top-2 right-2 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                     <Loader2 className="w-3 h-3 text-accent animate-spin" />

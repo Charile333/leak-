@@ -2,11 +2,13 @@
  * LeakRadar API 客户端
  * 
  * 架构调整：
- * 前端不再直接持有 API Key，所有请求通过后端代理。
- * 后端地址：/api/leakradar/...
+ * 前端连接到 AWS EC2 上的后端代理服务。
+ * 请在 .env 文件中设置 VITE_BACKEND_URL=http://你的EC2公网IP:3000
  */
 
-const BASE_URL = '/api/leakradar';
+// 切换到方案 B：Vercel Serverless 后端
+// 在本地开发时，Vercel 会自动处理 /api 路由
+const BASE_URL = window.location.origin;
 
 export interface LeakRadarProfile {
 // ... (保持接口定义不变)
@@ -108,21 +110,21 @@ class LeakRadarAPI {
    * Tag: Profile
    */
   async getProfile(): Promise<LeakRadarProfile> {
-    return this.request<LeakRadarProfile>('/profile');
+    return this.request<LeakRadarProfile>('/api/profile');
   }
 
   /**
    * Search for leaks by domain
    */
   async searchByDomain(domain: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
-    return this.request<LeakRadarSearchResult>(`/search/domain?query=${encodeURIComponent(domain)}&limit=${limit}&offset=${offset}`);
+    return this.request<LeakRadarSearchResult>(`/api/search?domain=${domain}&limit=${limit}&offset=${offset}`);
   }
 
   /**
    * Search for leaks by email
    */
   async searchByEmail(email: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
-    return this.request<LeakRadarSearchResult>(`/search/email?query=${encodeURIComponent(email)}&limit=${limit}&offset=${offset}`);
+    return this.request<LeakRadarSearchResult>(`/api/search/email?query=${encodeURIComponent(email)}&limit=${limit}&offset=${offset}`);
   }
 
   /**
@@ -130,7 +132,7 @@ class LeakRadarAPI {
    * Tag: Stats
    */
   async getStats(): Promise<LeakRadarStats> {
-    return this.request<LeakRadarStats>('/stats');
+    return this.request<LeakRadarStats>('/api/stats');
   }
 }
 

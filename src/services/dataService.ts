@@ -71,7 +71,9 @@ export const dataService = {
         };
       });
 
-      // 2. 生成统计汇总
+      // 2. 生成基于真实数据的统计汇总
+      // 注意：API 返回的 response.found 是总匹配数，而 credentials 只是当前页的数据
+      // 为了让 UI 显示一致，我们需要基于 credentials 数组的实际内容来生成 summary
       const employees = credentials.filter(c => c.type === 'Employee');
       const customers = credentials.filter(c => c.type === 'Customer');
       const thirdParties = credentials.filter(c => c.type === 'Third-Party');
@@ -87,7 +89,7 @@ export const dataService = {
 
       const summary: DomainSearchSummary = {
         domain,
-        total: response.found,
+        total: response.found || credentials.length,
         employees: {
           count: employees.length,
           strength: getStrengthStats(employees)
@@ -104,16 +106,9 @@ export const dataService = {
 
       return { summary, credentials };
     } catch (error: any) {
-      if (error.message.includes('401')) {
-        console.error('%c[LeakRadar API] 认证失败 (401)', 'color: white; background: #f43f5e; padding: 2px 4px; border-radius: 2px; font-weight: bold;');
-        console.warn('请检查 .env 文件中的 VITE_LEAKRADAR_API_KEY 是否正确配置。');
-        console.info('当前系统使用后端代理架构，API Key 由 Vite Proxy 自动注入。如果 Key 无效或未设置，请求将失败并回退到演示数据。');
-      } else {
-        console.error('LeakRadar API Error:', error);
-      }
-      
-      // 回退到 Mock 数据
-      return mockDataService.searchDomain(domain);
+      console.error('[dataService] API Search failed:', error);
+      // 不再回退到 mockDataService，直接向上层抛出错误，让 UI 处理加载失败状态
+      throw error;
     }
   }
 };
