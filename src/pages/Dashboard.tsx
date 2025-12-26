@@ -21,8 +21,19 @@ import {
   Eye,
   EyeOff,
   Copy,
-  ChevronLeft
+  ChevronLeft,
+  TrendingUp
 } from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Cell
+} from 'recharts';
 import { cn } from '../lib/utils';
 import { dataService } from '../services/dataService';
 import type { LeakedCredential, DomainSearchSummary } from '../services/dataService';
@@ -36,6 +47,7 @@ const Dashboard = () => {
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [totalLeaks, setTotalLeaks] = useState<string>('---');
+  const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
   
@@ -74,6 +86,17 @@ const Dashboard = () => {
             console.log('[Dashboard] Set total leaks (sum of raw and leaks) to:', total);
           } else {
             console.warn('[Dashboard] Could not find total leaks in stats response');
+          }
+
+          // 处理每周增长数据 (Weekly Database Growth)
+          // 官网显示的是过去 12 个月的周增长
+          const growthData = statsObj.leaks?.per_week || statsObj.per_week || [];
+          if (growthData && Array.isArray(growthData)) {
+            const formattedGrowth = growthData.slice(-52).map((value: number, index: number) => ({
+              week: `W${index + 1}`,
+              value: value
+            }));
+            setWeeklyGrowth(formattedGrowth);
           }
         }
       } catch (error: any) {
@@ -588,13 +611,92 @@ const Dashboard = () => {
       {/* 中间文本区 */}
       {!showResults && (
         <>
-          <div className="max-w-5xl mx-auto px-4 text-center py-16">
+          <div className="max-w-5xl mx-auto px-4 text-center pt-24 pb-12">
             <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-6 leading-tight">
               立即发现地下泄露中关于您的信息
             </h2>
             <p className="text-xl text-gray-500 max-w-3xl mx-auto font-medium">
               数秒内检索从恶意软件日志中收集的数十亿条明文凭证。
             </p>
+          </div>
+
+          {/* Weekly Growth Chart */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+            <div className="bg-white/[0.02] border border-white/5 rounded-[40px] p-10 lg:p-12 relative overflow-hidden group">
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center border border-accent/20">
+                    <TrendingUp className="w-6 h-6 text-accent" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-white tracking-tight">每周数据增长</h3>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">最近 12 个月的数据趋势</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10">
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-nowrap">实时更新中</span>
+                </div>
+              </div>
+
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyGrowth} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.8} />
+                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis 
+                      dataKey="week" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 700 }}
+                      interval={Math.floor(weeklyGrowth.length / 10)}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 700 }}
+                      tickFormatter={(value) => {
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                        return value;
+                      }}
+                    />
+                    <Tooltip 
+                      cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                      contentStyle={{ 
+                        backgroundColor: '#1a1a1f', 
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '16px',
+                        padding: '12px 16px',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                      }}
+                      itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 900 }}
+                      labelStyle={{ color: '#a855f7', fontSize: '10px', fontWeight: 900, marginBottom: '4px', textTransform: 'uppercase' }}
+                      formatter={(value: number) => [value.toLocaleString(), '新增记录']}
+                    />
+                    <Bar 
+                      dataKey="value" 
+                      fill="url(#barGradient)" 
+                      radius={[6, 6, 0, 0]}
+                      barSize={weeklyGrowth.length > 30 ? undefined : 20}
+                    >
+                      {weeklyGrowth.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={index === weeklyGrowth.length - 1 ? '#a855f7' : 'url(#barGradient)'}
+                          fillOpacity={index === weeklyGrowth.length - 1 ? 1 : 0.8}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
 
           {/* 功能卡片区 */}
