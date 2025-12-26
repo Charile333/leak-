@@ -136,8 +136,9 @@ class LeakRadarAPI {
 
       return response.json();
     } catch (error: any) {
-      console.warn(`[LeakRadar API] Request to ${endpoint} failed:`, error.message);
-      throw error;
+      const msg = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
+      console.error(`[LeakRadar API] Request to ${endpoint} error:`, msg);
+      throw new Error(msg);
     }
   }
 
