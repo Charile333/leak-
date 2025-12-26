@@ -673,16 +673,18 @@ const Dashboard = () => {
                   <div className="text-center">
                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">本周新增</p>
                     <p className="text-xl font-black text-white">
-                      {weeklyGrowth.length > 0 ? weeklyGrowth[weeklyGrowth.length - 1].value.toLocaleString() : '---'}
+                      {weeklyGrowth && weeklyGrowth.length > 0 && weeklyGrowth[weeklyGrowth.length - 1] && typeof weeklyGrowth[weeklyGrowth.length - 1].value === 'number'
+                        ? weeklyGrowth[weeklyGrowth.length - 1].value.toLocaleString() 
+                        : '0'}
                     </p>
                   </div>
                   <div className="w-px h-8 bg-white/10" />
                   <div className="text-center">
                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">平均每周</p>
                     <p className="text-xl font-black text-white">
-                      {weeklyGrowth.length > 0 
-                        ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + curr.value, 0) / weeklyGrowth.length).toLocaleString() 
-                        : '---'}
+                      {weeklyGrowth && weeklyGrowth.length > 0 
+                        ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0) / weeklyGrowth.length).toLocaleString() 
+                        : '0'}
                     </p>
                   </div>
                 </div>
@@ -722,28 +724,33 @@ const Dashboard = () => {
                     <Tooltip 
                       cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
                       content={({ active, payload, label }) => {
-                        if (active && payload && payload.length >= 3) {
+                        if (active && payload && payload.length > 0) {
                           const totalItem = payload.find(p => p.dataKey === 'total');
                           const leaksItem = payload.find(p => p.dataKey === 'leaks');
                           const rawItem = payload.find(p => p.dataKey === 'raw');
                           
+                          const formatVal = (item: any) => {
+                            if (!item || item.value === undefined || item.value === null) return '0';
+                            return Number(item.value).toLocaleString();
+                          };
+
                           return (
                             <div className="bg-[#1a1a1f] border border-white/10 p-5 rounded-xl shadow-2xl backdrop-blur-2xl min-w-[240px]">
                               <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-white/5">
-                                Week of {label || '---'}
+                                第 {label || '---'} 周
                               </p>
                               <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-[#6366f1]">Total :</span>
-                                  <span className="text-sm font-black text-white">{(totalItem?.value as number)?.toLocaleString() || '0'}</span>
+                                  <span className="text-sm font-black text-white">{formatVal(totalItem)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-[#22d3ee]">url:user:pass :</span>
-                                  <span className="text-sm font-black text-white">{(leaksItem?.value as number)?.toLocaleString() || '0'}</span>
+                                  <span className="text-sm font-black text-white">{formatVal(leaksItem)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-[#f59e0b]">Raw lines :</span>
-                                  <span className="text-sm font-black text-white">{(rawItem?.value as number)?.toLocaleString() || '0'}</span>
+                                  <span className="text-sm font-black text-white">{formatVal(rawItem)}</span>
                                 </div>
                               </div>
                             </div>
