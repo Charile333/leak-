@@ -1,4 +1,4 @@
-import { leakRadarApi, LeakRadarSearchResult } from '../api/leakRadar';
+import { leakRadarApi, type LeakRadarSearchResult } from '../api/leakRadar';
 
 export interface LeakedCredential {
   id: string;
@@ -43,7 +43,7 @@ export const dataService = {
   /**
    * Search domain leaks using Real API
    */
-  searchDomain: async (domain: string, limit = 100, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
+  searchDomain: async (domain: string, _limit = 100, _offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
     try {
       console.log(`[dataService] Searching domain: ${domain}`);
       
@@ -57,9 +57,9 @@ export const dataService = {
       // 2. Fetch some credentials for display (we combine them for the table)
       // For performance, we fetch a few from each category
       const [empRes, custRes, thirdRes] = await Promise.all([
-        leakRadarApi.searchDomainCategory(domain, 'employees', 20, 0).catch(() => ({ items: [], total: 0 } as LeakRadarSearchResult)),
-        leakRadarApi.searchDomainCategory(domain, 'customers', 50, 0).catch(() => ({ items: [], total: 0 } as LeakRadarSearchResult)),
-        leakRadarApi.searchDomainCategory(domain, 'third_parties', 30, 0).catch(() => ({ items: [], total: 0 } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'employees', 20, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'customers', 50, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'third_parties', 30, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
       ]);
 
       const transformItem = (item: any, type: LeakedCredential['type']): LeakedCredential => {
