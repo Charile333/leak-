@@ -45,31 +45,39 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Report');
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
-  const [totalLeaks, setTotalLeaks] = useState<string>('15,234,892,010');
+  const [totalLeaks, setTotalLeaks] = useState<string>('40,212,433,857');
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>(() => {
     // 初始生成 52 周的模拟数据，确保图表从第一帧开始就有内容
-    const finalTotal = 15234892010;
+    const finalTotal = 40212433857;
     const data = [];
     let currentTotal = finalTotal;
     const now = new Date();
     
-    // 逆向生成 52 周的数据，模拟从 140亿 增长到 152亿
+    // 逆向生成 52 周的数据，模拟从 350亿 增长到 402亿
     for (let i = 0; i < 52; i++) {
       const d = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      // 获取周一的日期
+      const day = d.getDay() || 7;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - day + 1);
+      const dateStr = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
       
-      // 每周增长量在 1.5亿 到 2.5亿 之间波动
-      const weeklyInc = Math.floor(150000000 + Math.random() * 100000000);
-      const leaksInc = Math.floor(weeklyInc * 0.4);
+      // 每周增长量
+      const weeklyInc = Math.floor(100000000 + Math.random() * 200000000);
+      const leaksInc = Math.floor(weeklyInc * 0.19); // 约 19% 是 leaks
       const rawInc = weeklyInc - leaksInc;
+      
+      // 计算增长率 (模拟官网的 +14%)
+      const growthRate = (Math.random() * 5 + 10).toFixed(0); // 10% - 15% 之间的随机数
       
       data.push({
         date: dateStr,
-        displayDate: i === 0 ? '本周' : (i % 4 === 0 ? dateStr : ''),
+        displayDate: i === 0 ? '本周' : (i % 8 === 0 ? monday.toLocaleDateString() : ''),
         total: currentTotal,
         leaks: leaksInc,
         raw: rawInc,
-        weeklyTotal: weeklyInc
+        weeklyTotal: weeklyInc,
+        growth: growthRate
       });
       
       currentTotal -= weeklyInc;
@@ -120,15 +128,15 @@ const Dashboard = () => {
           // 只有当 API 返回的数据周数足够多，且确实含有有效数据时才更新图表
           if (maxLen > 5) {
             // 基准总数 (官网数据)
-            const OFFICIAL_TOTAL = 15234892010;
+            const OFFICIAL_TOTAL = 40212433857;
             // 实时总数 (API 数据)
             const currentApiTotal = total;
             
-            // 计算比例因子，将 API 的量级映射到 152亿 基准
+            // 计算比例因子，将 API 的量级映射到 402亿 基准
             // 如果 API 返回的 total 已经是正常量级，则比例为 1
-            const scaleFactor = (currentApiTotal > 1000000000) ? 1 : (OFFICIAL_TOTAL / (currentApiTotal || 1));
+            const scaleFactor = (currentApiTotal > 10000000000) ? 1 : (OFFICIAL_TOTAL / (currentApiTotal || 1));
 
-            let runningTotal = (currentApiTotal > 1000000000) ? currentApiTotal : OFFICIAL_TOTAL;
+            let runningTotal = (currentApiTotal > 10000000000) ? currentApiTotal : OFFICIAL_TOTAL;
 
             const growthData = Array.from({ length: maxLen }, (_, i) => {
               const lIdx = leaksWeekly.length - 1 - i;
@@ -139,15 +147,21 @@ const Dashboard = () => {
               const weeklyInc = leaksInc + rawInc;
               
               const d = new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000);
-              const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const day = d.getDay() || 7;
+              const monday = new Date(d);
+              monday.setDate(d.getDate() - day + 1);
+              const dateStr = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+
+              const growthRate = (Math.random() * 5 + 10).toFixed(0);
 
               const dataPoint = {
                 date: dateStr,
-                displayDate: i === 0 ? '本周' : (i % 4 === 0 ? dateStr : ''),
+                displayDate: i === 0 ? '本周' : (i % 8 === 0 ? monday.toLocaleDateString() : ''),
                 total: Math.floor(runningTotal),
-                leaks: Math.floor(leaksInc * (scaleFactor > 5 ? 1 : scaleFactor)), // 增量不宜缩放过大，保持合理性
-                raw: Math.floor(rawInc * (scaleFactor > 5 ? 1 : scaleFactor)),
-                weeklyTotal: Math.floor(weeklyInc * (scaleFactor > 5 ? 1 : scaleFactor))
+                leaks: Math.floor(leaksInc * (scaleFactor > 10 ? 1 : scaleFactor)),
+                raw: Math.floor(rawInc * (scaleFactor > 10 ? 1 : scaleFactor)),
+                weeklyTotal: Math.floor(weeklyInc * (scaleFactor > 10 ? 1 : scaleFactor)),
+                growth: growthRate
               };
               
               runningTotal -= weeklyInc * scaleFactor;
@@ -165,21 +179,25 @@ const Dashboard = () => {
                 const paddedData = Array.from({ length: paddingCount }, (_, i) => {
                   const weekNum = i + 1;
                   const d = new Date(lastDate.getTime() - weekNum * 7 * 24 * 60 * 60 * 1000);
-                  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                  const day = d.getDay() || 7;
+                  const monday = new Date(d);
+                  monday.setDate(d.getDate() - day + 1);
+                  const dateStr = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
                   
-                  const weeklyInc = Math.floor(150000000 + Math.random() * 100000000);
-                  const leaksInc = Math.floor(weeklyInc * 0.4);
+                  const weeklyInc = Math.floor(100000000 + Math.random() * 200000000);
+                  const leaksInc = Math.floor(weeklyInc * 0.19);
                   const rawInc = weeklyInc - leaksInc;
                   
                   paddingRunningTotal -= weeklyInc;
                   
                   return {
                     date: dateStr,
-                    displayDate: (growthData.length + weekNum - 1) % 4 === 0 ? dateStr : '',
+                    displayDate: (growthData.length + weekNum - 1) % 8 === 0 ? monday.toLocaleDateString() : '',
                     total: paddingRunningTotal,
                     leaks: leaksInc,
                     raw: rawInc,
-                    weeklyTotal: weeklyInc
+                    weeklyTotal: weeklyInc,
+                    growth: (Math.random() * 5 + 10).toFixed(0)
                   };
                 }).reverse(); // 补全数据也需要反转以符合时间轴
                 
@@ -797,37 +815,31 @@ const Dashboard = () => {
                           const leaksItem = payload[0]?.payload?.leaks || 0;
                           const rawItem = payload[0]?.payload?.raw || 0;
                           const totalItem = payload[0]?.payload?.total || 0;
-                          const weeklyTotalItem = payload[0]?.payload?.weeklyTotal || (leaksItem + rawItem);
+                          const growth = payload[0]?.payload?.growth || '0';
 
                           const formatVal = (val: any) => {
                             return Number(val || 0).toLocaleString();
                           };
 
                           return (
-                            <div className="bg-black/80 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-2xl min-w-[180px]">
-                              <div className="mb-3 pb-2 border-b border-white/5">
-                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                                  {label} 数据统计
+                            <div className="bg-[#1a1b26] border border-white/5 p-4 rounded-md shadow-2xl min-w-[280px]">
+                              <div className="mb-4">
+                                <span className="text-lg font-bold text-gray-200">
+                                  {label}
                                 </span>
                               </div>
-                              <div className="space-y-3">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-xs font-bold text-[#6366f1]">总索引 (Total):</span>
-                                  <span className="text-sm font-black text-white">{formatVal(totalItem)}</span>
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-lg font-bold text-[#6366f1]">Total (+{growth}%):</span>
+                                  <span className="text-lg font-bold text-[#6366f1]">{formatVal(totalItem)}</span>
                                 </div>
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-xs font-bold text-[#8b5cf6]">本周新增 (Weekly):</span>
-                                  <span className="text-sm font-black text-white">{formatVal(weeklyTotalItem)}</span>
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-lg font-bold text-[#22d3ee]">url:user:pass:</span>
+                                  <span className="text-lg font-bold text-[#22d3ee]">{formatVal(leaksItem)}</span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4 mt-2 pt-2 border-t border-white/5">
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="text-[9px] font-bold text-gray-500 uppercase">Leaks</span>
-                                    <span className="text-xs font-bold text-white/90">{formatVal(leaksItem)}</span>
-                                  </div>
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="text-[9px] font-bold text-gray-500 uppercase">Raw</span>
-                                    <span className="text-xs font-bold text-white/90">{formatVal(rawItem)}</span>
-                                  </div>
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-lg font-bold text-[#f59e0b]">Raw lines:</span>
+                                  <span className="text-lg font-bold text-[#f59e0b]">{formatVal(rawItem)}</span>
                                 </div>
                               </div>
                             </div>
@@ -847,7 +859,9 @@ const Dashboard = () => {
                             {payload.map((entry: any, index: number) => (
                               <div key={`item-${index}`} className="flex items-center gap-2">
                                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{entry.value}</span>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                  {entry.value === '总索引量' ? 'Total' : entry.value === '凭证' ? 'url:user:pass' : 'Raw lines'}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -859,7 +873,7 @@ const Dashboard = () => {
                       dataKey="total" 
                       name="总索引量"
                       stroke="#6366f1" 
-                      strokeWidth={4}
+                      strokeWidth={3}
                       fillOpacity={1} 
                       fill="url(#colorTotal)" 
                       isAnimationActive={false}
