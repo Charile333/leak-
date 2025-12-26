@@ -714,8 +714,8 @@ const Dashboard = () => {
           </div>
 
           {/* Weekly Growth Chart */}
-          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-            <div className="bg-[#0a0a0c] border border-white/5 rounded-[40px] p-8 lg:p-10 relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)]">
+          <div className="w-full px-4 sm:px-6 lg:px-8 mb-24">
+            <div className="max-w-full mx-auto bg-[#0a0a0c] border border-white/5 rounded-[40px] p-8 lg:p-10 relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)]">
               {/* 装饰性背景 */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
               
