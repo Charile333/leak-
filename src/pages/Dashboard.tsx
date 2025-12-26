@@ -750,7 +750,7 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="min-h-[400px] w-full relative" style={{ height: '400px' }}>
+              <div className="min-h-[550px] w-full relative" style={{ height: '550px' }}>
                 {isLoadingStats && (
                   <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                     <Loader2 className="w-3 h-3 text-accent animate-spin" />
