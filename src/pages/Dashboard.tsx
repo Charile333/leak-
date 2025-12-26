@@ -664,35 +664,38 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="h-[400px] w-full relative">
+              <div className="min-h-[400px] w-full relative" style={{ height: '400px' }}>
                 {isLoadingStats && (
                   <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                     <Loader2 className="w-3 h-3 text-accent animate-spin" />
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">同步中...</span>
                   </div>
                 )}
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={weeklyGrowth} margin={{ top: 20, right: 0, left: -10, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                  <AreaChart 
+                    key={`chart-${weeklyGrowth.length}-${isLoadingStats}`}
+                    data={weeklyGrowth} 
+                    margin={{ top: 20, right: 0, left: -10, bottom: 0 }}
+                  >
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
                         <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                       </linearGradient>
                       <linearGradient id="colorRaw" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
                         <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                     <XAxis 
                       dataKey="date" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
+                      tick={{ fill: '#cbd5e1', fontSize: 10, fontWeight: 800 }}
                       interval={0}
                       tickFormatter={(_, index) => {
                         if (!weeklyGrowth || weeklyGrowth.length === 0) return '';
-                        // 只显示 12个月前, 6个月前, 本周
                         if (index === 0) return '12个月前';
                         if (index === Math.floor(weeklyGrowth.length / 2)) return '6个月前';
                         if (index === weeklyGrowth.length - 1) return '本周';
@@ -700,17 +703,11 @@ const Dashboard = () => {
                       }}
                     />
                     <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
-                      tickFormatter={(value) => {
-                        if (value >= 1e9) return `${(value / 1e9).toFixed(1)} B`;
-                        if (value >= 1e6) return `${(value / 1e6).toFixed(1)} M`;
-                        return value;
-                      }}
+                      hide={true} 
+                      domain={[0, 'dataMax + 1000000']}
                     />
                     <Tooltip 
-                      cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+                      cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1 }}
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length > 0) {
                           const totalItem = payload.find(p => p.dataKey === 'total');
@@ -725,19 +722,19 @@ const Dashboard = () => {
                           return (
                             <div className="bg-[#1a1a1f] border border-white/10 p-5 rounded-xl shadow-2xl backdrop-blur-2xl min-w-[240px]">
                               <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-white/5">
-                                第 {label || '---'} 周
+                                时间节点: {label || '---'}
                               </p>
                               <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-[#6366f1]">Total :</span>
+                                  <span className="text-xs font-bold text-[#6366f1]">总索引 (Total):</span>
                                   <span className="text-sm font-black text-white">{formatVal(totalItem)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-[#22d3ee]">url:user:pass :</span>
+                                  <span className="text-xs font-bold text-[#22d3ee]">凭证 (Credentials):</span>
                                   <span className="text-sm font-black text-white">{formatVal(leaksItem)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-[#f59e0b]">Raw lines :</span>
+                                  <span className="text-xs font-bold text-[#f59e0b]">原始行 (Raw):</span>
                                   <span className="text-sm font-black text-white">{formatVal(rawItem)}</span>
                                 </div>
                               </div>
@@ -768,31 +765,34 @@ const Dashboard = () => {
                     <Area 
                       type="monotone" 
                       dataKey="total" 
-                      name="Total"
+                      name="总索引量"
                       stroke="#6366f1" 
-                      strokeWidth={3}
-                      fillOpacity={0.6} 
+                      strokeWidth={4}
+                      fillOpacity={1} 
                       fill="url(#colorTotal)" 
-                      animationDuration={2000}
+                      isAnimationActive={false}
+                      connectNulls={true}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="leaks" 
-                      name="url:user:pass"
+                      name="凭证"
                       stroke="#22d3ee" 
                       strokeWidth={2}
                       fill="transparent"
-                      animationDuration={2000}
+                      isAnimationActive={false}
+                      connectNulls={true}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="raw" 
-                      name="Raw lines"
+                      name="原始行"
                       stroke="#f59e0b" 
                       strokeWidth={2}
-                      fillOpacity={0.4} 
+                      fillOpacity={1} 
                       fill="url(#colorRaw)" 
-                      animationDuration={2000}
+                      isAnimationActive={false}
+                      connectNulls={true}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
