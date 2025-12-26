@@ -714,34 +714,34 @@ const Dashboard = () => {
           </div>
 
           {/* Weekly Growth Chart */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-            <div className="bg-[#0a0a0c] border border-white/5 rounded-[40px] p-10 lg:p-14 relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)]">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+            <div className="bg-[#0a0a0c] border border-white/5 rounded-[40px] p-8 lg:p-10 relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)]">
               {/* 装饰性背景 */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
               
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
                     <span className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">Live Indexing</span>
                   </div>
-                  <h3 className="text-3xl font-black text-white tracking-tighter">每周数据增长趋势</h3>
-                  <p className="text-gray-500 font-medium mt-1">最近 12 个月内索引的新增记录分布</p>
+                  <h3 className="text-2xl font-black text-white tracking-tighter">每周数据增长趋势</h3>
+                  <p className="text-gray-500 text-xs font-medium mt-1">最近 12 个月内索引的新增记录分布</p>
                 </div>
                 
-                <div className="flex items-center gap-8 bg-white/5 px-6 py-4 rounded-2xl border border-white/10">
+                <div className="flex items-center gap-6 bg-white/5 px-5 py-3 rounded-2xl border border-white/10">
                   <div className="text-center">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">本周新增</p>
-                    <p className="text-xl font-black text-white">
+                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">本周新增</p>
+                    <p className="text-lg font-black text-white">
                       {weeklyGrowth && weeklyGrowth.length > 0 && weeklyGrowth[weeklyGrowth.length - 1]
                         ? (weeklyGrowth[weeklyGrowth.length - 1].weeklyTotal || 0).toLocaleString() 
                         : '0'}
                     </p>
                   </div>
-                  <div className="w-px h-8 bg-white/10" />
+                  <div className="w-px h-6 bg-white/10" />
                   <div className="text-center">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">平均每周</p>
-                    <p className="text-xl font-black text-white">
+                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">平均每周</p>
+                    <p className="text-lg font-black text-white">
                       {weeklyGrowth && weeklyGrowth.length > 0 
                         ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + (Number(curr.weeklyTotal) || 0), 0) / weeklyGrowth.length).toLocaleString() 
                         : '0'}
@@ -750,9 +750,9 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="min-h-[550px] w-full relative" style={{ height: '550px' }}>
+              <div className="min-h-[300px] w-full relative" style={{ height: '300px' }}>
                 {isLoadingStats && (
-                  <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                  <div className="absolute top-2 right-2 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                     <Loader2 className="w-3 h-3 text-accent animate-spin" />
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">同步中...</span>
                   </div>
@@ -761,7 +761,7 @@ const Dashboard = () => {
                   <AreaChart 
                     key={`chart-${weeklyGrowth.length}`}
                     data={weeklyGrowth} 
-                    margin={{ top: 20, right: 0, left: -10, bottom: 0 }}
+                    margin={{ top: 10, right: 0, left: -10, bottom: 0 }}
                   >
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
