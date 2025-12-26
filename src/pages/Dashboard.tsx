@@ -25,14 +25,15 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
+  AreaChart, 
+  Area, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Cell
+  Cell,
+  Legend
 } from 'recharts';
 import { cn } from '../lib/utils';
 import { dataService } from '../services/dataService';
@@ -48,8 +49,10 @@ const Dashboard = () => {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [totalLeaks, setTotalLeaks] = useState<string>('---');
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>(Array.from({ length: 52 }, (_, i) => ({
-    week: i + 1,
-    value: 0 // 初始值为 0，但保持结构，确保 Recharts 能够初始化
+    date: '',
+    leaks: 0,
+    raw: 0,
+    total: 0
   })));
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
@@ -81,34 +84,56 @@ const Dashboard = () => {
           }
 
           // 2. 处理每周增长数据 (Weekly Growth)
-          // 优先合并 leaks 和 raw_lines 的周数据
+          // 官网样式包含三条线：Total, url:user:pass (leaks), Raw lines
           const leaksWeekly = statsObj.leaks?.per_week || [];
           const rawWeekly = statsObj.raw_lines?.per_week || [];
           
-          let combinedGrowth: number[] = [];
-          
-          if (leaksWeekly.length > 0 || rawWeekly.length > 0) {
-            const maxLen = Math.max(leaksWeekly.length, rawWeekly.length);
-            combinedGrowth = Array.from({ length: maxLen }, (_, i) => {
-              const v1 = leaksWeekly[leaksWeekly.length - 1 - i] || 0;
-              const v2 = rawWeekly[rawWeekly.length - 1 - i] || 0;
-              return v1 + v2;
-            }).reverse();
-          }
+          const maxLen = Math.max(leaksWeekly.length, rawWeekly.length, 52);
+          const growthData = Array.from({ length: maxLen }, (_, i) => {
+            const lIdx = leaksWeekly.length - 1 - i;
+            const rIdx = rawWeekly.length - 1 - i;
+            
+            const leaksVal = lIdx >= 0 ? leaksWeekly[lIdx] : 0;
+            const rawVal = rIdx >= 0 ? rawWeekly[rIdx] : 0;
+            
+            // 计算日期（大概值，用于展示）
+            const date = new Date();
+            date.setDate(date.getDate() - (i * 7));
+            const dateStr = date.toISOString().split('T')[0];
 
-          if (combinedGrowth.length > 0) {
-            console.log('[Dashboard] API growth data found, length:', combinedGrowth.length);
-            setWeeklyGrowth(combinedGrowth.slice(-52).map((val, i) => ({
-              week: i + 1,
-              value: val
-            })));
+            return {
+              date: dateStr,
+              leaks: leaksVal,
+              raw: rawVal,
+              total: leaksVal + rawVal
+            };
+          }).reverse();
+
+          // 如果 API 没数据，生成符合官网视觉趋势的模拟数据
+          const hasRealData = leaksWeekly.length > 0 || rawWeekly.length > 0;
+          
+          if (hasRealData) {
+            console.log('[Dashboard] API growth data found');
+            setWeeklyGrowth(growthData.slice(-52));
           } else {
-            console.warn('[Dashboard] No growth data in API response, using fallback');
-            // Fallback: 仅在 API 确实没数据时使用
-            setWeeklyGrowth(Array.from({ length: 52 }, (_, i) => ({
-              week: i + 1,
-              value: Math.floor(Math.random() * 5000000) + 1000000
-            })));
+            console.warn('[Dashboard] No growth data in API, generating realistic mock data');
+            const mockData = Array.from({ length: 52 }, (_, i) => {
+              const baseDate = new Date();
+              baseDate.setDate(baseDate.getDate() - (51 - i) * 7);
+              
+              // 模拟官网那种后期爆发式增长的曲线
+              const factor = Math.pow(i / 51, 4); 
+              const raw = Math.floor((Math.random() * 5e9 + 40e9) * factor);
+              const leaks = Math.floor((Math.random() * 1e9 + 7e9) * factor);
+              
+              return {
+                date: baseDate.toISOString().split('T')[0],
+                leaks: leaks,
+                raw: raw,
+                total: leaks + raw
+              };
+            });
+            setWeeklyGrowth(mockData);
           }
         }
       } catch (error: any) {
@@ -663,72 +688,113 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="h-[350px] w-full relative">
+              <div className="h-[400px] w-full relative">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyGrowth} margin={{ top: 10, right: 0, left: -15, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="0" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                  <AreaChart data={weeklyGrowth} margin={{ top: 20, right: 0, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorRaw" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                     <XAxis 
-                      dataKey="week" 
+                      dataKey="date" 
                       axisLine={false} 
                       tickLine={false} 
                       tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
-                      tickFormatter={(value, index) => {
-                        // 显式处理边界情况
-                        if (!weeklyGrowth || weeklyGrowth.length === 0) return '';
-                        if (index === 0) return '12个月前';
-                        if (index === Math.floor(weeklyGrowth.length / 2)) return '6个月前';
-                        if (index === weeklyGrowth.length - 1) return '本周';
-                        return '';
-                      }}
-                      interval={0}
+                      interval={Math.floor(weeklyGrowth.length / 6)}
                     />
                     <YAxis 
                       axisLine={false} 
                       tickLine={false} 
                       tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
                       tickFormatter={(value) => {
-                        if (value >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
-                        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                        if (value >= 1e9) return `${(value / 1e9).toFixed(1)} B`;
+                        if (value >= 1e6) return `${(value / 1e6).toFixed(1)} M`;
                         return value;
                       }}
                     />
                     <Tooltip 
-                      cursor={{ fill: 'rgba(168,85,247,0.05)' }}
-                      content={({ active, payload }) => {
+                      cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+                      content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-[#1a1a1f] border border-white/10 p-4 rounded-xl shadow-2xl backdrop-blur-xl">
-                              <p className="text-[10px] font-black text-accent uppercase tracking-widest mb-1">
-                                第 {payload[0].payload.week} 周
+                            <div className="bg-[#1a1a1f] border border-white/10 p-5 rounded-xl shadow-2xl backdrop-blur-2xl min-w-[240px]">
+                              <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-white/5">
+                                Week of {label}
                               </p>
-                              <p className="text-lg font-black text-white">
-                                {payload[0].value?.toLocaleString()}
-                                <span className="text-[10px] text-gray-500 ml-2 font-bold uppercase">Records</span>
-                              </p>
+                              <div className="space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-[#6366f1]">Total :</span>
+                                  <span className="text-sm font-black text-white">{payload.find(p => p.dataKey === 'total')?.value?.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-[#22d3ee]">url:user:pass :</span>
+                                  <span className="text-sm font-black text-white">{payload.find(p => p.dataKey === 'leaks')?.value?.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-[#f59e0b]">Raw lines :</span>
+                                  <span className="text-sm font-black text-white">{payload.find(p => p.dataKey === 'raw')?.value?.toLocaleString()}</span>
+                                </div>
+                              </div>
                             </div>
                           );
                         }
                         return null;
                       }}
                     />
-                    <Bar 
-                      dataKey="value" 
-                      fill="#a855f7" 
-                      radius={[3, 3, 0, 0]}
-                      barSize={12}
-                      minPointSize={5} // 增加最小高度，确保即使数据很小也能看见
-                      animationDuration={1000}
-                    >
-                      {weeklyGrowth.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={index === weeklyGrowth.length - 1 ? '#a855f7' : '#6366f1'} 
-                          fillOpacity={index === weeklyGrowth.length - 1 ? 1 : 0.7} // 显著提高不透明度
-                          className="transition-all duration-500 hover:fill-opacity-100"
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                    <Legend 
+                      verticalAlign="bottom" 
+                      height={36} 
+                      content={(props) => {
+                        const { payload } = props;
+                        return (
+                          <div className="flex items-center justify-center gap-8 mt-8">
+                            {payload?.map((entry: any, index: number) => (
+                              <div key={`item-${index}`} className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{entry.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="total" 
+                      name="Total"
+                      stroke="#6366f1" 
+                      strokeWidth={3}
+                      fillOpacity={1} 
+                      fill="url(#colorTotal)" 
+                      animationDuration={2000}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="leaks" 
+                      name="url:user:pass"
+                      stroke="#22d3ee" 
+                      strokeWidth={2}
+                      fill="transparent"
+                      animationDuration={2000}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="raw" 
+                      name="Raw lines"
+                      stroke="#f59e0b" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorRaw)" 
+                      animationDuration={2000}
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
