@@ -5,12 +5,8 @@ import {
   Search, 
   ChevronDown, 
   Activity,
-  HelpCircle, 
-  Download, 
-  FolderDown, 
   Wrench,
-  Pin,
-  Settings as SettingsIcon
+  Pin
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import logo from '../../assets/紫色2.png';
@@ -68,13 +64,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
         { name: '资产分析', path: '/analysis' },
       ]
     }
-  ];
-
-  const singleItems = [
-    { name: '常见问题', icon: HelpCircle, path: '/docs' },
-    { name: '数据导出', icon: Download, path: '/alerts' },
-    { name: '原始下载', icon: FolderDown, path: '/raw' },
-    { name: '系统设置', icon: SettingsIcon, path: '/settings' },
   ];
 
   const smoothTransition = {
@@ -291,52 +280,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
               </React.Fragment>
             );
           })}
-        </div>
-
-        {/* Spacing before Tools link items */}
-        <div className="h-4" />
-
-        <div className="pt-4 border-t border-white/5 space-y-1">
-          {singleItems.map((item) => (
-            <motion.div
-              key={item.path}
-              animate={{
-                paddingLeft: effectiveCollapsed ? 16 : 12,
-                paddingRight: effectiveCollapsed ? 16 : 12,
-              }}
-              transition={smoothTransition}
-              className="w-full"
-            >
-              <NavLink
-                to={item.path}
-                className={({ isActive }) => cn(
-                  "flex items-center py-2.5 text-sm font-medium transition-all duration-400 rounded-xl group border border-transparent overflow-hidden whitespace-nowrap w-full",
-                  effectiveCollapsed ? "justify-center" : "px-3",
-                  isActive 
-                    ? "text-accent font-bold bg-accent/10 shadow-[inset_0_0_15px_rgba(168,85,247,0.1)] border-accent/20" 
-                    : "text-gray-500 hover:text-white hover:bg-white/5"
-                )}
-              >
-                <item.icon className={cn(
-                  "w-4 h-4 transition-transform duration-400 shrink-0",
-                  "group-hover:scale-110"
-                )} />
-                <AnimatePresence mode="popLayout">
-                  {!effectiveCollapsed && (
-                    <motion.span 
-                      initial={{ opacity: 0, x: -10 }} 
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={smoothTransition}
-                      className="ml-3"
-                    >
-                      {item.name}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </NavLink>
-            </motion.div>
-          ))}
         </div>
       </nav>
 

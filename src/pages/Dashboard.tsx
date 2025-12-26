@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
-  MessageCircle, 
   Bug, 
   Key, 
   Zap as Bolt,
@@ -631,13 +630,6 @@ const Dashboard = () => {
           </div>
         </>
       )}
-      
-      {/* 悬浮聊天按钮 */}
-      <div className="fixed bottom-8 right-8 z-50">
-        <button className="w-16 h-16 bg-accent rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(168,85,247,0.4)] hover:scale-110 transition-all group purple-glow">
-          <MessageCircle className="w-8 h-8 text-white fill-white group-hover:rotate-12 transition-transform" />
-        </button>
-      </div>
     </div>
   );
 };
