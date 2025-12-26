@@ -81,7 +81,8 @@ const Dashboard = () => {
           
           const maxLen = Math.max(leaksWeekly.length, rawWeekly.length);
           
-          if (maxLen > 0) {
+          // 强制使用模拟数据以便观察界面（如果 API 数据长度不足或为 0）
+          if (maxLen > 5) { // 假设至少有 5 周数据才使用 API
             const growthData = Array.from({ length: maxLen }, (_, i) => {
               const lIdx = leaksWeekly.length - 1 - i;
               const rIdx = rawWeekly.length - 1 - i;
@@ -99,15 +100,26 @@ const Dashboard = () => {
             
             setWeeklyGrowth(growthData.slice(-52));
           } else {
-            console.warn('[Dashboard] No weekly data in API, using fallback data');
-            // Fallback mock data
+            console.warn('[Dashboard] API data insufficient, using robust mock data');
             const mockData = Array.from({ length: 52 }, (_, i) => {
-              const factor = Math.pow(i / 51, 4); 
-              const raw = Math.floor((Math.random() * 5e8 + 40e8) * factor) + 1000000;
-              const leaks = Math.floor((Math.random() * 1e8 + 7e8) * factor) + 500000;
+              const weekNum = 51 - i;
+              const dateStr = weekNum === 0 ? '本周' : `${weekNum}周前`;
+              
+              // 模拟增长曲线：基数 + 随机波动 + 趋势
+              const progress = i / 51;
+              const trend = Math.pow(progress, 3); // 指数增长趋势
+              
+              const baseRaw = 5000000;
+              const baseLeaks = 1000000;
+              
+              const raw = Math.floor(baseRaw + (Math.random() * 2000000) + (trend * 8000000));
+              const leaks = Math.floor(baseLeaks + (Math.random() * 500000) + (trend * 2000000));
+              
               return {
-                date: 51 - i === 0 ? '本周' : `${51 - i}周前`,
-                leaks, raw, total: leaks + raw
+                date: dateStr,
+                leaks: leaks,
+                raw: raw,
+                total: leaks + raw
               };
             });
             setWeeklyGrowth(mockData);
@@ -696,7 +708,15 @@ const Dashboard = () => {
                       axisLine={false} 
                       tickLine={false} 
                       tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
-                      interval={Math.floor(weeklyGrowth.length / 6)}
+                      interval={0}
+                      tickFormatter={(value, index) => {
+                        if (!weeklyGrowth || weeklyGrowth.length === 0) return '';
+                        // 只显示 12个月前, 6个月前, 本周
+                        if (index === 0) return '12个月前';
+                        if (index === Math.floor(weeklyGrowth.length / 2)) return '6个月前';
+                        if (index === weeklyGrowth.length - 1) return '本周';
+                        return '';
+                      }}
                     />
                     <YAxis 
                       axisLine={false} 
@@ -770,7 +790,7 @@ const Dashboard = () => {
                       name="Total"
                       stroke="#6366f1" 
                       strokeWidth={3}
-                      fillOpacity={1} 
+                      fillOpacity={0.6} 
                       fill="url(#colorTotal)" 
                       animationDuration={2000}
                     />
@@ -789,7 +809,7 @@ const Dashboard = () => {
                       name="Raw lines"
                       stroke="#f59e0b" 
                       strokeWidth={2}
-                      fillOpacity={1} 
+                      fillOpacity={0.4} 
                       fill="url(#colorRaw)" 
                       animationDuration={2000}
                     />
