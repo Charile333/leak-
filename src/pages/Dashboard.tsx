@@ -649,76 +649,99 @@ const Dashboard = () => {
 
           {/* Weekly Growth Chart */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-            <div className="bg-white/[0.02] border border-white/5 rounded-[40px] p-10 lg:p-12 relative overflow-hidden group">
-              <div className="flex items-center justify-between mb-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center border border-accent/20">
-                    <TrendingUp className="w-6 h-6 text-accent" />
+            <div className="bg-[#0a0a0c] border border-white/5 rounded-[40px] p-10 lg:p-14 relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)]">
+              {/* 装饰性背景 */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
+              
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    <span className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">Live Indexing</span>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-black text-white tracking-tight">每周数据增长</h3>
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">最近 12 个月的数据趋势</p>
-                  </div>
+                  <h3 className="text-3xl font-black text-white tracking-tighter">每周数据增长趋势</h3>
+                  <p className="text-gray-500 font-medium mt-1">最近 12 个月内索引的新增记录分布</p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10">
-                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-nowrap">实时更新中</span>
+                
+                <div className="flex items-center gap-8 bg-white/5 px-6 py-4 rounded-2xl border border-white/10">
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">本周新增</p>
+                    <p className="text-xl font-black text-white">
+                      {weeklyGrowth.length > 0 ? weeklyGrowth[weeklyGrowth.length - 1].value.toLocaleString() : '---'}
+                    </p>
+                  </div>
+                  <div className="w-px h-8 bg-white/10" />
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">平均每周</p>
+                    <p className="text-xl font-black text-white">
+                      {weeklyGrowth.length > 0 
+                        ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + curr.value, 0) / weeklyGrowth.length).toLocaleString() 
+                        : '---'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="h-[300px] w-full">
+              <div className="h-[350px] w-full relative">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyGrowth} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.8} />
-                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.1} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <BarChart data={weeklyGrowth} margin={{ top: 10, right: 0, left: -15, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="0" vertical={false} stroke="rgba(255,255,255,0.03)" />
                     <XAxis 
                       dataKey="week" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 700 }}
-                      tickFormatter={(value) => `W${value}`}
-                      interval={Math.max(0, Math.floor(weeklyGrowth.length / 8))}
+                      tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
+                      tickFormatter={(value, index) => {
+                        if (index === 0) return '12个月前';
+                        if (index === Math.floor(weeklyGrowth.length / 2)) return '6个月前';
+                        if (index === weeklyGrowth.length - 1) return '本周';
+                        return '';
+                      }}
+                      interval={0}
                     />
                     <YAxis 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 700 }}
+                      tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
                       tickFormatter={(value) => {
-                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
                         if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
                         return value;
                       }}
                     />
                     <Tooltip 
-                      cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                      contentStyle={{ 
-                        backgroundColor: '#1a1a1f', 
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '16px',
-                        padding: '12px 16px',
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                      cursor={{ fill: 'rgba(168,85,247,0.05)' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-[#1a1a1f] border border-white/10 p-4 rounded-xl shadow-2xl backdrop-blur-xl">
+                              <p className="text-[10px] font-black text-accent uppercase tracking-widest mb-1">
+                                第 {payload[0].payload.week} 周
+                              </p>
+                              <p className="text-lg font-black text-white">
+                                {payload[0].value?.toLocaleString()}
+                                <span className="text-[10px] text-gray-500 ml-2 font-bold uppercase">Records</span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
                       }}
-                      itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 900 }}
-                      labelStyle={{ color: '#a855f7', fontSize: '10px', fontWeight: 900, marginBottom: '4px', textTransform: 'uppercase' }}
-                      formatter={(value: number) => [value.toLocaleString(), '新增记录']}
                     />
                     <Bar 
                       dataKey="value" 
                       fill="#a855f7" 
-                      radius={[4, 4, 0, 0]}
-                      barSize={weeklyGrowth.length > 40 ? undefined : 15}
-                      minPointSize={2}
+                      radius={[3, 3, 0, 0]}
+                      barSize={12}
+                      minPointSize={4}
+                      animationDuration={1500}
                     >
                       {weeklyGrowth.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={index === weeklyGrowth.length - 1 ? '#a855f7' : 'url(#barGradient)'}
-                          fillOpacity={index === weeklyGrowth.length - 1 ? 1 : 0.8}
+                          fill={index === weeklyGrowth.length - 1 ? '#a855f7' : '#4f46e5'} 
+                          fillOpacity={index === weeklyGrowth.length - 1 ? 1 : 0.4}
+                          className="transition-all duration-500 hover:fill-opacity-100"
                         />
                       ))}
                     </Bar>
