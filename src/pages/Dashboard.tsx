@@ -50,6 +50,7 @@ const Dashboard = () => {
   const [totalLeaks, setTotalLeaks] = useState<string>('---');
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [showHistoryTable, setShowHistoryTable] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
   
@@ -824,6 +825,53 @@ const Dashboard = () => {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
+
+              {/* 历史数据记录展示控制 */}
+              <div className="mt-12 flex justify-center">
+                <button 
+                  onClick={() => setShowHistoryTable(!showHistoryTable)}
+                  className="px-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all flex items-center gap-2 group"
+                >
+                  <LayoutGrid className={`w-3.5 h-3.5 transition-transform duration-500 ${showHistoryTable ? 'rotate-180' : ''}`} />
+                  {showHistoryTable ? '收起历史记录' : '查看详细历史数据记录'}
+                </button>
+              </div>
+
+              {/* 历史数据记录表格 */}
+              {showHistoryTable && (
+                <div className="mt-8 overflow-hidden rounded-2xl border border-white/5 bg-black/20 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/5 bg-white/5">
+                          <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">时间节点</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-[#6366f1] uppercase tracking-widest text-right">总新增 (Total)</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-[#22d3ee] uppercase tracking-widest text-right">凭证 (Credentials)</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-[#f59e0b] uppercase tracking-widest text-right">原始行 (Raw Lines)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.02]">
+                        {[...weeklyGrowth].reverse().map((row, i) => (
+                          <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="px-6 py-3.5">
+                              <span className="text-xs font-bold text-gray-400">{row.date}</span>
+                            </td>
+                            <td className="px-6 py-3.5 text-right">
+                              <span className="text-sm font-black text-white">{(row.total || 0).toLocaleString()}</span>
+                            </td>
+                            <td className="px-6 py-3.5 text-right">
+                              <span className="text-sm font-bold text-gray-300">{(row.leaks || 0).toLocaleString()}</span>
+                            </td>
+                            <td className="px-6 py-3.5 text-right">
+                              <span className="text-sm font-bold text-gray-300">{(row.raw || 0).toLocaleString()}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
