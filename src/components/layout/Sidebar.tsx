@@ -5,7 +5,6 @@ import {
   Search, 
   ChevronDown, 
   Activity,
-  Wrench,
   Pin
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -54,14 +53,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
       icon: Search,
       items: [
         { name: '情报检索中心', path: '/' },
-      ]
-    },
-    {
-      name: '工具',
-      icon: Wrench,
-      items: [
-        { name: '页面监测', path: '/page-monitor' },
-        { name: '资产分析', path: '/analysis' },
       ]
     }
   ];
@@ -145,50 +136,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
         {/* Collapsible Groups: Search */}
         <div className="space-y-1">
-          {menuGroups.map((group, groupIndex) => {
+          {menuGroups.map((group, _groupIndex) => {
             const Icon = group.icon;
             return (
               <React.Fragment key={group.name}>
-                {groupIndex === 1 && (
-                  <div className="py-2">
-                    {/* High-priority Monitoring Module */}
-                    <motion.div
-                      animate={{
-                        paddingLeft: effectiveCollapsed ? 16 : 12,
-                        paddingRight: effectiveCollapsed ? 16 : 12,
-                      }}
-                      transition={smoothTransition}
-                      className="w-full"
-                    >
-                      <NavLink
-                        to="/monitor"
-                        className={({ isActive }) => cn(
-                          "flex items-center rounded-xl text-sm font-bold transition-all duration-400 group shadow-lg overflow-hidden whitespace-nowrap w-full py-2.5",
-                          effectiveCollapsed ? "justify-center" : "px-3",
-                          isActive 
-                            ? "bg-gradient-to-r from-accent to-accent/80 text-white shadow-accent/20 scale-[1.02]" 
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
-                        )}
-                      >
-                        <Activity className="w-4 h-4 transition-transform duration-400 group-hover:scale-110 shrink-0" />
-                        <AnimatePresence mode="popLayout">
-                          {!effectiveCollapsed && (
-                            <motion.span 
-                              initial={{ opacity: 0, x: -10 }} 
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -10 }}
-                              transition={smoothTransition}
-                              className="ml-3"
-                            >
-                              资产监测
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-                      </NavLink>
-                    </motion.div>
-                    <div className="h-[10px]" />
-                  </div>
-                )}
                 <div className="space-y-1">
                   <motion.div
                     animate={{
@@ -280,6 +231,45 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
               </React.Fragment>
             );
           })}
+
+          {/* Asset Monitoring Module - Always visible after search group */}
+          <div className="py-2">
+            <motion.div
+              animate={{
+                paddingLeft: effectiveCollapsed ? 16 : 12,
+                paddingRight: effectiveCollapsed ? 16 : 12,
+              }}
+              transition={smoothTransition}
+              className="w-full"
+            >
+              <NavLink
+                to="/monitor"
+                className={({ isActive }) => cn(
+                  "flex items-center rounded-xl text-sm font-bold transition-all duration-400 group shadow-lg overflow-hidden whitespace-nowrap w-full py-2.5",
+                  effectiveCollapsed ? "justify-center" : "px-3",
+                  isActive 
+                    ? "bg-gradient-to-r from-accent to-accent/80 text-white shadow-accent/20 scale-[1.02]" 
+                    : "text-gray-400 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <Activity className="w-4 h-4 transition-transform duration-400 group-hover:scale-110 shrink-0" />
+                <AnimatePresence mode="popLayout">
+                  {!effectiveCollapsed && (
+                    <motion.span 
+                      initial={{ opacity: 0, x: -10 }} 
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={smoothTransition}
+                      className="ml-3"
+                    >
+                      资产监测
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </NavLink>
+            </motion.div>
+            <div className="h-[10px]" />
+          </div>
         </div>
       </nav>
 

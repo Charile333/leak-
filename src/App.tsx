@@ -4,8 +4,6 @@ import Dashboard from './pages/Dashboard';
 import DomainMonitor from './pages/DomainMonitor';
 import LeakQuery from './pages/LeakQuery';
 import Documentation from './pages/Documentation';
-import PageMonitor from './pages/PageMonitor';
-import Analysis from './pages/Analysis';
 import HashLookup from './pages/HashLookup';
 import Settings from './pages/Settings';
 
@@ -16,9 +14,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/monitor" element={<DomainMonitor />} />
-          <Route path="/page-monitor" element={<PageMonitor />} />
           <Route path="/leak-query" element={<LeakQuery />} />
-          <Route path="/analysis" element={<Analysis />} />
           <Route path="/hash-lookup" element={<HashLookup />} />
           <Route path="/docs" element={<Documentation />} />
           <Route path="/settings" element={<Settings />} />
