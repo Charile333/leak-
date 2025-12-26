@@ -1,4 +1,3 @@
-import { mockDataService } from './mockDataService';
 import type { LeakedCredential, DomainSearchSummary } from './mockDataService';
 import { leakRadarApi } from '../api/leakRadar';
 

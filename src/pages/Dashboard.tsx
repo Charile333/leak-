@@ -123,10 +123,6 @@ const Dashboard = () => {
 
             if (growthData.length < 52) {
               const paddingCount = 52 - growthData.length;
-              let paddingRunningTotal = growthData[0].total;
-              let paddingRunningLeaks = growthData[0].leaks;
-              let paddingRunningRaw = growthData[0].raw;
-
               const firstDate = new Date(Date.now() - (growthData.length - 1) * 7 * 24 * 60 * 60 * 1000);
               const padded = Array.from({ length: paddingCount }, (_, i) => {
                 const weekNum = i + 1;
