@@ -233,40 +233,55 @@ const Dashboard = () => {
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col animate-in fade-in duration-700">
       {/* 核心展示区 */}
-      <div className="relative pt-10 pb-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[40px] border border-[#4f46e5]/20 bg-white/[0.02] backdrop-blur-sm p-12 lg:p-20 shadow-[0_0_50px_rgba(79,70,229,0.05)]">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#4f46e5]/5 to-transparent pointer-events-none" />
+      <div className="relative pt-10 pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-[50px] border border-white/10 bg-[#0a0a0c] backdrop-blur-2xl p-16 lg:p-24 shadow-[0_0_100px_rgba(168,85,247,0.1)]">
+            {/* 装饰性背景 */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.1),transparent_70%)] pointer-events-none" />
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
             
             <div className="relative z-10 flex flex-col items-center text-center">
-              <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter mb-4">
-                {totalLeaks}
-              </h1>
-              <p className="text-[10px] font-bold text-[#a855f7] tracking-[0.4em] uppercase mb-10 opacity-80">
-                已索引的泄露记录
-              </p>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <h1 className="text-7xl md:text-[10rem] font-black text-white tracking-tighter mb-6 leading-none select-none drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                  {totalLeaks}
+                </h1>
+              </motion.div>
               
-              <p className="max-w-2xl text-lg text-gray-400 mb-10 leading-relaxed font-medium">
+              <div className="flex items-center gap-4 mb-12">
+                <div className="h-px w-12 bg-gradient-to-r from-transparent to-accent" />
+                <p className="text-xs font-black text-accent tracking-[0.5em] uppercase opacity-90">
+                  已索引的泄露记录
+                </p>
+                <div className="h-px w-12 bg-gradient-to-l from-transparent to-accent" />
+              </div>
+              
+              <p className="max-w-3xl text-xl text-gray-400 mb-14 leading-relaxed font-medium">
                 几秒钟内即可检查域名下的泄露凭证。我们监控全球数千个数据泄露源。
               </p>
 
-              <form onSubmit={handleSearch} className="w-full max-w-2xl relative group">
-                <div className="relative flex items-center bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden p-1.5 shadow-2xl focus-within:border-[#4f46e5]/50 transition-all">
+              <form onSubmit={handleSearch} className="w-full max-w-3xl relative group">
+                <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="输入域名 (例如: chinabond.com.cn)..."
-                    className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-6 py-4 text-lg font-medium"
+                    className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium"
                   />
                   <button 
                     type="submit"
                     disabled={isSearching}
-                    className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-10 py-4 rounded-xl font-bold transition-all text-lg shadow-lg purple-glow flex items-center gap-2"
+                    className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-12 py-5 rounded-[22px] font-black transition-all text-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 purple-glow"
                   >
                     {isSearching ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-6 h-6 animate-spin" />
                         检索中...
                       </>
                     ) : (
@@ -275,7 +290,6 @@ const Dashboard = () => {
                   </button>
                 </div>
               </form>
-
             </div>
           </div>
         </div>
