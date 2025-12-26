@@ -18,6 +18,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const targetPath = req.url?.replace('/api/proxy', '').replace('/api/leakradar', '') || '/';
   const targetUrl = `https://api.leakradar.io${targetPath}`;
 
+  console.log(`[Proxy] Proxying ${req.method} ${req.url} -> ${targetUrl}`);
+
   try {
     const response = await fetch(targetUrl, {
       method: req.method,
@@ -31,7 +33,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
     });
 
-    const data = await response.json();
+    // 检查响应内容类型
+    const contentType = response.headers.get('content-type');
+    let data;
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = { text: await response.text() };
+    }
     
     // 设置 CORS 头，防止跨域问题
     res.setHeader('Access-Control-Allow-Origin', '*');

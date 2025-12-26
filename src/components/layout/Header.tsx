@@ -53,8 +53,14 @@ const Header = () => {
         }
       } catch (error: any) {
         console.error('[Header] Error fetching user data:', error);
-        if (error.message.includes('401')) {
+        // 如果是开发环境且报错，可以尝试显示具体的错误状态
+        const errorMsg = error.message || '';
+        if (errorMsg.includes('401')) {
           setPoints('Unauth');
+        } else if (errorMsg.includes('500')) {
+          setPoints('Server Err');
+        } else if (errorMsg.includes('404')) {
+          setPoints('Not Found');
         } else {
           setPoints('Error');
         }

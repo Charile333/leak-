@@ -49,10 +49,25 @@ const Dashboard = () => {
         console.log('[Dashboard] Stats Response:', stats);
         
         if (stats) {
-          // 优先使用 raw_lines.total，这通常是官网展示的大数字（包含原始行数）
-          const total = stats.raw_lines?.total || stats.leaks?.total;
+          // 调试日志：输出完整统计数据结构
+          console.log('[Dashboard] Stats data structure:', JSON.stringify(stats, null, 2));
+
+          // 尝试多种可能的路径获取总数
+          const statsObj = (stats as any).data || stats;
+          const total = 
+            statsObj.raw_lines?.total || 
+            statsObj.total_lines || 
+            statsObj.leaks?.total || 
+            statsObj.total_leaks || 
+            statsObj.total_indexed ||
+            statsObj.total;
+
           if (total) {
+            // 默认显示完整数字，这样与官网对比更准确
             setTotalLeaks(total.toLocaleString());
+            console.log('[Dashboard] Set total leaks to:', total);
+          } else {
+            console.warn('[Dashboard] Could not find total leaks in stats response');
           }
         }
       } catch (error: any) {
