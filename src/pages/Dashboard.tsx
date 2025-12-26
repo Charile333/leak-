@@ -80,7 +80,6 @@ const Dashboard = () => {
 
           if (maxLen > 0) {
             let runningTotal = total;
-            // 为 leaks 和 raw 也建立累积计数，使它们在图表中比例一致
             const currentLeaksTotal = safeNumber(statsObj.leaks?.total || (total * 0.19));
             const currentRawTotal = safeNumber(statsObj.raw_lines?.total || (total * 0.81));
             
@@ -90,22 +89,19 @@ const Dashboard = () => {
             const growthData = Array.from({ length: maxLen }, (_, i) => {
               const lIdx = leaksWeekly.length - 1 - i;
               const rIdx = rawWeekly.length - 1 - i;
-              const leaksInc = lIdx >= 0 ? safeNumber(leaksWeekly[lIdx]) : 0;
-              const rawInc = rIdx >= 0 ? safeNumber(rawWeekly[rIdx]) : 0;
+              const leaksInc = lIdx >= 0 ? safeNumber(leaksWeekly[lIdx].count) : 0;
+              const rawInc = rIdx >= 0 ? safeNumber(rawWeekly[rIdx].count) : 0;
               const weeklyInc = leaksInc + rawInc;
               
-              const d = new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000);
-              const day = d.getDay() || 7;
-              const monday = new Date(d);
-              monday.setDate(d.getDate() - day + 1);
-              const dateStr = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+              const weekDate = leaksWeekly[lIdx]?.week || rawWeekly[rIdx]?.week;
+              const dateStr = weekDate ? `Week of ${weekDate}` : `Week -${i}`;
 
               const previousTotal = runningTotal - weeklyInc;
               const growthRate = previousTotal > 0 ? ((weeklyInc / previousTotal) * 100).toFixed(1) : '0';
 
               const dp = {
                 date: dateStr,
-                displayDate: i === 0 ? '本周' : (i % 8 === 0 ? monday.toLocaleDateString() : ''),
+                displayDate: i === 0 ? '本周' : (i % 8 === 0 ? (weekDate || '') : ''),
                 total: Math.floor(runningTotal),
                 leaks: Math.floor(runningLeaks),
                 raw: Math.floor(runningRaw),
@@ -250,8 +246,8 @@ const Dashboard = () => {
     { name: 'Employees', icon: User, count: results?.summary.employees.count ?? 0 },
     { name: 'Third-Parties', icon: Briefcase, count: results?.summary.third_parties.count ?? 0 },
     { name: 'Customers', icon: Users, count: results?.summary.customers.count ?? 0 },
-    { name: 'URLs', icon: LinkIcon, count: null },
-    { name: 'Subdomains', icon: Globe, count: null },
+    { name: 'URLs', icon: LinkIcon, count: results?.summary.urls_count ?? 0 },
+    { name: 'Subdomains', icon: Globe, count: results?.summary.subdomains_count ?? 0 },
   ];
 
   const StrengthBar = ({ strength }: { strength: any }) => {
@@ -735,14 +731,14 @@ const Dashboard = () => {
               </div>
 
               {/* Chart Container with fixed height to prevent ResponsiveContainer width/height error */}
-              <div className="h-[300px] min-h-[300px] w-full relative">
+              <div className="h-[300px] min-h-[300px] w-full relative min-w-0">
                 {isLoadingStats && (
                   <div className="absolute top-2 right-2 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                     <Loader2 className="w-3 h-3 text-accent animate-spin" />
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">同步中...</span>
                   </div>
                 )}
-                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                <ResponsiveContainer width="100%" height="100%" debounce={50} minWidth={0} minHeight={0}>
                   <AreaChart 
                     key={`chart-${weeklyGrowth.length}`}
                     data={weeklyGrowth} 

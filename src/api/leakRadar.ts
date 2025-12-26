@@ -30,10 +30,16 @@ export interface LeakRadarProfile {
 
 export interface LeakRadarSearchResult {
   success: boolean;
-  found: number;
-  results: Array<{
-    email: string;
-    username?: string;
+  items: Array<{
+    id: string;
+    url: string;
+    username: string;
+    password?: string;
+    password_strength?: number;
+    unlocked?: boolean;
+    is_email?: boolean;
+    added_at: string;
+    email?: string;
     password_plaintext?: string;
     password_hash?: string;
     hash_type?: string;
@@ -41,7 +47,6 @@ export interface LeakRadarSearchResult {
     source?: string;
     leaked_at?: string;
     ip_address?: string;
-    // 官方文档可能返回的额外字段
     first_name?: string;
     last_name?: string;
     phone?: string;
@@ -50,21 +55,53 @@ export interface LeakRadarSearchResult {
     country?: string;
     fields?: string[];
   }>;
+  total: number;
+  total_unlocked?: number;
+  page?: number;
+  page_size?: number;
   error?: string;
+}
+
+export interface LeakRadarDomainSummary {
+  employees_compromised: number;
+  third_parties_compromised: number;
+  customers_compromised: number;
+  employee_passwords: {
+    total_pass: number;
+    too_weak: { qty: number; perc: number };
+    weak: { qty: number; perc: number };
+    medium: { qty: number; perc: number };
+    strong: { qty: number; perc: number };
+  };
+  third_parties_passwords: {
+    total_pass: number;
+    too_weak: { qty: number; perc: number };
+    weak: { qty: number; perc: number };
+    medium: { qty: number; perc: number };
+    strong: { qty: number; perc: number };
+  };
+  customer_passwords: {
+    total_pass: number;
+    too_weak: { qty: number; perc: number };
+    weak: { qty: number; perc: number };
+    medium: { qty: number; perc: number };
+    strong: { qty: number; perc: number };
+  };
+  blacklisted_value: any;
 }
 
 export interface LeakRadarStats {
   leaks: {
     total: number;
     today: number;
-    per_week: number[];
+    per_week: Array<{ week: string; count: number }>;
     this_week: number;
     this_month: number;
   };
   raw_lines: {
     total: number;
     today: number;
-    per_week: number[];
+    per_week: Array<{ week: string; count: number }>;
     this_week: number;
     this_month: number;
   };
@@ -88,9 +125,9 @@ class LeakRadarAPI {
         let errorMsg = `请求失败 (${response.status})`;
         try {
           const errorData = await response.json();
-          errorMsg = errorData.message || errorData.error || errorMsg;
+          errorMsg = errorData.message || errorData.error || errorData.detail || errorMsg;
+          if (Array.isArray(errorMsg)) errorMsg = JSON.stringify(errorMsg);
         } catch (e) {
-          // 如果不是 JSON 格式，尝试读取文本
           const text = await response.text().catch(() => '');
           if (text) errorMsg += `: ${text.substring(0, 100)}`;
         }
@@ -99,7 +136,6 @@ class LeakRadarAPI {
 
       return response.json();
     } catch (error: any) {
-      // 记录详细错误方便调试
       console.warn(`[LeakRadar API] Request to ${endpoint} failed:`, error.message);
       throw error;
     }
@@ -107,29 +143,55 @@ class LeakRadarAPI {
 
   /**
    * Get user profile and quota information
-   * Tag: Profile
    */
   async getProfile(): Promise<LeakRadarProfile> {
     return this.request<LeakRadarProfile>('/api/profile');
   }
 
   /**
-   * Search for leaks by domain
+   * Get domain search summary
    */
-  async searchByDomain(domain: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
-    return this.request<LeakRadarSearchResult>(`/api/search?domain=${domain}&limit=${limit}&offset=${offset}`);
+  async getDomainSummary(domain: string): Promise<LeakRadarDomainSummary> {
+    return this.request<LeakRadarDomainSummary>(`/api/search/domain/${domain}`);
+  }
+
+  /**
+   * Search for leaks by domain (Category based)
+   */
+  async searchDomainCategory(domain: string, category: 'employees' | 'customers' | 'third_parties', limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
+    const page = Math.floor(offset / limit) + 1;
+    return this.request<LeakRadarSearchResult>(`/api/search/domain/${domain}/${category}?page=${page}&page_size=${limit}`);
   }
 
   /**
    * Search for leaks by email
    */
   async searchByEmail(email: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
-    return this.request<LeakRadarSearchResult>(`/api/search/email?query=${encodeURIComponent(email)}&limit=${limit}&offset=${offset}`);
+    const page = Math.floor(offset / limit) + 1;
+    return this.request<LeakRadarSearchResult>(`/api/search/email`, {
+      method: 'POST',
+      body: JSON.stringify({ email, page, page_size: limit })
+    });
+  }
+
+  /**
+   * Search for URLs by domain
+   */
+  async getDomainUrls(domain: string, limit = 100, offset = 0): Promise<{ items: any[], total: number }> {
+    const page = Math.floor(offset / limit) + 1;
+    return this.request<{ items: any[], total: number }>(`/api/search/domain/${domain}/urls?page=${page}&page_size=${limit}`);
+  }
+
+  /**
+   * Search for subdomains by domain
+   */
+  async getDomainSubdomains(domain: string, limit = 100, offset = 0): Promise<{ items: any[], total: number }> {
+    const page = Math.floor(offset / limit) + 1;
+    return this.request<{ items: any[], total: number }>(`/api/search/domain/${domain}/subdomains?page=${page}&page_size=${limit}`);
   }
 
   /**
    * Get global statistics
-   * Tag: Stats
    */
   async getStats(): Promise<LeakRadarStats> {
     return this.request<LeakRadarStats>('/api/stats');
