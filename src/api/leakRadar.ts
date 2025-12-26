@@ -136,7 +136,20 @@ class LeakRadarAPI {
 
       return response.json();
     } catch (error: any) {
-      const msg = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
+      // 提取错误信息
+      let msg = 'Unknown Error';
+      if (error instanceof Error) {
+        msg = error.message;
+      } else if (typeof error === 'string') {
+        msg = error;
+      } else {
+        try {
+          msg = JSON.stringify(error);
+        } catch (e) {
+          msg = String(error);
+        }
+      }
+      
       console.error(`[LeakRadar API] Request to ${endpoint} error:`, msg);
       throw new Error(msg);
     }

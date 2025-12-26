@@ -1,6 +1,6 @@
-const axios = require('axios');
+import axios from 'axios';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // 1. 设置跨域头
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -43,7 +43,6 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('Proxy Error:', error.message);
     if (error.response) {
-      // 转发 LeakRadar API 返回的具体错误
       res.status(error.response.status).json({
         error: 'Upstream API Error',
         message: error.message,
@@ -52,9 +51,8 @@ module.exports = async (req, res) => {
     } else {
       res.status(500).json({ 
         error: 'Proxy execution error', 
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: error.message
       });
     }
   }
-};
+}
