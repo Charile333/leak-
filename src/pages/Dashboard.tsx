@@ -47,7 +47,10 @@ const Dashboard = () => {
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [totalLeaks, setTotalLeaks] = useState<string>('---');
-  const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
+  const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>(Array.from({ length: 52 }, (_, i) => ({
+    week: i + 1,
+    value: 0 // 初始值为 0，但保持结构，确保 Recharts 能够初始化
+  })));
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
   
@@ -670,6 +673,8 @@ const Dashboard = () => {
                       tickLine={false} 
                       tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
                       tickFormatter={(value, index) => {
+                        // 显式处理边界情况
+                        if (!weeklyGrowth || weeklyGrowth.length === 0) return '';
                         if (index === 0) return '12个月前';
                         if (index === Math.floor(weeklyGrowth.length / 2)) return '6个月前';
                         if (index === weeklyGrowth.length - 1) return '本周';
@@ -711,14 +716,14 @@ const Dashboard = () => {
                       fill="#a855f7" 
                       radius={[3, 3, 0, 0]}
                       barSize={12}
-                      minPointSize={4}
-                      animationDuration={1500}
+                      minPointSize={5} // 增加最小高度，确保即使数据很小也能看见
+                      animationDuration={1000}
                     >
                       {weeklyGrowth.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={index === weeklyGrowth.length - 1 ? '#a855f7' : '#4f46e5'} 
-                          fillOpacity={index === weeklyGrowth.length - 1 ? 1 : 0.4}
+                          fill={index === weeklyGrowth.length - 1 ? '#a855f7' : '#6366f1'} 
+                          fillOpacity={index === weeklyGrowth.length - 1 ? 1 : 0.7} // 显著提高不透明度
                           className="transition-all duration-500 hover:fill-opacity-100"
                         />
                       ))}
