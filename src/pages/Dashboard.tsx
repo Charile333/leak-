@@ -48,15 +48,15 @@ const Dashboard = () => {
   const [totalLeaks, setTotalLeaks] = useState<string>('15,234,892,010');
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>(() => {
     // 初始生成 52 周的模拟数据，确保图表从第一帧开始就有内容
-    // 基准总数 15,234,892,010
     const finalTotal = 15234892010;
     const data = [];
     let currentTotal = finalTotal;
+    const now = new Date();
     
     // 逆向生成 52 周的数据，模拟从 140亿 增长到 152亿
     for (let i = 0; i < 52; i++) {
-      const weekNum = i;
-      const dateStr = weekNum === 0 ? '本周' : `${weekNum}周前`;
+      const d = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       
       // 每周增长量在 1.5亿 到 2.5亿 之间波动
       const weeklyInc = Math.floor(150000000 + Math.random() * 100000000);
@@ -65,10 +65,11 @@ const Dashboard = () => {
       
       data.push({
         date: dateStr,
+        displayDate: i === 0 ? '本周' : (i % 4 === 0 ? dateStr : ''),
         total: currentTotal,
-        leaks: leaksInc, // 这里存的是增量，用于 summary card
-        raw: rawInc,     // 这里存的是增量
-        weeklyTotal: weeklyInc // 这里存的是总增量
+        leaks: leaksInc,
+        raw: rawInc,
+        weeklyTotal: weeklyInc
       });
       
       currentTotal -= weeklyInc;
@@ -137,8 +138,12 @@ const Dashboard = () => {
               const rawInc = rIdx >= 0 ? safeNumber(rawWeekly[rIdx]) : 0;
               const weeklyInc = leaksInc + rawInc;
               
+              const d = new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000);
+              const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
               const dataPoint = {
-                date: i === 0 ? '本周' : `${i}周前`,
+                date: dateStr,
+                displayDate: i === 0 ? '本周' : (i % 4 === 0 ? dateStr : ''),
                 total: Math.floor(runningTotal),
                 leaks: Math.floor(leaksInc * (scaleFactor > 5 ? 1 : scaleFactor)), // 增量不宜缩放过大，保持合理性
                 raw: Math.floor(rawInc * (scaleFactor > 5 ? 1 : scaleFactor)),
@@ -155,18 +160,22 @@ const Dashboard = () => {
               if (growthData.length < 52) {
                 const paddingCount = 52 - growthData.length;
                 let paddingRunningTotal = growthData[0].total;
+                const lastDate = new Date(Date.now() - (growthData.length - 1) * 7 * 24 * 60 * 60 * 1000);
                 
                 const paddedData = Array.from({ length: paddingCount }, (_, i) => {
-                  const weekNum = (paddingCount + growthData.length - 1) - i;
+                  const weekNum = i + 1;
+                  const d = new Date(lastDate.getTime() - weekNum * 7 * 24 * 60 * 60 * 1000);
+                  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                  
                   const weeklyInc = Math.floor(150000000 + Math.random() * 100000000);
                   const leaksInc = Math.floor(weeklyInc * 0.4);
                   const rawInc = weeklyInc - leaksInc;
                   
-                  // 这里的 paddingRunningTotal 是递减的，因为我们是逆向补全
                   paddingRunningTotal -= weeklyInc;
                   
                   return {
-                    date: `${weekNum}周前`,
+                    date: dateStr,
+                    displayDate: (growthData.length + weekNum - 1) % 4 === 0 ? dateStr : '',
                     total: paddingRunningTotal,
                     leaks: leaksInc,
                     raw: rawInc,
@@ -770,13 +779,11 @@ const Dashboard = () => {
                       axisLine={false} 
                       tickLine={false} 
                       tick={{ fill: '#cbd5e1', fontSize: 10, fontWeight: 800 }}
-                      interval={0}
-                      tickFormatter={(_, index) => {
+                      interval={Math.floor(weeklyGrowth.length / 6)}
+                      tickFormatter={(value, index) => {
                         if (!weeklyGrowth || weeklyGrowth.length === 0) return '';
-                        if (index === 0) return '12个月前';
-                        if (index === Math.floor(weeklyGrowth.length / 2)) return '6个月前';
                         if (index === weeklyGrowth.length - 1) return '本周';
-                        return '';
+                        return value;
                       }}
                     />
                     <YAxis 
