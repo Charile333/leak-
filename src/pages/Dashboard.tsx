@@ -276,14 +276,6 @@ const Dashboard = () => {
                 </div>
               </form>
 
-              <div className="flex flex-wrap justify-center gap-8 mt-10">
-                <a href="#" className="text-xs font-bold text-accent hover:text-accent/80 transition-colors border-b border-transparent hover:border-accent pb-0.5">
-                  高级搜索
-                </a>
-                <a href="#" className="text-xs font-bold text-gray-500 hover:text-white transition-colors border-b border-transparent hover:border-white pb-0.5">
-                  查看 API 文档
-                </a>
-              </div>
             </div>
           </div>
         </div>
