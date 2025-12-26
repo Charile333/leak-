@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Twitter, Github, MessageCircle, Send, Linkedin, Database } from 'lucide-react';
+import { Bell, Database } from 'lucide-react';
 import { leakRadarApi } from '../../api/leakRadar';
 
 const Header = () => {
@@ -75,17 +75,7 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="h-16 bg-transparent sticky top-0 z-40 px-8 flex items-center justify-between">
-      <div className="flex items-center gap-6">
-        <div className="flex gap-4 text-gray-500">
-          <Twitter className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-          <Github className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-          <Send className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-          <MessageCircle className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-          <Linkedin className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-        </div>
-      </div>
-
+    <header className="h-16 bg-transparent sticky top-0 z-40 px-8 flex items-center justify-end">
       <div className="flex items-center gap-4">
         {/* Points Display */}
         <div className="hidden md:flex items-center gap-2 bg-[#1a1a1f] border border-emerald-500/30 px-3 py-1.5 rounded-full">
