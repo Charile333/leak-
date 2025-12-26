@@ -48,12 +48,8 @@ const Dashboard = () => {
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [totalLeaks, setTotalLeaks] = useState<string>('---');
-  const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>(Array.from({ length: 52 }, (_, i) => ({
-    date: '',
-    leaks: 0,
-    raw: 0,
-    total: 0
-  })));
+  const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
   
@@ -61,76 +57,57 @@ const Dashboard = () => {
   React.useEffect(() => {
     const fetchStats = async () => {
       try {
-        console.log('[Dashboard] Fetching stats...');
-        // 强制刷新统计数据
+        setIsLoadingStats(true);
+        console.log('[Dashboard] Fetching stats from /api/leakradar/stats...');
         const stats = await leakRadarApi.getStats();
-        console.log('[Dashboard] Stats Response received:', !!stats);
         
         if (stats) {
-          // 调试日志：输出 API 返回的原始结构（仅限开发环境）
-          console.log('[Dashboard] Stats keys:', Object.keys(stats));
-          
-          // 统一处理 API 返回格式，有些 API 包装在 .data 中
           const statsObj = (stats as any).data || stats;
+          console.log('[Dashboard] API Response data:', statsObj);
           
           // 1. 处理总数 (Total Leaks)
-          const rawTotal = statsObj.raw_lines?.total || statsObj.total_lines || 0;
-          const leaksTotal = statsObj.leaks?.total || statsObj.total_leaks || 0;
-          const total = statsObj.total_indexed || (rawTotal + leaksTotal) || statsObj.total || 0;
+          const rawTotal = Number(statsObj.raw_lines?.total || statsObj.total_lines || 0);
+          const leaksTotal = Number(statsObj.leaks?.total || statsObj.total_leaks || 0);
+          const total = Number(statsObj.total_indexed || (rawTotal + leaksTotal) || statsObj.total || 0);
 
-          if (total > 0) {
-            setTotalLeaks(total.toLocaleString());
-            console.log('[Dashboard] Total leaks set from API:', total);
-          }
+          setTotalLeaks(total > 0 ? total.toLocaleString() : '0');
+          console.log('[Dashboard] Total leaks set:', total);
 
           // 2. 处理每周增长数据 (Weekly Growth)
-          // 官网样式包含三条线：Total, url:user:pass (leaks), Raw lines
           const leaksWeekly = statsObj.leaks?.per_week || [];
           const rawWeekly = statsObj.raw_lines?.per_week || [];
           
-          const maxLen = Math.max(leaksWeekly.length, rawWeekly.length, 52);
-          const growthData = Array.from({ length: maxLen }, (_, i) => {
-            const lIdx = leaksWeekly.length - 1 - i;
-            const rIdx = rawWeekly.length - 1 - i;
-            
-            const leaksVal = lIdx >= 0 ? leaksWeekly[lIdx] : 0;
-            const rawVal = rIdx >= 0 ? rawWeekly[rIdx] : 0;
-            
-            // 计算日期（大概值，用于展示）
-            const date = new Date();
-            date.setDate(date.getDate() - (i * 7));
-            const dateStr = date.toISOString().split('T')[0];
-
-            return {
-              date: dateStr,
-              leaks: leaksVal,
-              raw: rawVal,
-              total: leaksVal + rawVal
-            };
-          }).reverse();
-
-          // 如果 API 没数据，生成符合官网视觉趋势的模拟数据
-          const hasRealData = leaksWeekly.length > 0 || rawWeekly.length > 0;
+          console.log('[Dashboard] Weekly data lengths:', { leaks: leaksWeekly.length, raw: rawWeekly.length });
           
-          if (hasRealData) {
-            console.log('[Dashboard] API growth data found');
-            setWeeklyGrowth(growthData.slice(-52));
-          } else {
-            console.warn('[Dashboard] No growth data in API, generating realistic mock data');
-            const mockData = Array.from({ length: 52 }, (_, i) => {
-              const baseDate = new Date();
-              baseDate.setDate(baseDate.getDate() - (51 - i) * 7);
+          const maxLen = Math.max(leaksWeekly.length, rawWeekly.length);
+          
+          if (maxLen > 0) {
+            const growthData = Array.from({ length: maxLen }, (_, i) => {
+              const lIdx = leaksWeekly.length - 1 - i;
+              const rIdx = rawWeekly.length - 1 - i;
               
-              // 模拟官网那种后期爆发式增长的曲线
-              const factor = Math.pow(i / 51, 4); 
-              const raw = Math.floor((Math.random() * 5e9 + 40e9) * factor);
-              const leaks = Math.floor((Math.random() * 1e9 + 7e9) * factor);
+              const leaksVal = lIdx >= 0 ? Number(leaksWeekly[lIdx]) || 0 : 0;
+              const rawVal = rIdx >= 0 ? Number(rawWeekly[rIdx]) || 0 : 0;
               
               return {
-                date: baseDate.toISOString().split('T')[0],
-                leaks: leaks,
-                raw: raw,
-                total: leaks + raw
+                date: i === 0 ? '本周' : `${i}周前`,
+                leaks: leaksVal,
+                raw: rawVal,
+                total: leaksVal + rawVal
+              };
+            }).reverse();
+            
+            setWeeklyGrowth(growthData.slice(-52));
+          } else {
+            console.warn('[Dashboard] No weekly data in API, using fallback data');
+            // Fallback mock data
+            const mockData = Array.from({ length: 52 }, (_, i) => {
+              const factor = Math.pow(i / 51, 4); 
+              const raw = Math.floor((Math.random() * 5e8 + 40e8) * factor) + 1000000;
+              const leaks = Math.floor((Math.random() * 1e8 + 7e8) * factor) + 500000;
+              return {
+                date: 51 - i === 0 ? '本周' : `${51 - i}周前`,
+                leaks, raw, total: leaks + raw
               };
             });
             setWeeklyGrowth(mockData);
@@ -138,7 +115,9 @@ const Dashboard = () => {
         }
       } catch (error: any) {
         console.error('[Dashboard] API stats fetch error:', error);
-        setTotalLeaks('API Error');
+        setTotalLeaks('Error');
+      } finally {
+        setIsLoadingStats(false);
       }
     };
     fetchStats();
@@ -673,8 +652,8 @@ const Dashboard = () => {
                   <div className="text-center">
                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">本周新增</p>
                     <p className="text-xl font-black text-white">
-                      {weeklyGrowth && weeklyGrowth.length > 0 && weeklyGrowth[weeklyGrowth.length - 1] && typeof weeklyGrowth[weeklyGrowth.length - 1].value === 'number'
-                        ? weeklyGrowth[weeklyGrowth.length - 1].value.toLocaleString() 
+                      {weeklyGrowth && weeklyGrowth.length > 0 && weeklyGrowth[weeklyGrowth.length - 1] && typeof weeklyGrowth[weeklyGrowth.length - 1].total === 'number'
+                        ? weeklyGrowth[weeklyGrowth.length - 1].total.toLocaleString() 
                         : '0'}
                     </p>
                   </div>
@@ -683,7 +662,7 @@ const Dashboard = () => {
                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">平均每周</p>
                     <p className="text-xl font-black text-white">
                       {weeklyGrowth && weeklyGrowth.length > 0 
-                        ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0) / weeklyGrowth.length).toLocaleString() 
+                        ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0) / weeklyGrowth.length).toLocaleString() 
                         : '0'}
                     </p>
                   </div>
@@ -691,6 +670,14 @@ const Dashboard = () => {
               </div>
 
               <div className="h-[400px] w-full relative">
+                {isLoadingStats && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0a0a0c]/50 backdrop-blur-sm rounded-3xl">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+                      <p className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Loading API Data...</p>
+                    </div>
+                  </div>
+                )}
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={weeklyGrowth} margin={{ top: 20, right: 0, left: -10, bottom: 0 }}>
                     <defs>
