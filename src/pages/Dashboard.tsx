@@ -21,8 +21,7 @@ import {
   Eye,
   EyeOff,
   Copy,
-  ChevronLeft,
-  TrendingUp
+  ChevronLeft
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -32,7 +31,6 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Cell,
   Legend
 } from 'recharts';
 import { cn } from '../lib/utils';
@@ -69,8 +67,6 @@ const Dashboard = () => {
           // 1. 处理总数 (Total Leaks)
           // 同步官网真实数据量级 (约 152亿总索引)
           const officialTotal = 15234892010;
-          const officialLeaks = 7812034912;
-          const officialRaw = 7422857098;
 
           const rawTotal = Number(statsObj.raw_lines?.total || statsObj.total_lines || 0);
           const leaksTotal = Number(statsObj.leaks?.total || statsObj.total_leaks || 0);
@@ -718,7 +714,7 @@ const Dashboard = () => {
                       tickLine={false} 
                       tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 700 }}
                       interval={0}
-                      tickFormatter={(value, index) => {
+                      tickFormatter={(_, index) => {
                         if (!weeklyGrowth || weeklyGrowth.length === 0) return '';
                         // 只显示 12个月前, 6个月前, 本周
                         if (index === 0) return '12个月前';
