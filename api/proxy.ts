@@ -2,9 +2,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 1. 获取目标路径 (从 query 或 URL 中提取)
-  const path = (req.query.path as string[])?.join('/') || '';
-  const queryString = req.url?.split('?')[1] || '';
-  
   // 2. 从环境变量获取 API Key (确保你在 Vercel 控制台配置了它)
   const apiKey = process.env.VITE_LEAKRADAR_API_KEY;
 
