@@ -92,8 +92,8 @@ export default async function handler(req, res) {
           `/exports/${id}${isDownload ? '/download' : ''}`,
           `/v1/export/${id}${isDownload ? '/download' : ''}`
         ];
-      // 针对域名查询和解锁的路径优化
-      if (cleanInnerPath.includes('/domain/') || cleanInnerPath.includes('/leaks/@')) {
+      } else if (cleanInnerPath.includes('/domain/') || cleanInnerPath.includes('/leaks/@')) {
+        // 针对域名查询和解锁的路径优化
         const domainMatch = cleanInnerPath.match(/\/domain\/([^\/\?]+)/) || 
                             cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/);
         const domain = domainMatch ? domainMatch[1] : '';
@@ -137,6 +137,14 @@ export default async function handler(req, res) {
             `/v1/search${cleanInnerPath}`
           ];
         }
+      } else if (cleanInnerPath.includes('/stats')) {
+        prefixesToTry = [
+          '/v1/metadata/stats',
+          '/v1/stats',
+          '/metadata/stats',
+          '/stats',
+          '/v1/info'
+        ];
       } else {
         prefixesToTry = [
           `/v1${cleanInnerPath}`, 
