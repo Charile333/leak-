@@ -17,8 +17,6 @@ import {
   Link as LinkIcon,
   Loader2,
   ChevronRight,
-  Filter,
-  ArrowUpDown,
   ExternalLink,
   Eye,
   EyeOff,
@@ -211,8 +209,8 @@ const Dashboard = () => {
   }, []);
   
   // Filter states
-  const [sortField, setSortField] = useState<keyof LeakedCredential>('leaked_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortField] = useState<keyof LeakedCredential>('leaked_at');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
 
   const [dnsResults, setDnsResults] = useState<any>(null);
   const [dnsActiveSubTab, setDnsActiveSubTab] = useState('Subdomains');
@@ -949,9 +947,10 @@ const Dashboard = () => {
                   </div>
                 )}
               </div>
-            </>
-          )}
-        </motion.div>
+            )}
+          </>
+        )}
+      </motion.div>
         </AnimatePresence>
       </div>
     )}
