@@ -152,5 +152,55 @@ export const dataService = {
       console.error('[dataService] API Search failed:', error);
       throw error;
     }
+  },
+
+  /**
+   * Search specific category leaks with pagination
+   */
+  searchCategory: async (domain: string, category: 'employees' | 'customers' | 'third_parties', limit = 100, offset = 0): Promise<LeakedCredential[]> => {
+    try {
+      console.log(`[dataService] Searching category ${category} for domain: ${domain}, offset: ${offset}`);
+      const res = await leakRadarApi.searchDomainCategory(domain, category, limit, offset);
+      
+      const transformItem = (item: any, type: LeakedCredential['type']): LeakedCredential => {
+        let strength: LeakedCredential['strength'] = 'Medium';
+        const s = item.password_strength;
+        if (s >= 8) strength = 'Strong';
+        else if (s >= 5) strength = 'Medium';
+        else if (s >= 3) strength = 'Weak';
+        else strength = 'Very Weak';
+
+        return {
+          id: item.id || `leak-${Math.random()}`,
+          email: item.email || item.username || '',
+          username: item.username || 'N/A',
+          password_plaintext: item.password_plaintext || item.password || '********',
+          password_hash: item.password_hash || '',
+          hash_type: item.hash_type || 'Unknown',
+          website: item.website || item.url || 'N/A',
+          source: item.source || 'Leak Database',
+          leaked_at: item.leaked_at || item.added_at || new Date().toISOString(),
+          type: type,
+          strength: strength,
+          ip_address: item.ip_address,
+          first_name: item.first_name,
+          last_name: item.last_name,
+          phone: item.phone,
+          city: item.city,
+          country: item.country
+        };
+      };
+
+      const typeMap: Record<string, LeakedCredential['type']> = {
+        'employees': 'Employee',
+        'customers': 'Customer',
+        'third_parties': 'Third-Party'
+      };
+
+      return (res.items || []).map(item => transformItem(item, typeMap[category]));
+    } catch (error) {
+      console.error(`[dataService] Category search failed:`, error);
+      return [];
+    }
   }
 };

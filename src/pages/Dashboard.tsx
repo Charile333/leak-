@@ -88,6 +88,7 @@ const Dashboard = () => {
     if (showResults && activeTab) {
       setFilterType('All'); // Reset filter when tab changes
       setInnerSearchQuery(''); // Reset search when tab changes
+      setCurrentPage(0); // Reset page when tab changes
       const resultElement = document.getElementById('search-results');
       if (resultElement) {
         // 延迟执行以确保内容已开始渲染
@@ -264,6 +265,25 @@ const Dashboard = () => {
     }
     
     try {
+      if (page > 0) {
+        // 分页逻辑：如果当前在特定分类下，只请求该分类的数据
+        let category: 'employees' | 'customers' | 'third_parties' | null = null;
+        if (activeTab === 'Employees') category = 'employees';
+        else if (activeTab === 'Customers') category = 'customers';
+        else if (activeTab === 'Third-Parties') category = 'third_parties';
+
+        if (category && results) {
+          const newCredentials = await dataService.searchCategory(searchQuery, category, pageSize, page * pageSize);
+          setResults({
+            ...results,
+            credentials: newCredentials
+          });
+          setIsSearching(false);
+          setCurrentPage(page);
+          return;
+        }
+      }
+
       const data = await dataService.searchDomain(searchQuery, pageSize, page * pageSize);
       setResults(data);
       setIsSearching(false);
@@ -1057,27 +1077,40 @@ const Dashboard = () => {
                 </div>
 
                 {/* 分页控制 */}
-                {results && results.summary.total > pageSize && (
-                  <div className="flex items-center justify-center gap-4 mt-8">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 0 || isSearching}
-                      className="p-3 rounded-xl bg-white/5 border border-white/10 text-white disabled:opacity-30 hover:bg-white/10 transition-all"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-white">第 {currentPage + 1} 页</span>
-                      <span className="text-sm text-gray-500">/ 共 {Math.ceil(results.summary.total / pageSize)} 页</span>
-                    </div>
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage >= Math.ceil(results.summary.total / pageSize) - 1 || isSearching}
-                      className="p-3 rounded-xl bg-white/5 border border-white/10 text-white disabled:opacity-30 hover:bg-white/10 transition-all"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
+                {results && (
+                  (() => {
+                    let totalCount = results.summary.total;
+                    if (activeTab === 'Employees') totalCount = results.summary.employees.count;
+                    else if (activeTab === 'Customers') totalCount = results.summary.customers.count;
+                    else if (activeTab === 'Third-Parties') totalCount = results.summary.third_parties.count;
+
+                    const totalPages = Math.ceil(totalCount / pageSize);
+                    
+                    if (totalCount <= pageSize) return null;
+
+                    return (
+                      <div className="flex items-center justify-center gap-4 mt-8">
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 0 || isSearching}
+                          className="p-3 rounded-xl bg-white/5 border border-white/10 text-white disabled:opacity-30 hover:bg-white/10 transition-all"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-white">第 {currentPage + 1} 页</span>
+                          <span className="text-sm text-gray-500">/ 共 {totalPages} 页</span>
+                        </div>
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage >= totalPages - 1 || isSearching}
+                          className="p-3 rounded-xl bg-white/5 border border-white/10 text-white disabled:opacity-30 hover:bg-white/10 transition-all"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             )}
