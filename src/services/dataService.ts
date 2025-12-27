@@ -56,10 +56,22 @@ export const dataService = {
       
       // 2. 自动解锁域名 (用户要求搜索后自动解锁)
       try {
-        console.log(`[dataService] Auto-unlocking domain: ${domain}`);
-        await leakRadarApi.unlockDomain(domain);
+        console.log(`[dataService] Auto-unlocking domain categories: ${domain}`);
+        // 解锁所有分类，不等待它们完成以加快响应速度，但通过 Promise.allSettled 确保尝试过
+        Promise.allSettled([
+          leakRadarApi.unlockDomain(domain, 'employees'),
+          leakRadarApi.unlockDomain(domain, 'customers'),
+          leakRadarApi.unlockDomain(domain, 'third_parties')
+        ]).then(results => {
+          results.forEach((res, i) => {
+            const cats = ['employees', 'customers', 'third_parties'];
+            if (res.status === 'rejected') {
+              console.warn(`[dataService] Auto-unlock failed for ${cats[i]}:`, res.reason);
+            }
+          });
+        });
       } catch (e) {
-        console.warn(`[dataService] Auto-unlock failed or already unlocked:`, e);
+        console.warn(`[dataService] Auto-unlock process error:`, e);
       }
       
       // 3. Fetch some credentials for display (we combine them for the table)

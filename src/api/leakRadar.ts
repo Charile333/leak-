@@ -207,10 +207,10 @@ class LeakRadarAPI {
   }
 
   /**
-   * Unlock all results for a domain
+   * Unlock all results for a domain and category
    */
-  async unlockDomain(domain: string): Promise<{ success: boolean; message?: string }> {
-    return this.request<{ success: boolean; message?: string }>(`/search/domain/${domain}/unlock`, {
+  async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(`/search/domain/${domain}/${category}/unlock`, {
       method: 'POST'
     });
   }
@@ -226,7 +226,7 @@ class LeakRadarAPI {
    * Export domain search results as PDF
    */
   async exportDomainPDF(domain: string): Promise<Blob> {
-    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/pdf`, {
+    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report/pdf`, {
       headers: {
         'Accept': 'application/pdf',
       },
@@ -248,8 +248,9 @@ class LeakRadarAPI {
   /**
    * Export domain search results as CSV
    */
-  async exportDomainCSV(domain: string): Promise<Blob> {
-    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/csv`, {
+  async exportDomainCSV(domain: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<Blob> {
+    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/${category}/export?format=csv`, {
+      method: 'POST', // The Python client uses POST for exports
       headers: {
         'Accept': 'text/csv',
       },

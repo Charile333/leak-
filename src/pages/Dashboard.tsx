@@ -621,11 +621,16 @@ const Dashboard = () => {
   const handleExportCSV = async () => {
     if (!results?.summary.domain) return;
     try {
-      const blob = await leakRadarApi.exportDomainCSV(results.summary.domain);
+      // Mapping tab names to API categories
+      let category: 'employees' | 'customers' | 'third_parties' = 'employees';
+      if (activeTab === 'Customers') category = 'customers';
+      else if (activeTab === 'Third-Parties') category = 'third_parties';
+      
+      const blob = await leakRadarApi.exportDomainCSV(results.summary.domain, category);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Leaks_Export_${results.summary.domain}.csv`;
+      a.download = `Leaks_Export_${results.summary.domain}_${category}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
