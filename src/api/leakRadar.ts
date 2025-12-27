@@ -303,17 +303,6 @@ class LeakRadarAPI {
   }
 
   /**
-   * Request a domain export (legacy method)
-   */
-  async requestDomainExport(domain: string, format: 'csv' | 'json' | 'txt' | 'pdf' = 'csv', type: 'all' | 'employees' | 'customers' | 'third_parties' = 'all'): Promise<{ export_id: number }> {
-    const sanitized = this.sanitizeDomain(domain);
-    return this.request<{ export_id: number }>(`/search/export`, {
-      method: 'POST',
-      body: JSON.stringify({ domain: sanitized, format, type })
-    });
-  }
-
-  /**
    * Export domain search results as PDF
    */
   async exportDomainPDF(domainInput: string): Promise<Blob> {
