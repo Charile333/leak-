@@ -699,109 +699,61 @@ const Dashboard = () => {
     try {
       setIsSearching(true);
       
-      // 使用 Unlocked Leaks 接口导出 (CSV/TXT/JSON)
-      // 根据用户建议，这是导出已解锁泄露的最佳方式
-      const blob = await leakRadarApi.exportUnlockedLeaks('csv', results.summary.domain);
+      let category: 'employees' | 'customers' | 'third_parties' = 'employees';
+      if (activeTab === 'Customers') category = 'customers';
+      else if (activeTab === 'Third-Parties') category = 'third_parties';
+
+      // 优先尝试使用 Domain Export 接口 (这是官网图片中 17513 的类型)
+      const { export_id } = await leakRadarApi.requestDomainExport(results.summary.domain, 'csv', category);
       
-      // 检查返回的是否是二进制文件
-      if (blob.type === 'application/json') {
-        const text = await blob.text();
+      const notification = document.createElement('div');
+      notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
+      notification.innerHTML = `<span class="animate-spin">⏳</span> 正在准备 ${activeTab} 数据导出...`;
+      document.body.appendChild(notification);
+
+      // 轮询逻辑
+      let attempts = 0;
+      const maxAttempts = 20;
+      
+      const checkStatus = async () => {
         try {
-          const res = JSON.parse(text);
-          if (res.export_id) {
-            // 如果后端返回了 export_id，说明触发了异步导出流程
-            throw new Error('TRIGGER_LEGACY_EXPORT:' + res.export_id);
-          }
-          if (res.error || res.message) {
-            throw new Error(res.error || res.message);
-          }
-        } catch (e: any) {
-          if (e.message?.startsWith('TRIGGER_LEGACY_EXPORT:')) throw e;
-          // 其他 JSON 解析错误或业务错误
-          console.warn('Unlocked export returned non-blob data:', text);
-        }
-      }
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Unlocked_Leaks_${results.summary.domain}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      setIsSearching(false);
-      
-    } catch (error: any) {
-      let forcedExportId: number | null = null;
-      if (error.message?.startsWith('TRIGGER_LEGACY_EXPORT:')) {
-        forcedExportId = parseInt(error.message.split(':')[1]);
-      }
-
-      console.warn('Direct export failed or returned export_id, falling back to legacy polling:', error);
-      
-      try {
-        let export_id: number;
-        let category: 'employees' | 'customers' | 'third_parties' = 'employees';
-        if (activeTab === 'Customers') category = 'customers';
-        else if (activeTab === 'Third-Parties') category = 'third_parties';
-
-        if (forcedExportId) {
-          export_id = forcedExportId;
-        } else {
-          const res = await leakRadarApi.requestDomainCSV(results.summary.domain, category);
-          export_id = res.export_id;
-        }
-        
-        const notification = document.createElement('div');
-        notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
-        notification.innerHTML = `<span class="animate-spin">⏳</span> 正在准备 ${activeTab} 导出数据...`;
-        document.body.appendChild(notification);
-
-        // 轮询逻辑
-        let attempts = 0;
-        const maxAttempts = 15;
-        
-        const checkStatus = async () => {
-          try {
-            const res = await leakRadarApi.getExportStatus(export_id);
-            const status = res.status || (res as any).data?.status;
-            
-            if (status === 'success') {
-              const blob = await leakRadarApi.downloadExport(export_id);
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `Leaks_Export_${results.summary.domain}_${category}.csv`;
-              document.body.appendChild(a);
-              a.click();
-              window.URL.revokeObjectURL(url);
-              document.body.removeChild(a);
-              if (document.body.contains(notification)) document.body.removeChild(notification);
-              setIsSearching(false);
-            } else if (status === 'failed') {
-              throw new Error('服务器生成导出文件失败');
-            } else if (attempts < maxAttempts) {
-              attempts++;
-              setTimeout(checkStatus, 2000);
-            } else {
-              throw new Error('导出超时，请稍后重试');
-            }
-          } catch (e: any) {
-            console.error('Download error:', e);
-            alert(e.message || '下载文件失败');
+          const res = await leakRadarApi.getExportStatus(export_id);
+          const status = res.status || (res as any).data?.status;
+          
+          if (status === 'success') {
+            const blob = await leakRadarApi.downloadExport(export_id);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Leaks_Export_${results.summary.domain}_${category}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
             if (document.body.contains(notification)) document.body.removeChild(notification);
             setIsSearching(false);
+          } else if (status === 'failed') {
+            throw new Error('服务器生成 CSV 失败');
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(checkStatus, 3000);
+          } else {
+            throw new Error('导出超时，请稍后重试');
           }
-        };
+        } catch (e: any) {
+          console.error('CSV Download error:', e);
+          alert(e.message || '生成 CSV 失败');
+          if (document.body.contains(notification)) document.body.removeChild(notification);
+          setIsSearching(false);
+        }
+      };
 
-        setTimeout(checkStatus, 2000);
-
-      } catch (fallbackError: any) {
-        console.error('Legacy Export Error:', fallbackError);
-        alert(fallbackError.message || '数据导出请求失败');
-        setIsSearching(false);
-      }
+      setTimeout(checkStatus, 2000);
+      
+    } catch (error: any) {
+      console.error('CSV Export Error:', error);
+      alert(error.message || 'CSV 导出请求失败');
+      setIsSearching(false);
     }
   };
 

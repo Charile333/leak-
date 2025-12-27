@@ -334,7 +334,8 @@ class LeakRadarAPI {
       },
       body: JSON.stringify({ 
         format: format,
-        category: category 
+        category: category,
+        leak_type: category // 官网 API 似乎更倾向于使用 leak_type 参数
       }),
     });
   }
