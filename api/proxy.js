@@ -80,17 +80,31 @@ export default async function handler(req, res) {
     } else {
       const cleanInnerPath = innerPath.replace(/\/$/, '');
       
-      // 如果是导出状态查询，尝试所有已知的变体
-      if (cleanInnerPath.includes('/export')) {
-        const id = cleanInnerPath.split('/').pop();
-        if (!isNaN(id)) { // 如果最后一部分是数字 ID
+      // 特殊处理：如果路径以 /exports 开头（轮询状态接口）
+      if (cleanInnerPath.startsWith('/exports/')) {
+        const parts = cleanInnerPath.split('/');
+        const id = parts[2];
+        const isDownload = cleanInnerPath.endsWith('/download');
+        prefixesToTry = [
+          `/v1/exports/${id}${isDownload ? '/download' : ''}`,
+          `/v1/search/export/${id}${isDownload ? '/download' : ''}`,
+          `/exports/${id}${isDownload ? '/download' : ''}`,
+          `/v1/export/${id}${isDownload ? '/download' : ''}`
+        ];
+      } else if (cleanInnerPath.includes('/export')) {
+        const parts = cleanInnerPath.split('/');
+        const id = parts[parts.length - 1];
+        const isDownload = cleanInnerPath.endsWith('/download');
+        const realId = isDownload ? parts[parts.length - 2] : id;
+
+        if (!isNaN(realId)) { // 如果路径中包含数字 ID
           prefixesToTry = [
-            `/v1/search/export/${id}`,
-            `/v1/exports/${id}`,
-            `/v1/export/${id}`,
-            `/search/export/${id}`,
-            `/exports/${id}`,
-            `/v1/search/domain/export/${id}`
+            `/v1/exports/${realId}${isDownload ? '/download' : ''}`,
+            `/v1/search/export/${realId}${isDownload ? '/download' : ''}`,
+            `/exports/${realId}${isDownload ? '/download' : ''}`,
+            `/v1/export/${realId}${isDownload ? '/download' : ''}`,
+            `/search/export/${realId}${isDownload ? '/download' : ''}`,
+            `/v1/search/domain/export/${realId}${isDownload ? '/download' : ''}`
           ];
         } else {
           prefixesToTry = [
