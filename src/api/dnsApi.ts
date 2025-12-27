@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const DNS_API_BASE_URL = 'https://api.hunter.how'; // 假设的基础 URL，根据图片接口路径调整
-const API_TOKEN = 'YOUR_API_TOKEN'; // 用户提供的 Token 占位符
+const API_TOKEN = import.meta.env.VITE_DNS_API_TOKEN || ''; 
 
 const dnsAxios = axios.create({
   baseURL: DNS_API_BASE_URL,

@@ -199,17 +199,31 @@ const Dashboard = () => {
   const [dnsResults, setDnsResults] = useState<any>(null);
   const [dnsActiveSubTab, setDnsActiveSubTab] = useState('Subdomains');
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async (e: React.FormEvent, type: 'dns' | 'cert' | 'dnsx' | 'default' = 'default') => {
+    if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
 
     if (isDnsPage) {
       setIsSearching(true);
       setShowResults(false);
       try {
-        // 默认先查询子域名
-        const subdomains = await dnsApi.getSubdomains(searchQuery);
-        setDnsResults({ subdomains });
+        let data;
+        const searchType = type === 'default' ? 'dns' : type; // 默认使用 DNS 查询
+        
+        if (searchType === 'dns') {
+          data = await dnsApi.getSubdomains(searchQuery);
+          setDnsResults({ subdomains: data });
+          setDnsActiveSubTab('Subdomains');
+        } else if (searchType === 'cert') {
+          data = await dnsApi.getSslCert(searchQuery);
+          setDnsResults({ ssl: data });
+          setDnsActiveSubTab('SSL');
+        } else if (searchType === 'dnsx') {
+          data = await dnsApi.getDnsRecords(searchQuery);
+          setDnsResults({ records: data });
+          setDnsActiveSubTab('Records');
+        }
+        
         setShowResults(true);
       } catch (error) {
         console.error('DNS Search Error:', error);
@@ -521,7 +535,7 @@ const Dashboard = () => {
                   : '几秒钟内即可检查域名下的泄露凭证。我们监控全球数千个数据泄露源。'}
               </p>
 
-              <form onSubmit={handleSearch} className="w-full max-w-3xl relative group">
+              <form onSubmit={(e) => handleSearch(e)} className="w-full max-w-3xl relative group">
                 <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
                   <input
                     type="text"
@@ -545,6 +559,27 @@ const Dashboard = () => {
                     )}
                   </button>
                 </div>
+
+                {/* DNS 专属功能按钮 */}
+                {isDnsPage && (
+                  <div className="flex items-center justify-center gap-4 mt-8 animate-in fade-in slide-in-from-top-4 duration-700 delay-300">
+                    {[
+                      { id: 'dns', label: 'DNS查询', icon: Globe },
+                      { id: 'cert', label: '证书查询', icon: Shield },
+                      { id: 'dnsx', label: 'DNS解析', icon: Activity },
+                    ].map((btn) => (
+                      <button
+                        key={btn.id}
+                        type="button"
+                        onClick={(e) => handleSearch(e, btn.id as any)}
+                        className="flex items-center gap-2.5 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm font-bold text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95 group"
+                      >
+                        <btn.icon className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </form>
             </div>
           </div>
