@@ -349,6 +349,7 @@ class LeakRadarAPI {
    * 官方端点: GET /exports/{export_id}
    */
   async getExportStatus(exportId: number): Promise<{ status: 'pending' | 'success' | 'failed'; download_url?: string }> {
+    // 尝试同时支持 /exports/{id} 和 /search/export/{id} (通过代理自动探测)
     return this.request<{ status: 'pending' | 'success' | 'failed'; download_url?: string }>(`/exports/${exportId}`);
   }
 
