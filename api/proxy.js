@@ -45,7 +45,10 @@ export default async function handler(req, res) {
 
   // 2. 获取目标路径
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const targetPath = url.pathname.replace('/api', '');
+  let targetPath = url.pathname;
+  if (targetPath.startsWith('/api')) {
+    targetPath = targetPath.substring(4); // 去掉 /api
+  }
   const searchParams = url.search;
   
   // 根据路径判断使用哪个 API
@@ -62,106 +65,89 @@ export default async function handler(req, res) {
     });
   }
 
-  let targetUrl;
+  const innerPath = isDnsRequest ? targetPath.replace('/dns-v1', '') : targetPath.replace('/leakradar', '');
+  
+  // 3. 构建尝试路径列表 (更系统的探测)
+  let prefixesToTry = [];
   if (isDnsRequest) {
-    targetUrl = `https://src.0zqq.com${targetPath.replace('/dns-v1', '/api/v1')}${searchParams}`;
+    prefixesToTry = [`/api/v1${innerPath}`];
   } else {
-    // 彻查：对于 leakradar，我们尝试不带 /v1 的路径作为首选，
-    // 因为 vite.config.ts 中就是这么配置的，而且用户说“突然不行了”
-    // 可能是 API 结构调整或 v1 路径不再是默认
-    const directPath = targetPath.replace('/leakradar', '');
-    targetUrl = `https://api.leakradar.io${directPath}${searchParams}`;
-  }
-
-  const headers = {
-    'Accept': req.headers['accept'] || 'application/json',
-    'Authorization': `Bearer ${API_KEY}`,
-    'X-API-Key': API_KEY,
-    'Host': isDnsRequest ? 'src.0zqq.com' : 'api.leakradar.io'
-  };
-
-  if (req.headers['content-type']) {
-    headers['Content-Type'] = req.headers['content-type'];
-  }
-
-  try {
-    console.log(`Proxying ${req.method} request to: ${targetUrl}`);
-    
-    let response;
-    const isDnsRequest = targetPath.startsWith('/dns-v1');
-    const innerPath = isDnsRequest ? targetPath.replace('/dns-v1', '') : targetPath.replace('/leakradar', '');
-    
-    let prefixesToTry = [];
-    if (isDnsRequest) {
-      prefixesToTry = [`/api/v1${innerPath}`];
-    } else {
-      prefixesToTry = [
-        innerPath, // 1. /search/domain/...
-        `/v1${innerPath}`, // 2. /v1/search/domain/...
-        `/api/v1${innerPath}`, // 3. /api/v1/search/domain/...
-        innerPath.replace('/search', '/v1'), // 4. /v1/domain/...
-        innerPath.replace('/search', '/api/v1'), // 5. /api/v1/domain/...
-        `/v1${innerPath.replace('/search', '')}`, // 6. /v1/domain/... (another variant)
-        innerPath.replace('/search/domain', '/v1/report/domain'), // 7. /v1/report/domain/.../report
-        innerPath.replace('/search/domain', '/v1/report/domain').replace('/report', ''), // 7b. /v1/report/domain/...
-        innerPath.replace('/search/domain', '/v1/export/domain'), // 8. /v1/export/domain/.../export
-        innerPath.replace('/search/domain', '/v1/export/domain').replace('/export', ''), // 8b. /v1/export/domain/...
-        innerPath.replace('/search/export', '/v1/search/export'), // 9. 特殊处理 export status/download
-        innerPath.replace('/search/export', '/v1/export'), // 10. 特殊处理 export status/download
-        innerPath.replace('/search/export', '/api/v1/export'), // 10b. 尝试 /api/v1/export/...
-        `/v1/search${innerPath}`, // 11. 显式增加 /v1/search 前缀
-        innerPath.replace('/search/domain', '/v1/search/domain'), // 12. 确保 /v1/search/domain/...
-        innerPath.replace('/search/domain', '/v1/domain'), // 13. 尝试 /v1/domain/...
-        `/api/v1/search${innerPath.replace('/search', '')}`, // 14. /api/v1/search/advanced
-        `/v1/search${innerPath.replace('/search', '')}`, // 15. /v1/search/advanced
-        innerPath.replace('/search/domain', '/v1/search/domain').replace('/unlock', ''), // 16. /v1/search/domain/...
-        innerPath.replace('/search/domain', '/v1/domain').replace('/unlock', ''), // 17. /v1/domain/...
-        innerPath.replace('/search/domain', '/v1/search/domain').replace('/report', ''), // 18. /v1/search/domain/...
-        innerPath.replace('/search/domain', '/v1/search/domain').replace('/export', ''), // 19. /v1/search/domain/...
-      ];
-    }
-
-    const host = isDnsRequest ? 'src.0zqq.com' : 'api.leakradar.io';
-    
-    for (let i = 0; i < prefixesToTry.length; i++) {
-      const currentPath = prefixesToTry[i];
-      const currentUrl = `https://${host}${currentPath}${searchParams}`;
+    // LeakRadar 路径探测逻辑
+    prefixesToTry = [
+      // A. 基础路径 (最可能的 v1 路径)
+      `/v1${innerPath}`, 
+      `/v1/search${innerPath.replace('/search', '')}`,
+      `/v1/domain${innerPath.replace('/search/domain', '')}`,
       
+      // B. 原始路径 (不带版本号)
+      innerPath,
+      `/search${innerPath.replace('/search', '')}`,
+      
+      // C. 特殊处理导出/报告 (根据用户反馈的 404 重点解决)
+      innerPath.includes('/unlock') ? `/v1/search/domain${innerPath.replace('/search/domain', '').replace('/unlock', '')}/unlock` : null,
+      innerPath.includes('/report') ? `/v1/report/domain${innerPath.replace('/search/domain', '').replace('/report', '')}` : null,
+      innerPath.includes('/export') ? `/v1/export/domain${innerPath.replace('/search/domain', '').replace('/export', '')}` : null,
+      
+      // D. 兼容旧版或备选 API 结构
+      `/api/v1${innerPath}`,
+      `/api/v1/search${innerPath.replace('/search', '')}`,
+      `/v1/search/domain${innerPath.replace('/search/domain', '')}`,
+      `/v1/profile${innerPath.replace('/profile', '')}`,
+    ].filter(Boolean);
+  }
+
+  const host = isDnsRequest ? 'src.0zqq.com' : 'api.leakradar.io';
+  
+  // 4. 尝试发送请求
+  let lastError;
+  for (let i = 0; i < prefixesToTry.length; i++) {
+    const currentPath = prefixesToTry[i];
+    const currentUrl = `https://${host}${currentPath}${searchParams}`;
+    
+    // 尝试不同的鉴权头组合
+    const authHeadersToTry = [
+      { 'Authorization': `Bearer ${API_KEY}`, 'X-API-Key': API_KEY },
+      { 'Authorization': API_KEY, 'X-API-Key': API_KEY }
+    ];
+
+    for (const authHeaders of authHeadersToTry) {
+      const headers = {
+        'Accept': req.headers['accept'] || 'application/json',
+        ...authHeaders,
+        'Host': host
+      };
+
+      if (req.headers['content-type']) {
+        headers['Content-Type'] = req.headers['content-type'];
+      }
+
       try {
-        console.log(`Trying proxy path [${i+1}/${prefixesToTry.length}]: ${currentUrl}`);
-        response = await axios({
+        console.log(`[Proxy] [Try ${i+1}/${prefixesToTry.length}] ${req.method} ${currentUrl}`);
+        const response = await axios({
           method: req.method,
           url: currentUrl,
           headers: headers,
           data: req.body,
           responseType: 'arraybuffer',
-          timeout: (req.url.includes('/export') || req.url.includes('/report')) ? 60000 : 30000
+          timeout: (req.url.includes('/export') || req.url.includes('/report')) ? 60000 : 30000,
+          validateStatus: (status) => status < 400 // 只有 < 400 才算成功
         });
         
-        console.log(`Success with path: ${currentUrl}`);
-        targetUrl = currentUrl;
-        return sendResponse(res, response, targetUrl);
+        console.log(`[Proxy] [Success] ${currentUrl}`);
+        return sendResponse(res, response, currentUrl);
       } catch (axiosError) {
+        lastError = axiosError;
         const status = axiosError.response?.status;
-        console.log(`Failed path [${status || 'ERROR'}]: ${currentUrl}`);
+        console.log(`[Proxy] [Failed ${status || 'ERR'}] ${currentUrl}`);
         
-        // 如果是 404 或者 400 (Bad Request，有时路径不对也会报400)，则继续尝试下一个路径
-        if (status === 404 || status === 400) {
-          if (i === prefixesToTry.length - 1) throw axiosError;
-          continue;
-        }
-        
-        // 如果是 stats 相关的 404，且我们还没尝试完基础前缀，也继续
-        if (targetPath.includes('stats') && i < prefixesToTry.length - 1) {
-          continue;
-        }
-
-        throw axiosError;
+        // 如果不是 404/400/401，可能是网络或超时，不换头了直接换路径
+        if (status !== 404 && status !== 400 && status !== 401) break;
       }
     }
+  }
 
-    // 最后的兜底逻辑（针对 stats）
-     if (targetPath.includes('stats')) {
+  // 5. 最后的兜底 (针对 stats 等)
+  if (!isDnsRequest && targetPath.includes('stats')) {
        const statsFallbacks = [
          '/v1/metadata/stats',
          '/metadata/stats',
