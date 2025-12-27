@@ -76,11 +76,13 @@ export default async function handler(req, res) {
       if (axiosError.response && axiosError.response.status === 404 && isStatsRequest) {
         // 尝试列表：常见的统计/信息接口
         const fallbackPaths = [
-          '/v1/metadata/stats',
-          '/v1/metadata',
-          '/v1/info',
-          '/v1/global/stats'
-        ];
+           '/v1/metadata/stats',
+           '/v1/metadata',
+           '/v1/info',
+           '/v1/global/stats',
+           '/stats',
+           '/metadata/stats'
+         ];
         
         let lastError = axiosError;
         let success = false;
