@@ -226,7 +226,7 @@ class LeakRadarAPI {
    * Export domain search results as PDF
    */
   async exportDomainPDF(domain: string): Promise<Blob> {
-    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report/pdf`, {
+    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report`, {
       headers: {
         'Accept': 'application/pdf',
       },
@@ -253,7 +253,9 @@ class LeakRadarAPI {
       method: 'POST', // The Python client uses POST for exports
       headers: {
         'Accept': 'text/csv',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ format: 'csv' }),
     });
     
     if (!response.ok) {

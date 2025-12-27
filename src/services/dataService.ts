@@ -75,11 +75,12 @@ export const dataService = {
       }
       
       // 3. Fetch some credentials for display (we combine them for the table)
-      // For performance, we fetch a few from each category
+      // For performance, we fetch from each category based on limit and offset
+      const itemsPerCat = Math.floor(limit / 3);
       const [empRes, custRes, thirdRes] = await Promise.all([
-        leakRadarApi.searchDomainCategory(domain, 'employees', 20, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-        leakRadarApi.searchDomainCategory(domain, 'customers', 50, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-        leakRadarApi.searchDomainCategory(domain, 'third_parties', 30, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'employees', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'customers', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'third_parties', limit - (2 * itemsPerCat), offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
       ]);
 
       const transformItem = (item: any, type: LeakedCredential['type']): LeakedCredential => {
@@ -98,12 +99,17 @@ export const dataService = {
           password_plaintext: item.password_plaintext || item.password || '********',
           password_hash: item.password_hash || '',
           hash_type: item.hash_type || 'Unknown',
-          website: item.url || domain,
-          source: item.source || 'LeakRadar',
-          leaked_at: item.added_at || new Date().toISOString(),
+          website: item.website || item.url || domain || 'N/A',
+          source: item.source || 'Leak Database',
+          leaked_at: item.leaked_at || item.added_at || new Date().toISOString(),
           type,
           strength,
-          ip_address: item.ip_address
+          ip_address: item.ip_address,
+          first_name: item.first_name,
+          last_name: item.last_name,
+          phone: item.phone,
+          city: item.city,
+          country: item.country
         };
       };
 
@@ -177,7 +183,7 @@ export const dataService = {
           password_plaintext: item.password_plaintext || item.password || '********',
           password_hash: item.password_hash || '',
           hash_type: item.hash_type || 'Unknown',
-          website: item.website || item.url || 'N/A',
+          website: item.website || item.url || domain || 'N/A',
           source: item.source || 'Leak Database',
           leaked_at: item.leaked_at || item.added_at || new Date().toISOString(),
           type: type,

@@ -818,7 +818,10 @@ const Dashboard = () => {
                 {tabs.map((tab) => (
                   <button
                     key={tab.name}
-                    onClick={() => setActiveTab(tab.name)}
+                    onClick={() => {
+                      setActiveTab(tab.name);
+                      setCurrentPage(0);
+                    }}
                     className={cn(
                       "flex items-center gap-3 px-8 py-4 rounded-[24px] text-base font-black transition-all group",
                       activeTab === tab.name
@@ -892,21 +895,30 @@ const Dashboard = () => {
                     icon={UserCheck} 
                     data={results.summary.employees} 
                     colorClass="text-emerald-500"
-                    onClick={() => setActiveTab('Employees')}
+                    onClick={() => {
+                    setActiveTab('Employees');
+                    setCurrentPage(0);
+                  }}
                   />
                   <DetailCard 
                     title="Third Parties" 
                     icon={ShieldAlert} 
                     data={results.summary.third_parties} 
                     colorClass="text-orange-500"
-                    onClick={() => setActiveTab('Third-Parties')}
+                    onClick={() => {
+                      setActiveTab('Third-Parties');
+                      setCurrentPage(0);
+                    }}
                   />
                   <DetailCard 
                     title="Customers" 
                     icon={UserMinus} 
                     data={results.summary.customers} 
                     colorClass="text-blue-500"
-                    onClick={() => setActiveTab('Customers')}
+                    onClick={() => {
+                      setActiveTab('Customers');
+                      setCurrentPage(0);
+                    }}
                   />
                 </div>
               </div>
