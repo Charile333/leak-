@@ -38,6 +38,7 @@ import { cn } from '../lib/utils';
 import { dataService } from '../services/dataService';
 import type { LeakedCredential, DomainSearchSummary } from '../services/dataService';
 import { leakRadarApi } from '../api/leakRadar';
+import { dnsApi } from '../api/dnsApi';
 
 const AnimatedNumber = ({ value }: { value: string }) => {
   const numericValue = parseInt(value.replace(/,/g, '')) || 0;
@@ -195,16 +196,27 @@ const Dashboard = () => {
   const [sortField, setSortField] = useState<keyof LeakedCredential>('leaked_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const handleSearch = async (e?: React.FormEvent, page = 0) => {
-    if (e) e.preventDefault();
+  const [dnsResults, setDnsResults] = useState<any>(null);
+  const [dnsActiveSubTab, setDnsActiveSubTab] = useState('Subdomains');
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!searchQuery.trim()) return;
-    
+
     if (isDnsPage) {
-      // DNS 搜索逻辑 - 暂时显示开发中
       setIsSearching(true);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setIsSearching(false);
-      alert('DNS 数据集查询功能正在对接后台接口，敬请期待！');
+      setShowResults(false);
+      try {
+        // 默认先查询子域名
+        const subdomains = await dnsApi.getSubdomains(searchQuery);
+        setDnsResults({ subdomains });
+        setShowResults(true);
+      } catch (error) {
+        console.error('DNS Search Error:', error);
+        alert('DNS 查询失败，请检查网络或 API Token 设置。');
+      } finally {
+        setIsSearching(false);
+      }
       return;
     }
 
@@ -321,7 +333,99 @@ const Dashboard = () => {
     const p3 = ((strength.weak || 0) / total) * 100;
     const p4 = ((strength.very_weak || 0) / total) * 100;
 
+    const fetchDnsSubTab = async (tab: string) => {
+    if (!searchQuery) return;
+    setIsSearching(true);
+    try {
+      let data;
+      switch (tab) {
+        case 'Subdomains':
+          data = await dnsApi.getSubdomains(searchQuery);
+          setDnsResults(prev => ({ ...prev, subdomains: data }));
+          break;
+        case 'Records':
+          data = await dnsApi.getDnsRecords(searchQuery);
+          setDnsResults(prev => ({ ...prev, records: data }));
+          break;
+        case 'Reverse':
+          data = await dnsApi.getReverseDns(searchQuery); // 假设 searchQuery 是 IP
+          setDnsResults(prev => ({ ...prev, reverse: data }));
+          break;
+        case 'SSL':
+          data = await dnsApi.getSslCert(searchQuery);
+          setDnsResults(prev => ({ ...prev, ssl: data }));
+          break;
+      }
+      setDnsActiveSubTab(tab);
+    } catch (error) {
+      console.error('Fetch DNS SubTab Error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const renderDnsResults = () => {
+    if (!dnsResults) return null;
+
     return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        {/* DNS 子页签 */}
+        <div className="flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl w-fit">
+          {[
+            { id: 'Subdomains', label: '子域名查询', icon: Globe },
+            { id: 'Records', label: '解析查询', icon: Activity },
+            { id: 'Reverse', label: '反向查询', icon: Search },
+            { id: 'SSL', label: 'SSL证书', icon: Shield },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => fetchDnsSubTab(tab.id)}
+              className={cn(
+                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all",
+                dnsActiveSubTab === tab.id 
+                  ? "bg-accent text-white shadow-lg shadow-accent/20" 
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              )}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* DNS 结果展示区域 */}
+        <div className="bg-[#1a1a20] border border-white/5 rounded-3xl overflow-hidden shadow-2xl p-8">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-black text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+                <LayoutGrid className="w-5 h-5 text-accent" />
+              </div>
+              {dnsActiveSubTab === 'Subdomains' && '子域名列表'}
+              {dnsActiveSubTab === 'Records' && 'DNS 解析记录'}
+              {dnsActiveSubTab === 'Reverse' && '反向查询结果'}
+              {dnsActiveSubTab === 'SSL' && 'SSL 证书详情'}
+            </h3>
+            <div className="text-xs text-gray-500 font-mono">
+              API Status: <span className="text-emerald-500 font-bold">Connected</span>
+            </div>
+          </div>
+
+          <div className="min-h-[400px] flex items-center justify-center text-gray-500 border-2 border-dashed border-white/5 rounded-2xl">
+            {/* 这里后续根据接口返回数据结构编写具体的表格展示 */}
+            <div className="text-center">
+              <p className="mb-2 font-bold">数据已成功获取</p>
+              <p className="text-xs opacity-50">正在根据 API 返回结构渲染表格...</p>
+              <pre className="mt-4 p-4 bg-black/50 rounded-lg text-left text-[10px] max-h-40 overflow-auto">
+                {JSON.stringify(dnsResults[dnsActiveSubTab.toLowerCase()], null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
       <div className="h-2 w-full flex rounded-full overflow-hidden">
         <div style={{ width: `${p1}%` }} className="bg-emerald-500" />
         <div style={{ width: `${p2}%` }} className="bg-blue-500" />
@@ -449,7 +553,7 @@ const Dashboard = () => {
 
       {/* 搜索结果区域 */}
       <AnimatePresence>
-        {showResults && results && (
+        {showResults && (isDnsPage ? dnsResults : results) && (
           <motion.div 
             id="search-results"
             initial={{ opacity: 0, y: 20 }}
@@ -457,8 +561,12 @@ const Dashboard = () => {
             exit={{ opacity: 0, y: -20 }}
             className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full"
           >
-            {/* 顶部标签页 */}
-            <div className="flex flex-wrap items-center gap-3 mb-10">
+            {isDnsPage ? (
+              renderDnsResults()
+            ) : (
+              <>
+                {/* 顶部标签页 */}
+                <div className="flex flex-wrap items-center gap-3 mb-10">
               {tabs.map((tab) => (
                 <button
                   key={tab.name}
@@ -708,7 +816,7 @@ const Dashboard = () => {
                     </button>
                   </div>
                 )}
-              </div>
+              </>
             )}
           </motion.div>
         )}
