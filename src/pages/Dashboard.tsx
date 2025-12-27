@@ -42,8 +42,8 @@ const AnimatedNumber = ({ value }: { value: string }) => {
   const numericValue = parseInt(value.replace(/,/g, '')) || 0;
   const count = useSpring(0, {
     mass: 1,
-    stiffness: 50,
-    damping: 20,
+    stiffness: 100,
+    damping: 30,
     restDelta: 0.001
   });
   const display = useTransform(count, (latest) => 
