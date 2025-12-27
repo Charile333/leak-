@@ -15,8 +15,14 @@ export default async function handler(req, res) {
     return;
   }
 
-  // 2. 获取目标路径 (去掉 /api 部分)
-  let targetPath = req.url.replace('/api', '');
+  // 2. 获取目标路径
+  // 在 Vercel 中，req.url 可能是原始请求路径（如 /api/leakradar/stats）
+  // 或者由于重写变成了 /api/proxy.js。我们优先使用原始路径。
+  const originalUrl = req.headers['x-now-route-matches'] 
+    ? req.url 
+    : (req.url.includes('proxy.js') ? req.headers['x-forwarded-uri'] || req.url : req.url);
+    
+  let targetPath = originalUrl.replace('/api', '');
   
   // 处理 stats 路径映射 (如果需要特殊处理，在这里添加)
   // 如果 /v1/metadata/stats 404，我们尝试直接使用 /v1/stats
