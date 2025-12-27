@@ -387,7 +387,7 @@ const Dashboard = () => {
                 transition={{ duration: 0.5 }}
               >
                 <h1 className="text-7xl md:text-[10rem] font-black text-white tracking-tighter mb-6 leading-none select-none drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                  {totalLeaks}
+                  <AnimatedNumber value={totalLeaks} />
                 </h1>
               </motion.div>
               
@@ -450,7 +450,7 @@ const Dashboard = () => {
                   key={tab.name}
                   onClick={() => setActiveTab(tab.name)}
                   className={cn(
-                    "flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all",
+                    "flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all group",
                     activeTab === tab.name
                       ? "bg-white/10 text-white shadow-xl border border-white/10"
                       : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
@@ -460,10 +460,12 @@ const Dashboard = () => {
                   <span>{tab.name}</span>
                   {tab.count !== null && (
                     <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-black",
-                      tab.count === 0 ? "bg-white/5 text-gray-500" : "bg-accent text-white shadow-lg"
+                      "px-2 py-0.5 rounded-full text-[10px] font-black tracking-tighter transition-colors",
+                      activeTab === tab.name 
+                        ? "bg-white text-black" 
+                        : "bg-white/5 text-gray-400 group-hover:bg-white/10"
                     )}>
-                      {tab.count}
+                      <AnimatedNumber value={tab.count.toString()} />
                     </span>
                   )}
                 </button>
