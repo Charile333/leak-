@@ -360,6 +360,16 @@ const Dashboard = () => {
 
   const fetchDnsSubTab = async (tab: string) => {
     if (!searchQuery) return;
+    
+    // 如果是反向查询，检查是否为有效 IP
+    if (tab === 'Reverse') {
+      const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      if (!ipRegex.test(searchQuery.trim())) {
+        alert('反向查询需要输入有效的 IP 地址');
+        return;
+      }
+    }
+
     setIsSearching(true);
     try {
       let data: any;
