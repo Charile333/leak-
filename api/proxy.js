@@ -17,8 +17,9 @@ export default async function handler(req, res) {
     }
 
     // 辅助函数：统一发送响应
-    function sendResponse(res, response, targetUrl) {
+    function sendResponse(res, response, targetUrl, triedPaths = []) {
       res.setHeader('X-Proxy-Target', targetUrl);
+      res.setHeader('X-Proxy-Tried-Paths', triedPaths.join(', '));
       
       const headersToForward = [
         'content-type',
@@ -91,30 +92,28 @@ export default async function handler(req, res) {
           `/exports/${id}${isDownload ? '/download' : ''}`,
           `/v1/export/${id}${isDownload ? '/download' : ''}`
         ];
-      } else if (cleanInnerPath.includes('/leaks/@') || cleanInnerPath.includes('/unlock')) {
-        // 彻底解决 /leaks/@domain 和 /unlock 接口 404
-        // 提取 domain: 从 /leaks/@domain 或 /search/domain/domain/unlock 中提取
-        const domainMatch = cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/) || 
-                            cleanInnerPath.match(/\/search\/domain\/([^\/\?]+)/);
+      // 针对域名查询和解锁的路径优化
+      if (cleanInnerPath.includes('/domain/') || cleanInnerPath.includes('/leaks/@')) {
+        const domainMatch = cleanInnerPath.match(/\/domain\/([^\/\?]+)/) || 
+                            cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/);
         const domain = domainMatch ? domainMatch[1] : '';
-        
-        // 提取 type/category: 从 ?type= 或 路径中间提取
-        const typeMatch = req.url.match(/type=([^&]+)/) || 
-                          cleanInnerPath.match(/\/domain\/[^\/]+\/([^\/\?]+)/);
-        const type = typeMatch ? typeMatch[1] : '';
         const isUnlock = cleanInnerPath.includes('/unlock');
-
+        
+        // 自动识别 category
+        let category = '';
+        if (cleanInnerPath.includes('/employees')) category = 'employees';
+        else if (cleanInnerPath.includes('/customers')) category = 'customers';
+        else if (cleanInnerPath.includes('/third_parties')) category = 'third_parties';
+        
         prefixesToTry = [
-          // 1. 标准 search 路径 (解锁或查询)
-          `/v1/search/domain/${domain}${type ? '/' + type : ''}${isUnlock ? '/unlock' : ''}`,
-          // 2. 原始带 @ 路径
-          `/v1${cleanInnerPath}`,
-          // 3. 剥离 /search 的路径
-          `/v1/domain/${domain}${type ? '/' + type : ''}${isUnlock ? '/unlock' : ''}`,
-          // 4. 彻底透传
-          cleanInnerPath,
-          // 5. 加上 /search 前缀
-          `/v1/search${cleanInnerPath}`
+          // 方案 1: 最稳健的 v1 search 路径
+          `/v1/search/domain/${domain}${category ? '/' + category : ''}${isUnlock ? '/unlock' : ''}`,
+          // 方案 2: 极简路径
+          `/v1/domain/${domain}${category ? '/' + category : ''}${isUnlock ? '/unlock' : ''}`,
+          // 方案 3: 带 @ 的 leaks 路径
+          `/v1/leaks/@${domain}${category ? '?type=' + category : ''}`,
+          // 方案 4: 直接透传
+          cleanInnerPath.startsWith('/v1') ? cleanInnerPath : `/v1${cleanInnerPath}`
         ].filter(Boolean);
       } else if (cleanInnerPath.includes('/export')) {
         const parts = cleanInnerPath.split('/');
@@ -194,7 +193,7 @@ export default async function handler(req, res) {
           const response = await axios(axiosConfig);
           
           console.log(`[Proxy] [Success] ${currentUrl}`);
-          return sendResponse(res, response, currentUrl);
+          return sendResponse(res, response, currentUrl, prefixesToTry);
         } catch (axiosError) {
           lastError = axiosError;
           const status = axiosError.response?.status;
@@ -236,10 +235,13 @@ export default async function handler(req, res) {
       }
     }
     
-    return res.status(404).json({ 
-      error: 'All paths failed', 
-      last_url: lastTriedUrl,
-      message: lastError?.message || 'Not Found'
+    // 所有尝试都失败
+    console.error(`All ${prefixesToTry.length} attempts failed for ${innerPath}. Last error:`, lastError?.message);
+    return res.status(lastError?.response?.status || 500).json({
+      error: "Proxy request failed after multiple attempts",
+      message: lastError?.message,
+      path: innerPath,
+      tried: prefixesToTry
     });
 
   } catch (error) {
