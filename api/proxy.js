@@ -93,6 +93,7 @@ export default async function handler(req, res) {
     }
 
     // 转发上游响应的所有重要头信息
+    res.setHeader('X-Proxy-Target', targetUrl);
     if (response.headers['content-type']) {
       res.setHeader('Content-Type', response.headers['content-type']);
     }
@@ -113,6 +114,9 @@ export default async function handler(req, res) {
     console.error('Proxy Error:', error.message);
     if (error.response) {
       // 错误响应也要处理响应类型
+      res.setHeader('X-Proxy-Error', error.message);
+      if (targetUrl) res.setHeader('X-Proxy-Target', targetUrl);
+      
       let errorData = error.response.data;
       if (Buffer.isBuffer(errorData)) {
         try {
