@@ -70,22 +70,51 @@ export default async function handler(req, res) {
         timeout: 10000 // 10s timeout
       });
     } catch (axiosError) {
-      // 彻查：如果 /v1/stats 返回 404，尝试 /v1/metadata/stats
-      if (axiosError.response && axiosError.response.status === 404 && targetUrl.endsWith('/v1/stats')) {
-        const altUrl = targetUrl.replace('/v1/stats', '/v1/metadata/stats');
-        console.log(`Primary stats endpoint 404, trying alternative: ${altUrl}`);
-        try {
-          response = await axios({
-            method: req.method,
-            url: altUrl,
-            headers: headers,
-            data: req.body,
-            responseType: 'arraybuffer',
-            timeout: 10000
-          });
-        } catch (altError) {
-          // 如果还是不行，抛出原始错误
-          throw axiosError;
+      // 彻查：如果请求的是 stats 相关路径且返回 404，尝试多种备选路径
+      const isStatsRequest = targetUrl.includes('/v1/stats');
+      
+      if (axiosError.response && axiosError.response.status === 404 && isStatsRequest) {
+        // 尝试列表：常见的统计/信息接口
+        const fallbackPaths = [
+          '/v1/metadata/stats',
+          '/v1/metadata',
+          '/v1/info',
+          '/v1/global/stats'
+        ];
+        
+        let lastError = axiosError;
+        let success = false;
+
+        for (const path of fallbackPaths) {
+          // 构造备选 URL (保留查询参数)
+          const baseUrl = targetUrl.split('?')[0];
+          const urlObj = new URL(targetUrl);
+          const altUrl = `https://api.leakradar.io${path}${urlObj.search}`;
+          
+          if (altUrl === targetUrl) continue; // 跳过已尝试过的
+
+          console.log(`Primary stats 404, trying fallback: ${altUrl}`);
+          try {
+            response = await axios({
+              method: req.method,
+              url: altUrl,
+              headers: headers,
+              data: req.body,
+              responseType: 'arraybuffer',
+              timeout: 10000
+            });
+            // 如果成功，更新 targetUrl 以便响应头记录正确的路径
+            targetUrl = altUrl;
+            success = true;
+            break;
+          } catch (altError) {
+            lastError = altError;
+            console.log(`Fallback ${path} also failed: ${altError.message}`);
+          }
+        }
+
+        if (!success) {
+          throw lastError;
         }
       } else {
         throw axiosError;
