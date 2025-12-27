@@ -92,12 +92,24 @@ export default async function handler(req, res) {
           `/v1/export/${id}${isDownload ? '/download' : ''}`
         ];
       } else if (cleanInnerPath.includes('/leaks/@')) {
-        // 处理 /leaks/@domain 这种新路径
+        // 彻底解决 /leaks/@domain 404
+        const domainMatch = cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/);
+        const domain = domainMatch ? domainMatch[1] : '';
+        const typeMatch = req.url.match(/type=([^&]+)/);
+        const type = typeMatch ? typeMatch[1] : '';
+
         prefixesToTry = [
+          // 方案 1: 标准路径 (带 v1)
+          `/v1/search/domain/${domain}${type ? '/' + type : ''}`,
+          // 方案 2: 直接路径 (带 @)
           `/v1${cleanInnerPath}`,
+          // 方案 3: 原始路径
           cleanInnerPath,
-          `/v1/search${cleanInnerPath}`
-        ];
+          // 方案 4: 搜索路径
+          `/v1/search${cleanInnerPath}`,
+          // 方案 5: 兼容旧版
+          `/v1/domain/${domain}${type ? '/' + type : ''}`
+        ].filter(Boolean);
       } else if (cleanInnerPath.includes('/export')) {
         const parts = cleanInnerPath.split('/');
         const id = parts[parts.length - 1];
