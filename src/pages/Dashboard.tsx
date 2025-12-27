@@ -255,7 +255,11 @@ const Dashboard = () => {
         setTimeout(() => {
           const resultElement = document.getElementById('search-results');
           if (resultElement) {
-            resultElement.scrollIntoView({ behavior: 'smooth' });
+            const rect = resultElement.getBoundingClientRect();
+            // 如果结果区域的顶部不在视图内（被遮挡或在下方），则滚动到结果区域
+            if (rect.top < 0 || rect.top > window.innerHeight * 0.8) {
+              resultElement.scrollIntoView({ behavior: 'smooth' });
+            }
           }
         }, 100);
       }
@@ -560,8 +564,14 @@ const Dashboard = () => {
     );
   };
 
-  const DetailCard = ({ title, icon: Icon, data, colorClass }: { title: string, icon: any, data: any, colorClass: string }) => (
-    <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 hover:bg-white/[0.05] transition-all group">
+  const DetailCard = ({ title, icon: Icon, data, colorClass, onClick }: { title: string, icon: any, data: any, colorClass: string, onClick?: () => void }) => (
+    <div 
+      onClick={onClick}
+      className={cn(
+        "bg-white/[0.03] border border-white/10 rounded-3xl p-8 hover:bg-white/[0.05] transition-all group",
+        onClick && "cursor-pointer hover:border-accent/30 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)]"
+      )}
+    >
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className={cn("group-hover:scale-110 transition-transform", colorClass)}>
@@ -576,6 +586,11 @@ const Dashboard = () => {
             </p>
           </div>
         </div>
+        {onClick && (
+          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-accent/20 group-hover:text-accent transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        )}
       </div>
       
       <div className="mb-8">
@@ -698,15 +713,16 @@ const Dashboard = () => {
       </div>
 
       {/* 搜索结果区域 */}
-      <AnimatePresence>
-        {showResults && (isDnsPage ? dnsResults : results) && (
-          <motion.div 
-            id="search-results"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full"
-          >
+      <div id="search-results" className="scroll-mt-24">
+        <AnimatePresence mode="wait">
+          {showResults && (isDnsPage ? dnsResults : results) && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4 }}
+              className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full min-h-[600px]"
+            >
             {isDnsPage ? (
               renderDnsResults()
             ) : (
@@ -774,18 +790,21 @@ const Dashboard = () => {
                     icon={UserCheck} 
                     data={results.summary.employees} 
                     colorClass="text-emerald-500"
+                    onClick={() => setActiveTab('Employees')}
                   />
                   <DetailCard 
                     title="Third Parties" 
                     icon={ShieldAlert} 
                     data={results.summary.third_parties} 
                     colorClass="text-orange-500"
+                    onClick={() => setActiveTab('Third-Parties')}
                   />
                   <DetailCard 
                     title="Customers" 
                     icon={UserMinus} 
                     data={results.summary.customers} 
                     colorClass="text-blue-500"
+                    onClick={() => setActiveTab('Customers')}
                   />
                 </div>
               </div>
@@ -950,6 +969,7 @@ const Dashboard = () => {
       </motion.div>
     )}
   </AnimatePresence>
+</div>
 
       {/* 中间文本区 */}
       {!showResults && (
