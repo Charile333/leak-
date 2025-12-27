@@ -231,7 +231,17 @@ class LeakRadarAPI {
         'Accept': 'application/pdf',
       },
     });
-    if (!response.ok) throw new Error('PDF 导出失败');
+    
+    if (!response.ok) {
+      let errorMessage = 'PDF 导出失败';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        errorMessage = `${errorMessage}: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
     return response.blob();
   }
 
@@ -244,7 +254,17 @@ class LeakRadarAPI {
         'Accept': 'text/csv',
       },
     });
-    if (!response.ok) throw new Error('CSV 导出失败');
+    
+    if (!response.ok) {
+      let errorMessage = 'CSV 导出失败';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        errorMessage = `${errorMessage}: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
     return response.blob();
   }
 }

@@ -612,9 +612,9 @@ const Dashboard = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (error) {
+    } catch (error: any) {
       console.error('PDF Download Error:', error);
-      alert('PDF 导出失败，请重试');
+      alert(error.message || 'PDF 导出失败，请重试');
     }
   };
 
@@ -630,9 +630,9 @@ const Dashboard = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (error) {
+    } catch (error: any) {
       console.error('CSV Export Error:', error);
-      alert('数据导出失败，请重试');
+      alert(error.message || '数据导出失败，请重试');
     }
   };
 

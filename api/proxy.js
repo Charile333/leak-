@@ -38,28 +38,53 @@ export default async function handler(req, res) {
   try {
     console.log(`Proxying request to: ${targetUrl}`);
     
+    // 转发原始的 Accept 头，如果没有则默认为 application/json
+    const acceptHeader = req.headers['accept'] || 'application/json';
+    
     // 构造请求头
     const headers = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
+      'Accept': acceptHeader,
       'Authorization': `Bearer ${API_KEY}`
     };
+
+    // 如果有请求体，则转发 Content-Type
+    if (req.headers['content-type']) {
+      headers['Content-Type'] = req.headers['content-type'];
+    }
 
     const response = await axios({
       method: req.method,
       url: targetUrl,
       headers: headers,
-      data: req.body
+      data: req.body,
+      responseType: 'arraybuffer' // 统一使用 arraybuffer 以支持二进制数据
     });
 
-    res.status(response.status).json(response.data);
+    // 转发上游响应的所有重要头信息
+    if (response.headers['content-type']) {
+      res.setHeader('Content-Type', response.headers['content-type']);
+    }
+    if (response.headers['content-disposition']) {
+      res.setHeader('Content-Disposition', response.headers['content-disposition']);
+    }
+
+    res.status(response.status).send(response.data);
   } catch (error) {
     console.error('Proxy Error:', error.message);
     if (error.response) {
+      // 错误响应也要处理响应类型
+      let errorData = error.response.data;
+      if (Buffer.isBuffer(errorData)) {
+        try {
+          errorData = JSON.parse(errorData.toString());
+        } catch (e) {
+          errorData = errorData.toString();
+        }
+      }
       res.status(error.response.status).json({
         error: 'Upstream API Error',
         message: error.message,
-        data: error.response.data
+        data: errorData
       });
     } else {
       res.status(500).json({ 
