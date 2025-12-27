@@ -1,30 +1,46 @@
 import { useState } from 'react';
 import { Hash, ShieldCheck, Copy, ExternalLink, AlertTriangle, Fingerprint, History } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { leakRadarApi } from '../api/leakRadar';
 
 const HashLookup = () => {
   const [hash, setHash] = useState('');
   const [results, setResults] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hash) return;
     
     setIsSearching(true);
-    // 模拟 API 调用
-    setTimeout(() => {
-      setResults({
-        hash: hash,
-        type: hash.length === 32 ? 'MD5' : hash.length === 40 ? 'SHA-1' : '未知',
-        found: Math.random() > 0.3,
-        source: '全球密码库 #4',
-        plaintext: '******** (仅限授权用户)',
-        complexity: '中等',
-        leaked_date: '2024-05-12'
-      });
+    setError(null);
+    
+    try {
+      const data = await leakRadarApi.searchByHash(hash);
+      if (data && data.items && data.items.length > 0) {
+        const firstMatch = data.items[0];
+        setResults({
+          hash: hash,
+          type: hash.length === 32 ? 'MD5' : hash.length === 40 ? 'SHA-1' : (firstMatch.hash_type || '未知'),
+          found: true,
+          source: firstMatch.source || firstMatch.website || '全球密码库',
+          plaintext: firstMatch.password_plaintext || '******** (仅限授权用户)',
+          complexity: firstMatch.password_strength ? (firstMatch.password_strength > 70 ? '高' : firstMatch.password_strength > 40 ? '中' : '低') : '中等',
+          leaked_date: firstMatch.leaked_at || firstMatch.added_at || '未知日期'
+        });
+      } else {
+        setResults({
+          hash: hash,
+          found: false
+        });
+      }
+    } catch (err: any) {
+      console.error('Hash lookup failed:', err);
+      setError(err.message || '查询失败，请检查网络连接');
+    } finally {
       setIsSearching(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -79,6 +95,13 @@ const HashLookup = () => {
               <span>实时结果返回</span>
             </div>
           </div>
+          
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-500 text-sm">
+              <AlertTriangle className="w-4 h-4" />
+              <span>{error}</span>
+            </div>
+          )}
         </form>
       </div>
 

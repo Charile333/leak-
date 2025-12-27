@@ -58,11 +58,18 @@ const INITIAL_RESULTS: LeakResult[] = [
 
 const LeakQuery = () => {
   const [showDetails, setShowDetails] = useState<number | null>(null);
-  const [results, setResults] = useState(INITIAL_RESULTS);
+  const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authAction, setAuthAction] = useState<{ type: 'view' | 'export', id?: number } | null>(null);
   const [username, setUsername] = useState('Felix');
   
+  useEffect(() => {
+    // Initial load with some default data or empty
+    setResults([]);
+  }, []);
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -99,16 +106,37 @@ const LeakQuery = () => {
     setAuditLogs(prev => [newLog, ...prev].slice(0, 10));
   };
 
-  const handleSearch = (value: string) => {
-    addAuditLog('执行关键词检索', value || '全部');
-    // Simulate loading/filtering
-    if (!value) {
-      setResults(INITIAL_RESULTS);
-    } else {
-      setResults(INITIAL_RESULTS.filter(r => 
-        r.source.toLowerCase().includes(value.toLowerCase()) || 
-        r.type.toLowerCase().includes(value.toLowerCase())
-      ));
+  const handleSearch = async (value: string) => {
+    if (!value) return;
+    
+    addAuditLog('执行关键词检索', value);
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const data = await leakRadarApi.search(value);
+      if (data && data.items) {
+        // Map API results to our UI format
+        const mappedResults = data.items.map((item: any, index: number) => ({
+          id: index + 1,
+          source: item.source || item.website || '未知来源',
+          type: item.is_email ? 'Email/Password' : 'Credentials',
+          date: item.leaked_at || item.added_at || '未知日期',
+          count: '1', // Individual result
+          risk: item.password_strength ? (item.password_strength > 70 ? '低' : item.password_strength > 40 ? '中' : '高') : '中',
+          sensitive: true,
+          details: item
+        }));
+        setResults(mappedResults);
+      } else {
+        setResults([]);
+      }
+    } catch (err: any) {
+      console.error('Search failed:', err);
+      setError(err.message || '搜索失败，请稍后再试');
+      setResults([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -154,6 +182,20 @@ const LeakQuery = () => {
             </p>
 
             <LargeSearch onSearch={handleSearch} />
+            
+            {isLoading && (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="w-12 h-12 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
+                <p className="text-gray-400 animate-pulse font-medium">正在深度检索全球泄露库...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="flex items-center gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 max-w-2xl mx-auto">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -231,6 +273,12 @@ const LeakQuery = () => {
             </div>
 
             <div className="space-y-4">
+              {results.length === 0 && !isLoading && !error && (
+                <div className="glass-card p-12 text-center border-dashed border-2 border-white/5">
+                  <Database className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                  <p className="text-gray-500">请输入关键词并开始检索...</p>
+                </div>
+              )}
               {results.map((item) => (
                 <div key={item.id} className="glass-card overflow-hidden border-brand/20 hover:border-accent/30 transition-all group">
                   <div className="p-6">

@@ -186,6 +186,30 @@ class LeakRadarAPI {
   }
 
   /**
+   * Search for leaks by general query (auto-detects domain or email)
+   */
+  async search(query: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query);
+    if (isEmail) {
+      return this.searchByEmail(query, limit, offset);
+    }
+    
+    // If it looks like a domain or just a keyword
+    const isDomain = /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/.test(query);
+    if (isDomain) {
+      // For domain, we might want a summary or a specific category. 
+      // Here we'll default to 'employees' as it's the most common search target
+      return this.searchDomainCategory(query, 'employees', limit, offset);
+    }
+
+    // Default to advanced search if available, or fallback to email search (as it might be a partial email)
+    return this.request<LeakRadarSearchResult>(`/search/advanced`, {
+      method: 'POST',
+      body: JSON.stringify({ query, page: Math.floor(offset / limit) + 1, page_size: limit })
+    });
+  }
+
+  /**
    * Search for leaks by email
    */
   async searchByEmail(email: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
@@ -193,6 +217,16 @@ class LeakRadarAPI {
     return this.request<LeakRadarSearchResult>(`/search/email`, {
       method: 'POST',
       body: JSON.stringify({ email, page, page_size: limit })
+    });
+  }
+
+  /**
+   * Search for leaks by hash
+   */
+  async searchByHash(hash: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
+    return this.request<LeakRadarSearchResult>(`/search/advanced`, {
+      method: 'POST',
+      body: JSON.stringify({ hash, page: Math.floor(offset / limit) + 1, page_size: limit })
     });
   }
 
