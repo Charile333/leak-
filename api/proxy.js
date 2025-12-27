@@ -45,6 +45,7 @@ export default async function handler(req, res) {
     // 2. 获取目标路径 (更健壮的解析)
     const url = new URL(req.url, `http://${req.headers.host}`);
     let targetPath = url.pathname;
+    const searchParams = url.search || '';
     
     // 彻底剥离所有已知的前缀，拿到纯净的业务路径
     let innerPath = targetPath
