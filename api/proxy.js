@@ -80,91 +80,82 @@ export default async function handler(req, res) {
     console.log(`Proxying ${req.method} request to: ${targetUrl}`);
     
     let response;
-    try {
-      response = await axios({
-        method: req.method,
-        url: targetUrl,
-        headers: headers,
-        data: req.body,
-        responseType: 'arraybuffer',
-        timeout: 30000 // 导出接口可能需要更长时间，增加到 30s
-      });
-    } catch (axiosError) {
-      // 如果 404，且不包含 /v1，尝试加上 /v1
-      if (axiosError.response && axiosError.response.status === 404 && !isDnsRequest) {
-        // 尝试两种路径：/v1 和 /v1/search (某些导出接口可能在 search 目录下)
-        const v1Path = targetPath.replace('/leakradar', '/v1');
-        const v1Url = `https://api.leakradar.io${v1Path}${searchParams}`;
-        
-        console.log(`Direct path 404, trying v1 path: ${v1Url}`);
-        try {
-          response = await axios({
-            method: req.method,
-            url: v1Url,
-            headers: headers,
-            data: req.body,
-            responseType: 'arraybuffer',
-            timeout: 30000
-          });
-          targetUrl = v1Url;
-        } catch (v1Error) {
-          // 如果还是 404，且是导出相关的请求，尝试 /v1/search/...
-          if (targetPath.includes('/report') || targetPath.includes('/export')) {
-            const searchV1Path = targetPath.replace('/leakradar', '/v1/search');
-            const searchV1Url = `https://api.leakradar.io${searchV1Path}${searchParams}`;
-            console.log(`V1 path 404, trying search v1 path: ${searchV1Url}`);
-            try {
-              response = await axios({
-                method: req.method,
-                url: searchV1Url,
-                headers: headers,
-                data: req.body,
-                responseType: 'arraybuffer',
-                timeout: 30000
-              });
-              targetUrl = searchV1Url;
-              return sendResponse(res, response, targetUrl);
-            } catch (searchError) {
-              console.log(`Search v1 path also failed: ${searchError.message}`);
-            }
-          }
+    const prefixesToTry = isDnsRequest 
+      ? [`/api/v1${targetPath.replace('/dns-v1', '')}`]
+      : [
+          targetPath.replace('/leakradar', ''), // 1. 直接路径 /search/...
+          targetPath.replace('/leakradar', '/v1'), // 2. /v1/search/...
+          targetPath.replace('/leakradar', '/api/v1'), // 3. /api/v1/search/...
+          targetPath.replace('/leakradar/search', '/v1'), // 4. /v1/... (去除 search)
+          targetPath.replace('/leakradar/search', '/api/v1'), // 5. /api/v1/... (去除 search)
+        ];
 
-          // 如果是 stats 请求，尝试更多备选路径
-          if (targetPath.includes('stats')) {
-            const statsFallbacks = [
-              '/v1/metadata/stats',
-              '/metadata/stats',
-              '/v1/info',
-              '/info'
-            ];
-            
-            for (const fallback of statsFallbacks) {
-              const fallbackUrl = `https://api.leakradar.io${fallback}${searchParams}`;
-              console.log(`Trying stats fallback: ${fallbackUrl}`);
-              try {
-                response = await axios({
-                  method: req.method,
-                  url: fallbackUrl,
-                  headers: headers,
-                  data: req.body,
-                  responseType: 'arraybuffer',
-                  timeout: 10000
-                });
-                targetUrl = fallbackUrl;
-                return sendResponse(res, response, targetUrl); // 成功即返回
-              } catch (e) {
-                console.log(`Fallback ${fallback} failed: ${e.message}`);
-              }
-            }
-          }
-          throw v1Error; // 抛出最后的错误
+    const host = isDnsRequest ? 'src.0zqq.com' : 'api.leakradar.io';
+    
+    for (let i = 0; i < prefixesToTry.length; i++) {
+      const currentPath = prefixesToTry[i];
+      const currentUrl = `https://${host}${currentPath}${searchParams}`;
+      
+      try {
+        console.log(`Trying proxy path [${i+1}/${prefixesToTry.length}]: ${currentUrl}`);
+        response = await axios({
+          method: req.method,
+          url: currentUrl,
+          headers: headers,
+          data: req.body,
+          responseType: 'arraybuffer',
+          timeout: (req.url.includes('/export') || req.url.includes('/report')) ? 60000 : 15000
+        });
+        
+        targetUrl = currentUrl;
+        return sendResponse(res, response, targetUrl);
+      } catch (axiosError) {
+        // 如果是最后一个尝试也失败了，或者不是 404，则记录并继续或抛出
+        if (axiosError.response && axiosError.response.status === 404) {
+          console.log(`Path 404: ${currentUrl}`);
+          if (i === prefixesToTry.length - 1) throw axiosError;
+          continue;
         }
-      } else {
+        
+        // 如果是 stats 相关的 404，且我们还没尝试完基础前缀，也继续
+        if (targetPath.includes('stats') && i < prefixesToTry.length - 1) {
+          continue;
+        }
+
         throw axiosError;
       }
     }
 
-    return sendResponse(res, response, targetUrl);
+    // 最后的兜底逻辑（针对 stats）
+     if (targetPath.includes('stats')) {
+       const statsFallbacks = [
+         '/v1/metadata/stats',
+         '/metadata/stats',
+         '/v1/info',
+         '/info'
+       ];
+       
+       for (const fallback of statsFallbacks) {
+         const fallbackUrl = `https://api.leakradar.io${fallback}${searchParams}`;
+         console.log(`Trying stats fallback: ${fallbackUrl}`);
+         try {
+           response = await axios({
+             method: req.method,
+             url: fallbackUrl,
+             headers: headers,
+             data: req.body,
+             responseType: 'arraybuffer',
+             timeout: 15000
+           });
+           targetUrl = fallbackUrl;
+           return sendResponse(res, response, targetUrl);
+         } catch (e) {
+           console.log(`Fallback ${fallback} failed: ${e.message}`);
+         }
+       }
+     }
+     
+     return res.status(404).json({ error: 'All paths failed', last_url: targetUrl });
   } catch (error) {
     console.error('Proxy Error:', error.message);
     if (error.response) {

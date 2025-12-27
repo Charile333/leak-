@@ -185,6 +185,29 @@ class LeakRadarAPI {
     return this.request<LeakRadarSearchResult>(`/search/domain/${sanitized}/${category}?page=${page}&page_size=${limit}`);
   }
 
+  private async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+    const headers = {
+      ...options.headers,
+    };
+
+    try {
+      const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      const response = await fetch(`${BASE_URL}${API_PREFIX}${formattedEndpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`请求失败 (${response.status})`);
+      }
+
+      return response.blob();
+    } catch (error: any) {
+      console.error(`[LeakRadar API] Blob Request to ${endpoint} error:`, error.message);
+      throw error;
+    }
+  }
+
   /**
    * Search for leaks by general query (auto-detects domain or email)
    */
@@ -270,7 +293,7 @@ class LeakRadarAPI {
    */
   async exportDomainPDF(domainInput: string): Promise<Blob> {
     const domain = this.sanitizeDomain(domainInput);
-    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report`, {
+    return this.requestBlob(`/search/domain/${domain}/report`, {
       method: 'POST',
       headers: {
         'Accept': 'application/pdf',
@@ -278,18 +301,6 @@ class LeakRadarAPI {
       },
       body: JSON.stringify({ format: 'pdf' }),
     });
-    
-    if (!response.ok) {
-      let errorMessage = 'PDF 导出失败';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch (e) {
-        errorMessage = `${errorMessage}: ${response.status} ${response.statusText}`;
-      }
-      throw new Error(errorMessage);
-    }
-    return response.blob();
   }
 
   /**
@@ -321,16 +332,11 @@ class LeakRadarAPI {
    * Download a prepared export file
    */
   async downloadExport(exportId: number): Promise<Blob> {
-    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/export/${exportId}/download`, {
+    return this.requestBlob(`/search/export/${exportId}/download`, {
       headers: {
         'Accept': '*/*',
       },
     });
-    
-    if (!response.ok) {
-      throw new Error(`下载失败 (${response.status})`);
-    }
-    return response.blob();
   }
 
   /**
