@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useSpring, useTransform, animate } from 'framer-motion';
 import { 
   Search, 
   Bug, 
@@ -37,6 +37,25 @@ import { cn } from '../lib/utils';
 import { dataService } from '../services/dataService';
 import type { LeakedCredential, DomainSearchSummary } from '../services/dataService';
 import { leakRadarApi } from '../api/leakRadar';
+
+const AnimatedNumber = ({ value }: { value: string }) => {
+  const numericValue = parseInt(value.replace(/,/g, '')) || 0;
+  const count = useSpring(0, {
+    mass: 1,
+    stiffness: 50,
+    damping: 20,
+    restDelta: 0.001
+  });
+  const display = useTransform(count, (latest) => 
+    Math.floor(latest).toLocaleString()
+  );
+
+  useEffect(() => {
+    count.set(numericValue);
+  }, [numericValue, count]);
+
+  return <motion.span>{display}</motion.span>;
+};
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -704,7 +723,9 @@ const Dashboard = () => {
                     <span className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">Live Indexing</span>
                   </div>
                   <h3 className="text-2xl font-black text-white tracking-tighter">每周数据增长趋势</h3>
-                  <p className="text-gray-500 text-xs font-medium mt-1">最近 12 个月内索引的新增记录分布</p>
+                  <p className="text-gray-500 text-xs font-medium mt-1">
+                    总计已索引记录: <AnimatedNumber value={totalLeaks} />
+                  </p>
                 </div>
                 
                 <div className="flex items-center gap-6 bg-white/5 px-5 py-3 rounded-2xl border border-white/10">
@@ -715,7 +736,7 @@ const Dashboard = () => {
                         <span className="opacity-20 animate-pulse">---,---</span>
                       ) : (
                         weeklyGrowth && weeklyGrowth.length > 0 && weeklyGrowth[weeklyGrowth.length - 1]
-                          ? (weeklyGrowth[weeklyGrowth.length - 1].weeklyTotal || 0).toLocaleString() 
+                          ? <AnimatedNumber value={(weeklyGrowth[weeklyGrowth.length - 1].weeklyTotal || 0).toString()} />
                           : '0'
                       )}
                     </p>
@@ -728,7 +749,7 @@ const Dashboard = () => {
                         <span className="opacity-20 animate-pulse">---,---</span>
                       ) : (
                         weeklyGrowth && weeklyGrowth.length > 0 
-                          ? Math.floor(weeklyGrowth.reduce((acc, curr) => acc + (Number(curr.weeklyTotal) || 0), 0) / weeklyGrowth.length).toLocaleString() 
+                          ? <AnimatedNumber value={Math.floor(weeklyGrowth.reduce((acc, curr) => acc + (Number(curr.weeklyTotal) || 0), 0) / weeklyGrowth.length).toString()} />
                           : '0'
                       )}
                     </p>
