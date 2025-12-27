@@ -80,6 +80,20 @@ const Dashboard = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
   
+  // 当页签切换时，滚动到结果区域顶部
+  useEffect(() => {
+    if (showResults && activeTab) {
+      const resultElement = document.getElementById('search-results');
+      if (resultElement) {
+        // 延迟执行以确保内容已开始渲染
+        const timer = setTimeout(() => {
+          resultElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [activeTab, showResults]);
+  
   // Fetch global stats
   React.useEffect(() => {
     const fetchStats = async () => {
@@ -713,51 +727,53 @@ const Dashboard = () => {
       </div>
 
       {/* 搜索结果区域 */}
-      <div id="search-results" className="scroll-mt-24">
-        <AnimatePresence mode="wait">
-          {showResults && (isDnsPage ? dnsResults : results) && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full min-h-[600px]"
-            >
-            {isDnsPage ? (
-              renderDnsResults()
-            ) : (
-              <>
-                {/* 顶部标签页 */}
-                <div className="flex flex-wrap items-center gap-4 mb-12">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.name}
-                  onClick={() => setActiveTab(tab.name)}
-                  className={cn(
-                    "flex items-center gap-3 px-8 py-4 rounded-[24px] text-base font-black transition-all group",
-                    activeTab === tab.name
-                      ? "bg-white/10 text-white shadow-2xl border border-white/10 scale-105"
-                      : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-                  )}
-                >
-                  <tab.icon className="w-5 h-5" />
-                  <span className="tracking-tight">{tab.name}</span>
-                  {tab.count !== null && (
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[12px] font-black tracking-tighter transition-colors ml-1",
-                      activeTab === tab.name 
-                        ? "bg-white text-black" 
-                        : "bg-white/5 text-gray-400 group-hover:bg-white/10"
-                    )}>
-                      <AnimatedNumber value={tab.count.toString()} />
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+      <div id="search-results" className="scroll-mt-24 min-h-[600px]">
+        {showResults && (isDnsPage ? dnsResults : results) && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+            {!isDnsPage && (
+              <div className="flex flex-wrap items-center gap-4 mb-12">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.name}
+                    onClick={() => setActiveTab(tab.name)}
+                    className={cn(
+                      "flex items-center gap-3 px-8 py-4 rounded-[24px] text-base font-black transition-all group",
+                      activeTab === tab.name
+                        ? "bg-white/10 text-accent shadow-2xl border border-white/10 scale-105"
+                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                    )}
+                  >
+                    <tab.icon className="w-5 h-5" />
+                    <span className="tracking-tight">{tab.name}</span>
+                    {tab.count !== null && (
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-[12px] font-black tracking-tighter transition-colors ml-1",
+                        activeTab === tab.name 
+                          ? "bg-accent text-white" 
+                          : "bg-white/5 text-gray-400 group-hover:bg-white/10"
+                      )}>
+                        <AnimatedNumber value={tab.count.toString()} />
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
 
-            {/* 结果内容区域 */}
-            {activeTab === 'Report' && results ? (
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={isDnsPage ? 'dns' : activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                {isDnsPage ? (
+                  renderDnsResults()
+                ) : (
+                  <>
+                    {/* 结果内容区域 */}
+                    {activeTab === 'Report' && results ? (
               <div className="space-y-12">
                 {/* 结果标题 */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -811,37 +827,7 @@ const Dashboard = () => {
             ) : (
               <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
                 {/* 过滤器和操作栏 */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <button 
-                      onClick={() => setActiveTab('Report')}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold text-white transition-all border border-white/10"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      返回报告
-                    </button>
-                    <div className="h-4 w-px bg-white/10 hidden md:block" />
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5 text-xs text-gray-400">
-                      <Filter className="w-3.5 h-3.5" />
-                      <span>排序依据:</span>
-                      <select 
-                        value={sortField}
-                        onChange={(e) => setSortField(e.target.value as any)}
-                        className="bg-transparent border-none focus:ring-0 text-white font-bold p-0 cursor-pointer"
-                      >
-                        <option value="leaked_at">日期</option>
-                        <option value="email">邮箱</option>
-                        <option value="strength">强度</option>
-                      </select>
-                      <button 
-                        onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                        className="p-1 hover:bg-white/10 rounded"
-                      >
-                        <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                  
+                <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
                   <div className="text-xs text-gray-500">
                     显示 {filteredCredentials.length} 条记录
                   </div>
@@ -962,14 +948,13 @@ const Dashboard = () => {
                     </button>
                   </div>
                 )}
-              </div>
+              </>
             )}
-          </>
-        )}
-      </motion.div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     )}
-  </AnimatePresence>
-</div>
+  </div>
 
       {/* 中间文本区 */}
       {!showResults && (
