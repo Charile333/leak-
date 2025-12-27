@@ -43,7 +43,7 @@ export const dataService = {
   /**
    * Search domain leaks using Real API
    */
-  searchDomain: async (domain: string, _limit = 100, _offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
+  searchDomain: async (domain: string, limit = 100, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
     try {
       console.log(`[dataService] Searching domain: ${domain}`);
       
