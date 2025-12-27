@@ -328,6 +328,7 @@ class LeakRadarAPI {
   ): Promise<{ export_id: number }> {
     const domain = this.sanitizeDomain(domainInput);
     // 使用用户提供的最新路径格式: /leaks/@<domain>/export
+    // 参数调整: 明确使用 format 和 type (对应之前的 category/leak_type)
     return this.request<{ export_id: number }>(`/leaks/@${domain}/export`, {
       method: 'POST',
       headers: {
@@ -336,8 +337,9 @@ class LeakRadarAPI {
       body: JSON.stringify({ 
         domain: domain,
         format: format,
-        category: category,
-        leak_type: category
+        type: category, // 根据用户提示，这里使用 type 字段
+        leak_type: category, // 保留 leak_type 以防万一
+        category: category   // 保留 category 以防万一
       }),
     });
   }
