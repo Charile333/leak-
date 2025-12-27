@@ -225,7 +225,8 @@ class LeakRadarAPI {
   /**
    * Export domain search results as PDF
    */
-  async exportDomainPDF(domain: string): Promise<Blob> {
+  async exportDomainPDF(domainInput: string): Promise<Blob> {
+    const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
     const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report`, {
       method: 'POST',
       headers: {
@@ -252,7 +253,8 @@ class LeakRadarAPI {
    * Request CSV export for a domain and category
    * Returns an export_id
    */
-  async requestDomainCSV(domain: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<{ export_id: number }> {
+  async requestDomainCSV(domainInput: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<{ export_id: number }> {
+    const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
     return this.request<{ export_id: number }>(`/search/domain/${domain}/export`, {
       method: 'POST',
       headers: {

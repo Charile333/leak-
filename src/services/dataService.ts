@@ -43,7 +43,15 @@ export const dataService = {
   /**
    * Search domain leaks using Real API
    */
-  searchDomain: async (domain: string, limit = 100, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
+  /**
+   * 清理域名：移除 http(s):// 和 www. 前缀
+   */
+  sanitizeDomain(domain: string): string {
+    return domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+  },
+
+  searchDomain: async (domainInput: string, limit = 100, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
+    const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
     try {
       console.log(`[dataService] Searching domain: ${domain}`);
       
