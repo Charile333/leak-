@@ -116,15 +116,20 @@ export default async function handler(req, res) {
 
         try {
           console.log(`[Proxy] [Try ${i+1}/${prefixesToTry.length}] ${req.method} ${currentUrl}`);
-          const response = await axios({
+          const axiosConfig = {
             method: req.method,
             url: currentUrl,
             headers: headers,
-            data: req.body,
             responseType: 'arraybuffer',
             timeout: (req.url.includes('/export') || req.url.includes('/report')) ? 60000 : 30000,
             validateStatus: (status) => status < 400
-          });
+          };
+
+          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase()) && req.body) {
+            axiosConfig.data = req.body;
+          }
+
+          const response = await axios(axiosConfig);
           
           console.log(`[Proxy] [Success] ${currentUrl}`);
           return sendResponse(res, response, currentUrl);
@@ -151,14 +156,17 @@ export default async function handler(req, res) {
         console.log(`Trying stats fallback: ${fallbackUrl}`);
         try {
           const authHeaders = { 'Authorization': `Bearer ${API_KEY}`, 'X-API-Key': API_KEY };
-          const response = await axios({
+          const axiosConfig = {
             method: req.method,
             url: fallbackUrl,
             headers: { ...authHeaders, 'Host': 'api.leakradar.io' },
-            data: req.body,
             responseType: 'arraybuffer',
             timeout: 15000
-          });
+          };
+          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase()) && req.body) {
+            axiosConfig.data = req.body;
+          }
+          const response = await axios(axiosConfig);
           return sendResponse(res, response, fallbackUrl);
         } catch (e) {
           console.log(`Fallback ${fallback} failed: ${e.message}`);
