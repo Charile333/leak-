@@ -948,9 +948,10 @@ const Dashboard = () => {
                     </button>
                   </div>
                 )}
-              </>
-            )}
-          </motion.div>
+              </div>
+            </>
+          )}
+        </motion.div>
         </AnimatePresence>
       </div>
     )}
