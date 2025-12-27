@@ -18,19 +18,22 @@ export default async function handler(req, res) {
   // 2. 获取目标路径 (还原回最稳定的版本)
   const targetPath = req.url.replace('/api', '');
   
-  // 特殊处理 stats 路径映射：前端调用 /leakradar/stats，后端需要 /v1/stats
-  // 下面的 targetUrl 逻辑会自动处理 /leakradar -> /v1
-  // 所以这里不需要额外修改 targetPath，除非官方路径确实变了
+  // 特殊处理 stats 路径映射：前端调用 /leakradar/stats，后端需要 /v1/metadata/stats
+  // 之前的 404 可能是因为路径不对，尝试映射到 metadata/stats
+  let effectivePath = targetPath;
+  if (targetPath === '/leakradar/stats') {
+    effectivePath = '/leakradar/metadata/stats';
+  }
   
   // 根据路径判断使用哪个 API
-  const isDnsRequest = targetPath.startsWith('/dns-v1');
+  const isDnsRequest = effectivePath.startsWith('/dns-v1');
   const API_KEY = isDnsRequest 
     ? (process.env.DNS_API_TOKEN || process.env.VITE_DNS_API_TOKEN)
     : process.env.LEAKRADAR_API_KEY;
 
   let targetUrl = isDnsRequest
-    ? `https://src.0zqq.com${targetPath.replace('/dns-v1', '/api/v1')}`
-    : `https://api.leakradar.io${targetPath.replace('/leakradar', '/v1')}`;
+    ? `https://src.0zqq.com${effectivePath.replace('/dns-v1', '/api/v1')}`
+    : `https://api.leakradar.io${effectivePath.replace('/leakradar', '/v1')}`;
 
   if (!API_KEY) {
     return res.status(500).json({ 
