@@ -173,6 +173,7 @@ class LeakRadarAPI {
    */
   async getDomainSummary(domain: string): Promise<LeakRadarDomainSummary> {
     const sanitized = this.sanitizeDomain(domain);
+    // 尝试支持多种总结路径
     return this.request<LeakRadarDomainSummary>(`/search/domain/${sanitized}`);
   }
 

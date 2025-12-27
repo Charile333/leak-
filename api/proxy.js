@@ -98,6 +98,15 @@ export default async function handler(req, res) {
                             cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/);
         const domain = domainMatch ? domainMatch[1] : '';
         
+        // 提取子路径 (如 /subdomains, /urls, /employees 等)
+        let subPath = '';
+        if (domain) {
+          const parts = cleanInnerPath.split(domain);
+          if (parts.length > 1) {
+            subPath = parts[1].split('?')[0]; // 获取域名后的部分，排除 query
+          }
+        }
+
         // 自动识别 category
         let category = '';
         if (cleanInnerPath.includes('/employees')) category = 'employees';
@@ -105,13 +114,19 @@ export default async function handler(req, res) {
         else if (cleanInnerPath.includes('/third_parties')) category = 'third_parties';
         
         prefixesToTry = [
-          // 方案 1: 最稳健的 v1 search 路径
-          `/v1/search/domain/${domain}${category ? '/' + category : ''}`,
-          // 方案 2: 极简路径
-          `/v1/domain/${domain}${category ? '/' + category : ''}`,
-          // 方案 3: 带 @ 的 leaks 路径
+          // 方案 1: 标准 search 路径
+          `/v1/search/domain/${domain}${subPath}`,
+          // 方案 2: 极简 domain 路径
+          `/v1/domain/${domain}${subPath}`,
+          // 方案 2.5: metadata 路径 (常用总结路径)
+          subPath === '' || subPath === '/' ? `/v1/metadata/domain/${domain}` : null,
+          subPath === '' || subPath === '/' ? `/v1/info/domain/${domain}` : null,
+          // 方案 3: 特殊处理子域名和 URL (某些 API 版本可能在顶层)
+          subPath.includes('subdomains') ? `/v1/subdomains/${domain}` : null,
+          subPath.includes('urls') ? `/v1/urls/${domain}` : null,
+          // 方案 4: leaks 路径 (用于解锁和查询)
           `/v1/leaks/@${domain}${category ? '?type=' + category : ''}`,
-          // 方案 4: 直接透传
+          // 方案 5: 直接透传
           cleanInnerPath.startsWith('/v1') ? cleanInnerPath : `/v1${cleanInnerPath}`
         ].filter(Boolean);
       } else if (cleanInnerPath.includes('/export')) {
