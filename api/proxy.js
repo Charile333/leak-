@@ -88,19 +88,27 @@ export default async function handler(req, res) {
     console.log(`Proxying ${req.method} request to: ${targetUrl}`);
     
     let response;
-    const directPath = isDnsRequest ? targetPath.replace('/dns-v1', '') : targetPath.replace('/leakradar', '');
-    const prefixesToTry = isDnsRequest 
-      ? [`/api/v1${directPath}`]
-      : [
-          directPath, // 1. /search/domain/...
-          `/v1${directPath}`, // 2. /v1/search/domain/...
-          `/api/v1${directPath}`, // 3. /api/v1/search/domain/...
-          directPath.replace('/search', '/v1'), // 4. /v1/domain/...
-          directPath.replace('/search', '/api/v1'), // 5. /api/v1/domain/...
-          `/v1${directPath.replace('/search', '')}`, // 6. /v1/domain/... (another variant)
-          directPath.replace('/search/domain', '/v1/report/domain'), // 7. 特殊处理 report
-          directPath.replace('/search/domain', '/v1/export/domain'), // 8. 特殊处理 export
-        ];
+    const isDnsRequest = targetPath.startsWith('/dns-v1');
+    const innerPath = isDnsRequest ? targetPath.replace('/dns-v1', '') : targetPath.replace('/leakradar', '');
+    
+    let prefixesToTry = [];
+    if (isDnsRequest) {
+      prefixesToTry = [`/api/v1${innerPath}`];
+    } else {
+      prefixesToTry = [
+        innerPath, // 1. /search/domain/...
+        `/v1${innerPath}`, // 2. /v1/search/domain/...
+        `/api/v1${innerPath}`, // 3. /api/v1/search/domain/...
+        innerPath.replace('/search', '/v1'), // 4. /v1/domain/...
+        innerPath.replace('/search', '/api/v1'), // 5. /api/v1/domain/...
+        `/v1${innerPath.replace('/search', '')}`, // 6. /v1/domain/... (another variant)
+        innerPath.replace('/search/domain', '/v1/report/domain'), // 7. 特殊处理 report
+        innerPath.replace('/search/domain', '/v1/export/domain'), // 8. 特殊处理 export
+        innerPath.replace('/search/export', '/v1/search/export'), // 9. 特殊处理 export status/download
+        innerPath.replace('/search/export', '/v1/export'), // 10. 特殊处理 export status/download
+        `/v1/search${innerPath}`, // 11. 显式增加 /v1/search 前缀
+      ];
+    }
 
     const host = isDnsRequest ? 'src.0zqq.com' : 'api.leakradar.io';
     
