@@ -722,7 +722,9 @@ const Dashboard = () => {
       
       const checkStatus = async () => {
         try {
+          console.log(`Checking CSV export status for ID: ${export_id}, Attempt: ${attempts + 1}`);
           const res = await leakRadarApi.getExportStatus(export_id);
+          console.log('CSV Status Response:', res);
           const status = res.status || (res as any).data?.status;
           
           if (status === 'success') {
