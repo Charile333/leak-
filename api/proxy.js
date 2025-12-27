@@ -102,11 +102,18 @@ export default async function handler(req, res) {
         innerPath.replace('/search', '/v1'), // 4. /v1/domain/...
         innerPath.replace('/search', '/api/v1'), // 5. /api/v1/domain/...
         `/v1${innerPath.replace('/search', '')}`, // 6. /v1/domain/... (another variant)
-        innerPath.replace('/search/domain', '/v1/report/domain'), // 7. 特殊处理 report
-        innerPath.replace('/search/domain', '/v1/export/domain'), // 8. 特殊处理 export
+        innerPath.replace('/search/domain', '/v1/report/domain'), // 7. /v1/report/domain/.../report
+        innerPath.replace('/search/domain', '/v1/report/domain').replace('/report', ''), // 7b. /v1/report/domain/...
+        innerPath.replace('/search/domain', '/v1/export/domain'), // 8. /v1/export/domain/.../export
+        innerPath.replace('/search/domain', '/v1/export/domain').replace('/export', ''), // 8b. /v1/export/domain/...
         innerPath.replace('/search/export', '/v1/search/export'), // 9. 特殊处理 export status/download
         innerPath.replace('/search/export', '/v1/export'), // 10. 特殊处理 export status/download
+        innerPath.replace('/search/export', '/api/v1/export'), // 10b. 尝试 /api/v1/export/...
         `/v1/search${innerPath}`, // 11. 显式增加 /v1/search 前缀
+        innerPath.replace('/search/domain', '/v1/search/domain'), // 12. 确保 /v1/search/domain/...
+        innerPath.replace('/search/domain', '/v1/domain'), // 13. 尝试 /v1/domain/...
+        `/api/v1/search${innerPath.replace('/search', '')}`, // 14. /api/v1/search/advanced
+        `/v1/search${innerPath.replace('/search', '')}`, // 15. /v1/search/advanced
       ];
     }
 
@@ -130,9 +137,10 @@ export default async function handler(req, res) {
         targetUrl = currentUrl;
         return sendResponse(res, response, targetUrl);
       } catch (axiosError) {
-        // 如果是最后一个尝试也失败了，或者不是 404，则记录并继续或抛出
-        if (axiosError.response && axiosError.response.status === 404) {
-          console.log(`Path 404: ${currentUrl}`);
+        // 如果是 404 或者 400 (Bad Request，有时路径不对也会报400)，则继续尝试下一个路径
+        const status = axiosError.response?.status;
+        if (status === 404 || status === 400) {
+          console.log(`Path ${status}: ${currentUrl}`);
           if (i === prefixesToTry.length - 1) throw axiosError;
           continue;
         }
