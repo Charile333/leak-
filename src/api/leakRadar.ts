@@ -333,9 +333,10 @@ class LeakRadarAPI {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ 
+        domain: domain,
         format: format,
         category: category,
-        leak_type: category // 官网 API 似乎更倾向于使用 leak_type 参数
+        leak_type: category
       }),
     });
   }

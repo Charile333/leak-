@@ -66,30 +66,36 @@ export default async function handler(req, res) {
 
     const innerPath = isDnsRequest ? targetPath.replace('/dns-v1', '') : targetPath.replace('/leakradar', '');
     
+    // 提取域名（如果路径中有的话）
+    let domainFromPath = '';
+    const domainMatch = innerPath.match(/\/domain\/([^\/]+)/);
+    if (domainMatch) {
+      domainFromPath = domainMatch[1];
+    }
+
     // 3. 构建尝试路径列表
     let prefixesToTry = [];
     if (isDnsRequest) {
       prefixesToTry = [`/api/v1${innerPath}`];
     } else {
+      const cleanInnerPath = innerPath.replace(/\/$/, ''); // 去掉末尾斜杠
       prefixesToTry = [
-        `/v1${innerPath}`, 
-        `/v1/search${innerPath.replace('/search', '')}`,
-        `/v1/domain${innerPath.replace('/search/domain', '')}`,
-        innerPath,
-        `/search${innerPath.replace('/search', '')}`,
+        `/v1${cleanInnerPath}`, 
+        `/v1/search${cleanInnerPath.replace('/search', '')}`,
+        `/v1/domain${cleanInnerPath.replace('/search/domain', '')}`,
+        cleanInnerPath,
+        `/search${cleanInnerPath.replace('/search', '')}`,
+        domainFromPath ? `/v1/export/domain/${domainFromPath}` : null,
+        domainFromPath ? `/v1/search/domain/${domainFromPath}/export` : null,
+        `/v1/search/export`,
+        `/v1/export/all`,
         innerPath.includes('/unlock') ? `/v1/search/domain${innerPath.replace('/search/domain', '').replace('/unlock', '')}/unlock` : null,
         innerPath.includes('/report') ? `/v1/report/domain${innerPath.replace('/search/domain', '').replace('/report', '')}` : null,
         innerPath.includes('/export') ? `/v1/export/domain${innerPath.replace('/search/domain', '').replace('/export', '')}` : null,
-        `/api/v1${innerPath}`,
-        `/api/v1/search${innerPath.replace('/search', '')}`,
-        `/v1/search/domain${innerPath.replace('/search/domain', '')}`,
-        `/v1/profile${innerPath.replace('/profile', '')}`,
+        `/api/v1${cleanInnerPath}`,
+        `/v1/search/domain${cleanInnerPath.replace('/search/domain', '')}`,
         `/v1/profile/unlocked/export`,
         `/v1/profile/export`,
-        `/v1/unlocked/export`,
-        `/v1/search/export`,
-        `/v1/export/unlocked`,
-        `/v1/export/all`,
       ].filter(Boolean);
     }
 

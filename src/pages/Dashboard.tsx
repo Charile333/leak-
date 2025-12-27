@@ -698,13 +698,16 @@ const Dashboard = () => {
     if (!results?.summary.domain) return;
     try {
       setIsSearching(true);
+      console.log('Starting CSV Export for:', results.summary.domain, 'Category:', activeTab);
       
       let category: 'employees' | 'customers' | 'third_parties' = 'employees';
       if (activeTab === 'Customers') category = 'customers';
       else if (activeTab === 'Third-Parties') category = 'third_parties';
 
       // 优先尝试使用 Domain Export 接口 (这是官网图片中 17513 的类型)
-      const { export_id } = await leakRadarApi.requestDomainExport(results.summary.domain, 'csv', category);
+      const res = await leakRadarApi.requestDomainExport(results.summary.domain, 'csv', category);
+      console.log('Export requested successfully, ID:', res.export_id);
+      const export_id = res.export_id;
       
       const notification = document.createElement('div');
       notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
