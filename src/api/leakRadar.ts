@@ -318,10 +318,14 @@ class LeakRadarAPI {
   }
 
   /**
-   * Request CSV export for a domain and category
-   * Returns an export_id
+   * Request an export for a domain (PDF, CSV, etc.)
+   * Returns an export_id for polling
    */
-  async requestDomainCSV(domainInput: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<{ export_id: number }> {
+  async requestDomainExport(
+    domainInput: string, 
+    format: 'pdf' | 'csv' | 'json' = 'pdf',
+    category: 'employees' | 'customers' | 'third_parties' | 'all' = 'all'
+  ): Promise<{ export_id: number }> {
     const domain = this.sanitizeDomain(domainInput);
     return this.request<{ export_id: number }>(`/search/domain/${domain}/export`, {
       method: 'POST',
@@ -329,10 +333,18 @@ class LeakRadarAPI {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ 
-        format: 'csv',
+        format: format,
         category: category 
       }),
     });
+  }
+
+  /**
+   * Request CSV export for a domain and category (Legacy wrapper)
+   * Returns an export_id
+   */
+  async requestDomainCSV(domainInput: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<{ export_id: number }> {
+    return this.requestDomainExport(domainInput, 'csv', category);
   }
 
   /**

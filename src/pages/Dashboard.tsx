@@ -622,18 +622,75 @@ const Dashboard = () => {
   const handleDownloadPDF = async () => {
     if (!results?.summary.domain) return;
     try {
-      const blob = await leakRadarApi.exportDomainPDF(results.summary.domain);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Security_Report_${results.summary.domain}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      setIsSearching(true);
+      // 尝试直接下载（Report 接口）
+      try {
+        const blob = await leakRadarApi.exportDomainPDF(results.summary.domain);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Security_Report_${results.summary.domain}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setIsSearching(false);
+        return;
+      } catch (e) {
+        console.warn('Direct PDF report failed, trying Exports API...', e);
+      }
+
+      // 如果直接下载失败，尝试使用 Exports 接口（异步）
+      const { export_id } = await leakRadarApi.requestDomainExport(results.summary.domain, 'pdf', 'all');
+      
+      const notification = document.createElement('div');
+      notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
+      notification.innerHTML = `<span class="animate-spin">⏳</span> 正在准备 PDF 安全报告...`;
+      document.body.appendChild(notification);
+
+      // 轮询逻辑
+      let attempts = 0;
+      const maxAttempts = 20;
+      
+      const checkStatus = async () => {
+        try {
+          const res = await leakRadarApi.getExportStatus(export_id);
+          const status = res.status || (res as any).data?.status;
+          
+          if (status === 'success') {
+            const blob = await leakRadarApi.downloadExport(export_id);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Security_Report_${results.summary.domain}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            if (document.body.contains(notification)) document.body.removeChild(notification);
+            setIsSearching(false);
+          } else if (status === 'failed') {
+            throw new Error('服务器生成 PDF 失败');
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(checkStatus, 3000);
+          } else {
+            throw new Error('PDF 生成超时，请稍后重试');
+          }
+        } catch (e: any) {
+          console.error('PDF Download error:', e);
+          alert(e.message || '生成 PDF 失败');
+          if (document.body.contains(notification)) document.body.removeChild(notification);
+          setIsSearching(false);
+        }
+      };
+
+      setTimeout(checkStatus, 2000);
+
     } catch (error: any) {
-      console.error('PDF Download Error:', error);
-      alert(error.message || 'PDF 导出失败，请重试');
+      console.error('PDF Export Error:', error);
+      alert(error.message || 'PDF 导出请求失败');
+      setIsSearching(false);
     }
   };
 
@@ -642,16 +699,26 @@ const Dashboard = () => {
     try {
       setIsSearching(true);
       
-      // 使用新接口：导出已解锁的泄露
+      // 使用 Unlocked Leaks 接口导出 (CSV/TXT/JSON)
+      // 根据用户建议，这是导出已解锁泄露的最佳方式
       const blob = await leakRadarApi.exportUnlockedLeaks('csv', results.summary.domain);
       
-      // 检查 blob 内容是否为 JSON 错误信息
-      const text = await blob.text();
-      if (text.startsWith('{') && text.includes('export_id')) {
-        // 如果返回的是 JSON 且包含 export_id，说明后端该接口目前也是异步的，或者权限不足回退到了异步模式
-        const res = JSON.parse(text);
-        if (res.export_id) {
-          throw new Error('TRIGGER_LEGACY_EXPORT:' + res.export_id);
+      // 检查返回的是否是二进制文件
+      if (blob.type === 'application/json') {
+        const text = await blob.text();
+        try {
+          const res = JSON.parse(text);
+          if (res.export_id) {
+            // 如果后端返回了 export_id，说明触发了异步导出流程
+            throw new Error('TRIGGER_LEGACY_EXPORT:' + res.export_id);
+          }
+          if (res.error || res.message) {
+            throw new Error(res.error || res.message);
+          }
+        } catch (e: any) {
+          if (e.message?.startsWith('TRIGGER_LEGACY_EXPORT:')) throw e;
+          // 其他 JSON 解析错误或业务错误
+          console.warn('Unlocked export returned non-blob data:', text);
         }
       }
       
