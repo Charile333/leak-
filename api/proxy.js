@@ -87,11 +87,12 @@ export default async function handler(req, res) {
         headers: headers,
         data: req.body,
         responseType: 'arraybuffer',
-        timeout: 10000 // 10s timeout
+        timeout: 30000 // 导出接口可能需要更长时间，增加到 30s
       });
     } catch (axiosError) {
-      // 如果 404，尝试 /v1 路径
+      // 如果 404，且不包含 /v1，尝试加上 /v1
       if (axiosError.response && axiosError.response.status === 404 && !isDnsRequest) {
+        // 尝试两种路径：/v1 和 /v1/search (某些导出接口可能在 search 目录下)
         const v1Path = targetPath.replace('/leakradar', '/v1');
         const v1Url = `https://api.leakradar.io${v1Path}${searchParams}`;
         
@@ -103,11 +104,32 @@ export default async function handler(req, res) {
             headers: headers,
             data: req.body,
             responseType: 'arraybuffer',
-            timeout: 10000
+            timeout: 30000
           });
-          targetUrl = v1Url; // 成功了，更新记录
+          targetUrl = v1Url;
         } catch (v1Error) {
-          // 如果还是不行，且是 stats 请求，尝试更多备选路径
+          // 如果还是 404，且是导出相关的请求，尝试 /v1/search/...
+          if (targetPath.includes('/report') || targetPath.includes('/export')) {
+            const searchV1Path = targetPath.replace('/leakradar', '/v1/search');
+            const searchV1Url = `https://api.leakradar.io${searchV1Path}${searchParams}`;
+            console.log(`V1 path 404, trying search v1 path: ${searchV1Url}`);
+            try {
+              response = await axios({
+                method: req.method,
+                url: searchV1Url,
+                headers: headers,
+                data: req.body,
+                responseType: 'arraybuffer',
+                timeout: 30000
+              });
+              targetUrl = searchV1Url;
+              return sendResponse(res, response, targetUrl);
+            } catch (searchError) {
+              console.log(`Search v1 path also failed: ${searchError.message}`);
+            }
+          }
+
+          // 如果是 stats 请求，尝试更多备选路径
           if (targetPath.includes('stats')) {
             const statsFallbacks = [
               '/v1/metadata/stats',
