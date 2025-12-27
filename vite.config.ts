@@ -13,6 +13,12 @@ export default defineConfig(({ mode }) => {
     console.log('\x1b[32m%s\x1b[0m', '✅ LeakRadar API Key loaded from .env');
   }
 
+  if (!env.VITE_DNS_API_TOKEN) {
+    console.warn('\x1b[33m%s\x1b[0m', '⚠️  Warning: VITE_DNS_API_TOKEN is not set in .env file.');
+  } else {
+    console.log('\x1b[32m%s\x1b[0m', '✅ DNS API Token loaded from .env');
+  }
+
   return {
     plugins: [
       react(),
@@ -52,6 +58,26 @@ export default defineConfig(({ mode }) => {
 
             proxy.on('error', (err, _req) => {
               console.error('\x1b[31m[Proxy Fatal Error]\x1b[0m', err);
+            });
+          },
+        },
+        '/api/dns-v1': {
+          target: 'https://api.hunter.how',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/dns-v1/, '/api/v1'),
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq, req) => {
+              const apiToken = env.VITE_DNS_API_TOKEN?.trim();
+              if (apiToken) {
+                proxyReq.removeHeader('Authorization');
+                proxyReq.setHeader('Authorization', `Bearer ${apiToken}`);
+                proxyReq.setHeader('Host', 'api.hunter.how');
+                console.log(`\x1b[36m[DNS Proxy Request]\x1b[0m ${req.method} ${req.url} -> api.hunter.how`);
+              }
+            });
+            
+            proxy.on('error', (err, _req) => {
+              console.error('\x1b[31m[DNS Proxy Fatal Error]\x1b[0m', err);
             });
           },
         },

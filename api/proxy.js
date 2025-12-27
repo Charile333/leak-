@@ -17,20 +17,29 @@ export default async function handler(req, res) {
 
   // 2. 获取目标路径 (去掉 /api 部分)
   const targetPath = req.url.replace('/api', '');
-  const API_KEY = process.env.LEAKRADAR_API_KEY;
+  
+  // 根据路径判断使用哪个 API
+  const isDnsRequest = targetPath.startsWith('/dns-v1');
+  const API_KEY = isDnsRequest 
+    ? (process.env.DNS_API_TOKEN || process.env.VITE_DNS_API_TOKEN)
+    : process.env.LEAKRADAR_API_KEY;
+
+  const targetUrl = isDnsRequest
+    ? `https://api.hunter.how${targetPath.replace('/dns-v1', '/api/v1')}`
+    : `https://api.leakradar.io${targetPath}`;
 
   if (!API_KEY) {
     return res.status(500).json({ 
-      error: 'Missing LEAKRADAR_API_KEY', 
-      details: 'Please set LEAKRADAR_API_KEY in Vercel Environment Variables and redeploy.' 
+      error: 'Missing API Key', 
+      details: `Please set ${isDnsRequest ? 'DNS_API_TOKEN' : 'LEAKRADAR_API_KEY'} in Vercel Environment Variables and redeploy.` 
     });
   }
 
   try {
-    console.log(`Proxying request to: https://api.leakradar.io${targetPath}`);
+    console.log(`Proxying request to: ${targetUrl}`);
     const response = await axios({
       method: req.method,
-      url: `https://api.leakradar.io${targetPath}`,
+      url: targetUrl,
       headers: {
         'Authorization': `Bearer ${API_KEY}`,
         'Accept': 'application/json',
