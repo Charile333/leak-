@@ -81,6 +81,11 @@ export default async function handler(req, res) {
       const cleanInnerPath = innerPath.replace(/\/$/, ''); // 去掉末尾斜杠
       prefixesToTry = [
         `/v1${cleanInnerPath}`, 
+        cleanInnerPath.startsWith('/exports') ? `/v1${cleanInnerPath}` : null,
+        cleanInnerPath.startsWith('/exports') ? cleanInnerPath : null,
+        domainFromPath ? `/v1/search/domain/${domainFromPath}/employees/export` : null,
+        domainFromPath ? `/v1/search/domain/${domainFromPath}/customers/export` : null,
+        domainFromPath ? `/v1/search/domain/${domainFromPath}/third_parties/export` : null,
         domainFromPath ? `/v1/leaks/@${domainFromPath}/export` : null,
         domainFromPath ? `/leaks/@${domainFromPath}/export` : null,
         `/v1/search${cleanInnerPath.replace('/search', '')}`,

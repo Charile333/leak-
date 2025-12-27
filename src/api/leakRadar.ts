@@ -319,7 +319,7 @@ class LeakRadarAPI {
 
   /**
    * Request an export for a domain (PDF, CSV, etc.)
-   * Returns an export_id for polling
+   * 根据官方文档: POST /search/domain/{domain}/{leak_type}/export?format=csv
    */
   async requestDomainExport(
     domainInput: string, 
@@ -327,20 +327,12 @@ class LeakRadarAPI {
     category: 'employees' | 'customers' | 'third_parties' | 'all' = 'all'
   ): Promise<{ export_id: number }> {
     const domain = this.sanitizeDomain(domainInput);
-    // 使用用户提供的最新路径格式: /leaks/@<domain>/export
-    // 参数调整: 明确使用 format 和 type (对应之前的 category/leak_type)
-    return this.request<{ export_id: number }>(`/leaks/@${domain}/export`, {
+    // 官方端点: /search/domain/{domain}/{leak_type}/export?format=csv
+    return this.request<{ export_id: number }>(`/search/domain/${domain}/${category}/export?format=${format}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        domain: domain,
-        format: format,
-        type: category, // 根据用户提示，这里使用 type 字段
-        leak_type: category, // 保留 leak_type 以防万一
-        category: category   // 保留 category 以防万一
-      }),
+      }
     });
   }
 
@@ -354,16 +346,18 @@ class LeakRadarAPI {
 
   /**
    * Get export status
+   * 官方端点: GET /exports/{export_id}
    */
   async getExportStatus(exportId: number): Promise<{ status: 'pending' | 'success' | 'failed'; download_url?: string }> {
-    return this.request<{ status: 'pending' | 'success' | 'failed'; download_url?: string }>(`/search/export/${exportId}`);
+    return this.request<{ status: 'pending' | 'success' | 'failed'; download_url?: string }>(`/exports/${exportId}`);
   }
 
   /**
    * Download a prepared export file
+   * 官方端点: GET /exports/{export_id}/download
    */
   async downloadExport(exportId: number): Promise<Blob> {
-    return this.requestBlob(`/search/export/${exportId}/download`, {
+    return this.requestBlob(`/exports/${exportId}/download`, {
       headers: {
         'Accept': '*/*',
       },
