@@ -23,6 +23,10 @@ import {
   Eye,
   EyeOff,
   ChevronLeft,
+  UserCheck,
+  ShieldAlert,
+  UserMinus,
+  ChevronDown,
   Activity
 } from 'lucide-react';
 import { 
@@ -561,8 +565,8 @@ const Dashboard = () => {
     <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 hover:bg-white/[0.05] transition-all group">
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className={cn("p-3 rounded-2xl bg-white/5 group-hover:scale-110 transition-transform", colorClass)}>
-            <Icon className="w-6 h-6" />
+          <div className={cn("group-hover:scale-110 transition-transform", colorClass)}>
+            <Icon className="w-8 h-8" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">{title}</h3>
@@ -709,23 +713,23 @@ const Dashboard = () => {
             ) : (
               <>
                 {/* 顶部标签页 */}
-                <div className="flex flex-wrap items-center gap-3 mb-10">
+                <div className="flex flex-wrap items-center gap-4 mb-12">
               {tabs.map((tab) => (
                 <button
                   key={tab.name}
                   onClick={() => setActiveTab(tab.name)}
                   className={cn(
-                    "flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all group",
+                    "flex items-center gap-3 px-8 py-4 rounded-[24px] text-base font-black transition-all group",
                     activeTab === tab.name
-                      ? "bg-white/10 text-white shadow-xl border border-white/10"
+                      ? "bg-white/10 text-white shadow-2xl border border-white/10 scale-105"
                       : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
                   )}
                 >
-                  <tab.icon className="w-4 h-4" />
-                  <span>{tab.name}</span>
+                  <tab.icon className="w-5 h-5" />
+                  <span className="tracking-tight">{tab.name}</span>
                   {tab.count !== null && (
                     <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-black tracking-tighter transition-colors",
+                      "px-3 py-1 rounded-full text-[12px] font-black tracking-tighter transition-colors ml-1",
                       activeTab === tab.name 
                         ? "bg-white text-black" 
                         : "bg-white/5 text-gray-400 group-hover:bg-white/10"
@@ -768,41 +772,22 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <DetailCard 
                     title="Employees" 
-                    icon={User} 
+                    icon={UserCheck} 
                     data={results.summary.employees} 
                     colorClass="text-emerald-500"
                   />
                   <DetailCard 
                     title="Third Parties" 
-                    icon={Briefcase} 
+                    icon={ShieldAlert} 
                     data={results.summary.third_parties} 
                     colorClass="text-orange-500"
                   />
                   <DetailCard 
                     title="Customers" 
-                    icon={Users} 
+                    icon={UserMinus} 
                     data={results.summary.customers} 
                     colorClass="text-blue-500"
                   />
-                </div>
-
-                {/* 引导查看详情 */}
-                <div 
-                  onClick={() => setActiveTab('Customers')}
-                  className="mt-12 p-8 bg-accent/5 border border-accent/20 rounded-3xl flex items-center justify-between group cursor-pointer hover:bg-accent/10 transition-all"
-                >
-                  <div className="flex items-center gap-6">
-                    <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
-                      <Bolt className="w-7 h-7 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-black text-white tracking-tight">查看详细泄露项分析</h4>
-                      <p className="text-gray-500 font-medium">深度解析受影响的凭证详情及修复建议</p>
-                    </div>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:translate-x-2 transition-transform">
-                    <ChevronRight className="w-6 h-6 text-accent" />
-                  </div>
                 </div>
               </div>
             ) : (
