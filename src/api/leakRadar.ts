@@ -282,7 +282,8 @@ class LeakRadarAPI {
       : `/search/domain/${sanitized}/${category}`;
     
     console.log(`[Debug] Frontend CSV Export requesting path: ${path}`);
-    return this.request<LeakRadarSearchResult>(`${path}?page=1&page_size=10000`);
+    // 修复 422 错误：降低 page_size。官方 API 通常限制单次请求数量（如 1000）
+    return this.request<LeakRadarSearchResult>(`${path}?page=1&page_size=1000`);
   }
 
   /**

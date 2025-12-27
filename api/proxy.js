@@ -198,8 +198,13 @@ export default async function handler(req, res) {
             validateStatus: (status) => status < 400
           };
 
-          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase()) && req.body) {
-            axiosConfig.data = req.body;
+          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
+            // 确保 POST 请求即使没有 body 也能正确处理
+            axiosConfig.data = req.body || {};
+            // 如果是解锁接口，确保 Content-Type 正确
+            if (currentUrl.includes('/unlock')) {
+              headers['Content-Type'] = 'application/json';
+            }
           }
 
           const response = await axios(axiosConfig);
