@@ -91,6 +91,13 @@ export default async function handler(req, res) {
           `/exports/${id}${isDownload ? '/download' : ''}`,
           `/v1/export/${id}${isDownload ? '/download' : ''}`
         ];
+      } else if (cleanInnerPath.includes('/leaks/@')) {
+        // 处理 /leaks/@domain 这种新路径
+        prefixesToTry = [
+          `/v1${cleanInnerPath}`,
+          cleanInnerPath,
+          `/v1/search${cleanInnerPath}`
+        ];
       } else if (cleanInnerPath.includes('/export')) {
         const parts = cleanInnerPath.split('/');
         const id = parts[parts.length - 1];
