@@ -45,6 +45,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Report');
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [autoUnlock, setAutoUnlock] = useState(true); // 默认开启自动解锁
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [totalLeaks, setTotalLeaks] = useState<string>('---,---,---,---');
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
@@ -614,14 +615,16 @@ const Dashboard = () => {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-300 font-mono">
-                                {showPasswords[cred.id] ? cred.password_plaintext : '••••••••••••'}
+                                {autoUnlock || showPasswords[cred.id] ? cred.password_plaintext : '••••••••••••'}
                               </span>
-                              <button 
-                                onClick={() => togglePassword(cred.id)}
-                                className="text-gray-500 hover:text-white transition-colors"
-                              >
-                                {showPasswords[cred.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              </button>
+                              {!autoUnlock && (
+                                <button 
+                                  onClick={() => togglePassword(cred.id)}
+                                  className="text-gray-500 hover:text-white transition-colors"
+                                >
+                                  {showPasswords[cred.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right">
