@@ -205,6 +205,15 @@ class LeakRadarAPI {
   }
 
   /**
+   * Unlock all results for a domain
+   */
+  async unlockDomain(domain: string): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(`/api/search/domain/${domain}/unlock`, {
+      method: 'POST'
+    });
+  }
+
+  /**
    * Get global statistics
    */
   async getStats(): Promise<LeakRadarStats> {

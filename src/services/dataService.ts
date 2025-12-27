@@ -54,7 +54,15 @@ export const dataService = {
         leakRadarApi.getDomainSubdomains(domain, 1, 0).catch(() => ({ total: 0 })),
       ]);
       
-      // 2. Fetch some credentials for display (we combine them for the table)
+      // 2. 自动解锁域名 (用户要求搜索后自动解锁)
+      try {
+        console.log(`[dataService] Auto-unlocking domain: ${domain}`);
+        await leakRadarApi.unlockDomain(domain);
+      } catch (e) {
+        console.warn(`[dataService] Auto-unlock failed or already unlocked:`, e);
+      }
+      
+      // 3. Fetch some credentials for display (we combine them for the table)
       // For performance, we fetch a few from each category
       const [empRes, custRes, thirdRes] = await Promise.all([
         leakRadarApi.searchDomainCategory(domain, 'employees', 20, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
@@ -75,15 +83,15 @@ export const dataService = {
           id: item.id || `leak-${Math.random()}`,
           email: item.email || item.username || '',
           username: item.username || 'N/A',
-          password_plaintext: item.password || '********',
-          password_hash: '',
-          hash_type: 'Unknown',
+          password_plaintext: item.password_plaintext || item.password || '********',
+          password_hash: item.password_hash || '',
+          hash_type: item.hash_type || 'Unknown',
           website: item.url || domain,
-          source: 'LeakRadar',
+          source: item.source || 'LeakRadar',
           leaked_at: item.added_at || new Date().toISOString(),
           type,
           strength,
-          ip_address: undefined
+          ip_address: item.ip_address
         };
       };
 
