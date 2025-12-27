@@ -84,6 +84,8 @@ export default async function handler(req, res) {
         `/api/v1/search${innerPath.replace('/search', '')}`,
         `/v1/search/domain${innerPath.replace('/search/domain', '')}`,
         `/v1/profile${innerPath.replace('/profile', '')}`,
+        `/v1/profile/unlocked/export`,
+        `/v1/search/export`,
       ].filter(Boolean);
     }
 
