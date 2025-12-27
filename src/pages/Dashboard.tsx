@@ -392,16 +392,9 @@ const Dashboard = () => {
   const renderDnsResults = () => {
     if (!dnsResults) return null;
 
-    // 获取当前活动标签页的数据
-    const activeDataKey = dnsActiveSubTab.toLowerCase();
-    const currentData = dnsResults[activeDataKey] || 
-                      (dnsActiveSubTab === 'Subdomains' ? dnsResults.subdomains : 
-                       dnsActiveSubTab === 'Records' ? dnsResults.records : 
-                       dnsActiveSubTab === 'Reverse' ? dnsResults.reverse : 
-                       dnsActiveSubTab === 'SSL' ? dnsResults.ssl : null);
-    
-    const list = currentData?.data?.list || [];
-    const total = currentData?.data?.total || 0;
+    const currentData = dnsResults[dnsActiveSubTab.toLowerCase()];
+    const list = currentData?.data?.list || currentData?.list || [];
+    const total = currentData?.data?.total || currentData?.total || 0;
 
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
@@ -440,53 +433,47 @@ const Dashboard = () => {
               {dnsActiveSubTab === 'Records' && 'DNS 解析记录'}
               {dnsActiveSubTab === 'Reverse' && '反向查询结果'}
               {dnsActiveSubTab === 'SSL' && 'SSL 证书详情'}
-              {total > 0 && (
-                <span className="text-xs font-bold text-gray-500 bg-white/5 px-3 py-1 rounded-full border border-white/5 ml-2">
-                  共 {total} 条记录
-                </span>
-              )}
+              {total > 0 && <span className="text-sm font-bold text-gray-500 bg-white/5 px-3 py-1 rounded-full">{total} 条记录</span>}
             </h3>
             <div className="text-xs text-gray-500 font-mono">
               API Status: <span className="text-emerald-500 font-bold">Connected</span>
             </div>
           </div>
 
-          <div className="min-h-[400px] border border-white/5 rounded-2xl overflow-hidden overflow-x-auto bg-black/20">
+          <div className="overflow-x-auto">
             {list.length > 0 ? (
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[#25252e] border-b border-white/5">
                     {dnsActiveSubTab === 'Subdomains' && (
                       <>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">域名</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">IP 地址</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">端口</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">协议</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">更新时间</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">子域名</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">解析类型</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">记录值</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">更新时间</th>
                       </>
                     )}
                     {dnsActiveSubTab === 'Records' && (
                       <>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">域名</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">主机名</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">类型</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">记录值</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">更新时间</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">解析结果</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">TTL</th>
                       </>
                     )}
                     {dnsActiveSubTab === 'Reverse' && (
                       <>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">IP 地址</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">反向解析域名</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">更新时间</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">域名</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">关联 IP</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">最后发现时间</th>
                       </>
                     )}
                     {dnsActiveSubTab === 'SSL' && (
                       <>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">域名</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">证书主题</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">通用名称 (CN)</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">颁发者</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">生效时间</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">截止时间</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">有效期至</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">状态</th>
                       </>
                     )}
                   </tr>
@@ -496,47 +483,42 @@ const Dashboard = () => {
                     <tr key={idx} className="hover:bg-white/[0.03] transition-colors group">
                       {dnsActiveSubTab === 'Subdomains' && (
                         <>
-                          <td className="px-6 py-4 font-mono text-sm text-white">{item.domain || '-'}</td>
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded text-xs font-mono border border-blue-500/20">
-                              {item.ip || '-'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-400">{item.port || '-'}</td>
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold uppercase">
-                              {item.protocol || '-'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right text-xs text-gray-500 font-mono">{item.update_time || '-'}</td>
+                          <td className="px-6 py-4 text-xs font-bold text-white font-mono">{item.domain || item.subdomain}</td>
+                          <td className="px-6 py-4 text-xs text-accent font-bold">{item.type || 'A'}</td>
+                          <td className="px-6 py-4 text-xs text-gray-400 font-mono">{item.value || item.ip || item.record || '-'}</td>
+                          <td className="px-6 py-4 text-xs text-gray-500">{formatDate(item.updated_at || item.last_seen || '-')}</td>
                         </>
                       )}
                       {dnsActiveSubTab === 'Records' && (
                         <>
-                          <td className="px-6 py-4 font-mono text-sm text-white">{item.domain || '-'}</td>
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-1 bg-accent/10 text-accent rounded text-[10px] font-bold uppercase border border-accent/20">
-                              {item.type || '-'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 font-mono text-xs text-gray-400 break-all max-w-xs">{item.value || '-'}</td>
-                          <td className="px-6 py-4 text-right text-xs text-gray-500 font-mono">{item.update_time || '-'}</td>
+                          <td className="px-6 py-4 text-xs font-bold text-white font-mono">{item.host || item.name}</td>
+                          <td className="px-6 py-4 text-xs text-blue-400 font-bold">{item.type}</td>
+                          <td className="px-6 py-4 text-xs text-gray-400 font-mono">{item.value || item.data}</td>
+                          <td className="px-6 py-4 text-xs text-gray-500">{item.ttl || '-'}</td>
                         </>
                       )}
                       {dnsActiveSubTab === 'Reverse' && (
                         <>
-                          <td className="px-6 py-4 font-mono text-sm text-white">{item.ip || '-'}</td>
-                          <td className="px-6 py-4 font-mono text-sm text-gray-400">{item.domain || '-'}</td>
-                          <td className="px-6 py-4 text-right text-xs text-gray-500 font-mono">{item.update_time || '-'}</td>
+                          <td className="px-6 py-4 text-xs font-bold text-white font-mono">{item.domain}</td>
+                          <td className="px-6 py-4 text-xs text-emerald-400 font-bold">{item.ip}</td>
+                          <td className="px-6 py-4 text-xs text-gray-500">{formatDate(item.last_seen || item.updated_at)}</td>
                         </>
                       )}
                       {dnsActiveSubTab === 'SSL' && (
                         <>
-                          <td className="px-6 py-4 font-mono text-sm text-white">{item.domain || '-'}</td>
-                          <td className="px-6 py-4 text-xs text-gray-400 max-w-xs truncate">{item.subject || '-'}</td>
-                          <td className="px-6 py-4 text-xs text-gray-400 truncate">{item.issuer || '-'}</td>
-                          <td className="px-6 py-4 text-xs text-gray-500 font-mono">{item.start_time || '-'}</td>
-                          <td className="px-6 py-4 text-right text-xs text-gray-500 font-mono">{item.end_time || '-'}</td>
+                          <td className="px-6 py-4 text-xs font-bold text-white font-mono">{item.common_name || item.subject_cn}</td>
+                          <td className="px-6 py-4 text-xs text-gray-400">{item.issuer || item.issuer_cn}</td>
+                          <td className="px-6 py-4 text-xs text-gray-400">{formatDate(item.not_after || item.expiry_date)}</td>
+                          <td className="px-6 py-4">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded-full text-[9px] font-bold",
+                              new Date(item.not_after || item.expiry_date) > new Date() 
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                                : "bg-red-500/10 text-red-400 border border-red-500/20"
+                            )}>
+                              {new Date(item.not_after || item.expiry_date) > new Date() ? '有效' : '已过期'}
+                            </span>
+                          </td>
                         </>
                       )}
                     </tr>
@@ -544,10 +526,19 @@ const Dashboard = () => {
                 </tbody>
               </table>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                <Search className="w-12 h-12 mb-4 opacity-20" />
-                <p className="font-bold">未找到相关记录</p>
-                <p className="text-xs opacity-50">尝试更换搜索关键词或稍后再试</p>
+              <div className="min-h-[300px] flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-white/5 rounded-2xl">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                  <Search className="w-8 h-8 opacity-20" />
+                </div>
+                <p className="font-bold">暂无查询结果</p>
+                <p className="text-xs opacity-50 mt-1">尝试更换查询关键词或稍后再试</p>
+                {/* 调试信息 */}
+                <details className="mt-4 text-[10px] opacity-20">
+                  <summary>查看 API 原始响应</summary>
+                  <pre className="mt-2 p-4 bg-black/50 rounded-lg text-left overflow-auto max-w-md max-h-40">
+                    {JSON.stringify(currentData, null, 2)}
+                  </pre>
+                </details>
               </div>
             )}
           </div>

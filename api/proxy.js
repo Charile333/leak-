@@ -25,14 +25,8 @@ export default async function handler(req, res) {
     : process.env.LEAKRADAR_API_KEY;
 
   let targetUrl = isDnsRequest
-    ? `https://api.hunter.how${targetPath.replace('/dns-v1', '/api/v1')}`
+    ? `https://src.0zqq.com${targetPath.replace('/dns-v1', '/api/v1')}`
     : `https://api.leakradar.io${targetPath.replace('/leakradar', '')}`;
-
-  // hunter.how 需要在 query parameter 中传递 api-key
-  if (isDnsRequest) {
-    const separator = targetUrl.includes('?') ? '&' : '?';
-    targetUrl += `${separator}api-key=${API_KEY}`;
-  }
 
   if (!API_KEY) {
     return res.status(500).json({ 
@@ -47,13 +41,9 @@ export default async function handler(req, res) {
     // 构造请求头
     const headers = {
       'Accept': 'application/json',
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_KEY}`
     };
-
-    // leakradar.io 通常使用 Bearer Token
-    if (!isDnsRequest) {
-      headers['Authorization'] = `Bearer ${API_KEY}`;
-    }
 
     const response = await axios({
       method: req.method,

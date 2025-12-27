@@ -62,20 +62,17 @@ export default defineConfig(({ mode }) => {
           },
         },
         '/api/dns-v1': {
-          target: 'https://api.hunter.how',
+          target: 'https://src.0zqq.com',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/dns-v1/, '/api/v1'),
           configure: (proxy) => {
             proxy.on('proxyReq', (proxyReq, req) => {
               const apiToken = env.VITE_DNS_API_TOKEN?.trim();
               if (apiToken) {
-                // Hunter.how uses api-key in query parameter, not Bearer token
-                const url = new URL(proxyReq.path, 'https://api.hunter.how');
-                url.searchParams.set('api-key', apiToken);
-                proxyReq.path = url.pathname + url.search;
-                
-                proxyReq.setHeader('Host', 'api.hunter.how');
-                console.log(`\x1b[36m[DNS Proxy Request]\x1b[0m ${req.method} ${proxyReq.path} -> api.hunter.how`);
+                // 使用 Bearer Token 认证
+                proxyReq.setHeader('Authorization', `Bearer ${apiToken}`);
+                proxyReq.setHeader('Host', 'src.0zqq.com');
+                console.log(`\x1b[36m[DNS Proxy Request]\x1b[0m ${req.method} ${proxyReq.path} -> src.0zqq.com`);
               }
             });
             
