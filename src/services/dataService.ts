@@ -62,25 +62,9 @@ export const dataService = {
         leakRadarApi.getDomainSubdomains(domain, 1, 0).catch(() => ({ total: 0 })),
       ]);
       
-      // 2. 自动解锁域名 (用户要求搜索后自动解锁)
-      try {
-        console.log(`[dataService] Auto-unlocking domain categories: ${domain}`);
-        // 解锁所有分类，不等待它们完成以加快响应速度，但通过 Promise.allSettled 确保尝试过
-        Promise.allSettled([
-          leakRadarApi.unlockDomain(domain, 'employees'),
-          leakRadarApi.unlockDomain(domain, 'customers'),
-          leakRadarApi.unlockDomain(domain, 'third_parties')
-        ]).then(results => {
-          results.forEach((res, i) => {
-            const cats = ['employees', 'customers', 'third_parties'];
-            if (res.status === 'rejected') {
-              console.warn(`[dataService] Auto-unlock failed for ${cats[i]}:`, res.reason);
-            }
-          });
-        });
-      } catch (e) {
-        console.warn(`[dataService] Auto-unlock process error:`, e);
-      }
+      // 2. 自动解锁逻辑
+      // 注意：LeakRadar API 只要带了 API Key 调用普通查询接口，返回的数据即会自动解锁。
+      // 无需专门调用已废弃的 /unlock 接口。
       
       // 3. Fetch some credentials for display (we combine them for the table)
       // For performance, we fetch from each category based on limit and offset
