@@ -42,16 +42,20 @@ export default async function handler(req, res) {
       return res.status(response.status).send(response.data);
     }
 
-    // 2. 获取目标路径
+    // 2. 获取目标路径 (更健壮的解析)
     const url = new URL(req.url, `http://${req.headers.host}`);
     let targetPath = url.pathname;
-    if (targetPath.startsWith('/api')) {
-      targetPath = targetPath.substring(4); // 去掉 /api
-    }
-    const searchParams = url.search;
     
+    // 彻底剥离所有已知的前缀，拿到纯净的业务路径
+    let innerPath = targetPath
+      .replace(/^\/api/, '')
+      .replace(/^\/leakradar/, '')
+      .replace(/^\/api\/leakradar/, '');
+    
+    if (!innerPath.startsWith('/')) innerPath = '/' + innerPath;
+
     // 根据路径判断使用哪个 API
-    const isDnsRequest = targetPath.startsWith('/dns-v1');
+    const isDnsRequest = innerPath.startsWith('/dns-v1');
     const API_KEY = isDnsRequest 
       ? (process.env.DNS_API_TOKEN || process.env.VITE_DNS_API_TOKEN)
       : (process.env.LEAKRADAR_API_KEY || process.env.VITE_LEAKRADAR_API_KEY);
@@ -64,7 +68,9 @@ export default async function handler(req, res) {
       });
     }
 
-    const innerPath = isDnsRequest ? targetPath.replace('/dns-v1', '') : targetPath.replace('/leakradar', '');
+    if (isDnsRequest) {
+      innerPath = innerPath.replace('/dns-v1', '');
+    }
     
     // 3. 构建尝试路径列表 (优先匹配官方标准路径)
     let prefixesToTry = [];
@@ -73,28 +79,31 @@ export default async function handler(req, res) {
     } else {
       const cleanInnerPath = innerPath.replace(/\/$/, '');
       
-      // 如果是导出相关路径，直接锁定官方端点，不进行多余探测
-      if (cleanInnerPath.startsWith('/exports')) {
+      // 如果是导出状态查询，尝试所有已知的变体
+      if (cleanInnerPath.includes('/export')) {
         const id = cleanInnerPath.split('/').pop();
-        prefixesToTry = [
-          `/v1/search/export/${id}`,
-          `/v1${cleanInnerPath}`,
-          cleanInnerPath,
-          `/v1/search${cleanInnerPath}`,
-          `/search${cleanInnerPath}`,
-          `/v1/search/domain/export/${id}`,
-          `/v1/export/${id}`
-        ];
-      } else if (cleanInnerPath.includes('/export')) {
-        prefixesToTry = [cleanInnerPath, `/v1${cleanInnerPath}`];
+        if (!isNaN(id)) { // 如果最后一部分是数字 ID
+          prefixesToTry = [
+            `/v1/search/export/${id}`,
+            `/v1/exports/${id}`,
+            `/v1/export/${id}`,
+            `/search/export/${id}`,
+            `/exports/${id}`,
+            `/v1/search/domain/export/${id}`
+          ];
+        } else {
+          prefixesToTry = [
+            `/v1${cleanInnerPath}`,
+            cleanInnerPath,
+            `/v1/search${cleanInnerPath}`
+          ];
+        }
       } else {
-        // 其他普通请求保持探测逻辑
         prefixesToTry = [
           `/v1${cleanInnerPath}`, 
           cleanInnerPath,
           `/v1/search${cleanInnerPath.replace('/search', '')}`,
           `/v1/domain${cleanInnerPath.replace('/search/domain', '')}`,
-          `/search${cleanInnerPath.replace('/search', '')}`,
           `/api/v1${cleanInnerPath}`,
         ].filter(Boolean);
       }
