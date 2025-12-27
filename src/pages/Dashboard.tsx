@@ -22,7 +22,8 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  ChevronLeft
+  ChevronLeft,
+  Activity
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -199,7 +200,7 @@ const Dashboard = () => {
   const [dnsResults, setDnsResults] = useState<any>(null);
   const [dnsActiveSubTab, setDnsActiveSubTab] = useState('Subdomains');
 
-  const handleSearch = async (e: React.FormEvent, type: 'dns' | 'cert' | 'dnsx' | 'default' = 'default') => {
+  const handleSearch = async (e?: React.FormEvent, type: 'dns' | 'cert' | 'dnsx' | 'default' = 'default', page: number = 0) => {
     if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
 
@@ -262,7 +263,7 @@ const Dashboard = () => {
   };
 
   const handlePageChange = (newPage: number) => {
-    handleSearch(undefined, newPage);
+    handleSearch(undefined, 'default', newPage);
   };
 
   const filteredCredentials = useMemo(() => {
@@ -347,7 +348,17 @@ const Dashboard = () => {
     const p3 = ((strength.weak || 0) / total) * 100;
     const p4 = ((strength.very_weak || 0) / total) * 100;
 
-    const fetchDnsSubTab = async (tab: string) => {
+    return (
+      <div className="h-2 w-full flex rounded-full overflow-hidden">
+        <div style={{ width: `${p1}%` }} className="bg-emerald-500" />
+        <div style={{ width: `${p2}%` }} className="bg-blue-500" />
+        <div style={{ width: `${p3}%` }} className="bg-orange-500" />
+        <div style={{ width: `${p4}%` }} className="bg-red-500" />
+      </div>
+    );
+  };
+
+  const fetchDnsSubTab = async (tab: string) => {
     if (!searchQuery) return;
     setIsSearching(true);
     try {
@@ -435,16 +446,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      </div>
-    );
-  };
-
-  return (
-      <div className="h-2 w-full flex rounded-full overflow-hidden">
-        <div style={{ width: `${p1}%` }} className="bg-emerald-500" />
-        <div style={{ width: `${p2}%` }} className="bg-blue-500" />
-        <div style={{ width: `${p3}%` }} className="bg-orange-500" />
-        <div style={{ width: `${p4}%` }} className="bg-red-500" />
       </div>
     );
   };
@@ -851,11 +852,13 @@ const Dashboard = () => {
                     </button>
                   </div>
                 )}
-              </>
+              </div>
             )}
-          </motion.div>
+          </>
         )}
-      </AnimatePresence>
+      </motion.div>
+    )}
+  </AnimatePresence>
 
       {/* 中间文本区 */}
       {!showResults && (
