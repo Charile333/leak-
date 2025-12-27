@@ -26,7 +26,6 @@ import {
   UserCheck,
   ShieldAlert,
   UserMinus,
-  ChevronDown,
   Activity
 } from 'lucide-react';
 import { 
