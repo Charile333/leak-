@@ -18,18 +18,26 @@ export default async function handler(req, res) {
   // 辅助函数：统一发送响应
   function sendResponse(res, response, targetUrl) {
     res.setHeader('X-Proxy-Target', targetUrl);
-    if (response.headers['content-type']) {
-      res.setHeader('Content-Type', response.headers['content-type']);
-    }
-    if (response.headers['content-disposition']) {
-      res.setHeader('Content-Disposition', response.headers['content-disposition']);
-    }
-    if (response.headers['content-length']) {
-      res.setHeader('Content-Length', response.headers['content-length']);
-    }
+    
+    // 强制透传所有关键的下载头
+    const headersToForward = [
+      'content-type',
+      'content-disposition',
+      'content-length',
+      'cache-control',
+      'content-encoding'
+    ];
 
-    if (req.url.includes('/export') || req.url.includes('/report')) {
-      res.setHeader('Cache-Control', 'no-cache');
+    headersToForward.forEach(header => {
+      if (response.headers[header]) {
+        res.setHeader(header, response.headers[header]);
+      }
+    });
+
+    // 如果没有 content-disposition 但 URL 包含 export/report，且返回的是流
+    if (!response.headers['content-disposition'] && (req.url.includes('/export') || req.url.includes('/report'))) {
+      const extension = response.headers['content-type']?.includes('pdf') ? 'pdf' : 'csv';
+      res.setHeader('Content-Disposition', `attachment; filename="export.${extension}"`);
     }
 
     return res.status(response.status).send(response.data);

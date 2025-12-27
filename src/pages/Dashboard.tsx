@@ -642,9 +642,18 @@ const Dashboard = () => {
     try {
       setIsSearching(true);
       
-      // 使用用户建议的新接口：导出已解锁的泄露
-      // 这种方式更可靠，且直接返回文件流
+      // 使用新接口：导出已解锁的泄露
       const blob = await leakRadarApi.exportUnlockedLeaks('csv', results.summary.domain);
+      
+      // 检查 blob 内容是否为 JSON 错误信息
+      const text = await blob.text();
+      if (text.startsWith('{') && text.includes('export_id')) {
+        // 如果返回的是 JSON 且包含 export_id，说明后端该接口目前也是异步的，或者权限不足回退到了异步模式
+        const res = JSON.parse(text);
+        if (res.export_id) {
+          throw new Error('TRIGGER_LEGACY_EXPORT:' + res.export_id);
+        }
+      }
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -657,14 +666,25 @@ const Dashboard = () => {
       setIsSearching(false);
       
     } catch (error: any) {
-      console.warn('New export interface failed, falling back to legacy export:', error);
-      // 如果新接口失败，尝试回退到旧的异步导出逻辑
+      let forcedExportId: number | null = null;
+      if (error.message?.startsWith('TRIGGER_LEGACY_EXPORT:')) {
+        forcedExportId = parseInt(error.message.split(':')[1]);
+      }
+
+      console.warn('Direct export failed or returned export_id, falling back to legacy polling:', error);
+      
       try {
+        let export_id: number;
         let category: 'employees' | 'customers' | 'third_parties' = 'employees';
         if (activeTab === 'Customers') category = 'customers';
         else if (activeTab === 'Third-Parties') category = 'third_parties';
-        
-        const { export_id } = await leakRadarApi.requestDomainCSV(results.summary.domain, category);
+
+        if (forcedExportId) {
+          export_id = forcedExportId;
+        } else {
+          const res = await leakRadarApi.requestDomainCSV(results.summary.domain, category);
+          export_id = res.export_id;
+        }
         
         const notification = document.createElement('div');
         notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
