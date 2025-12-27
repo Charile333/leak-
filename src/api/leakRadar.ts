@@ -108,6 +108,10 @@ export interface LeakRadarStats {
 }
 
 class LeakRadarAPI {
+  private sanitizeDomain(domain: string): string {
+    return domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers = {
       'Content-Type': 'application/json',
@@ -168,15 +172,17 @@ class LeakRadarAPI {
    * Get domain search summary
    */
   async getDomainSummary(domain: string): Promise<LeakRadarDomainSummary> {
-    return this.request<LeakRadarDomainSummary>(`/search/domain/${domain}`);
+    const sanitized = this.sanitizeDomain(domain);
+    return this.request<LeakRadarDomainSummary>(`/search/domain/${sanitized}`);
   }
 
   /**
    * Search for leaks by domain (Category based)
    */
   async searchDomainCategory(domain: string, category: 'employees' | 'customers' | 'third_parties', limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
+    const sanitized = this.sanitizeDomain(domain);
     const page = Math.floor(offset / limit) + 1;
-    return this.request<LeakRadarSearchResult>(`/search/domain/${domain}/${category}?page=${page}&page_size=${limit}`);
+    return this.request<LeakRadarSearchResult>(`/search/domain/${sanitized}/${category}?page=${page}&page_size=${limit}`);
   }
 
   /**
@@ -194,23 +200,26 @@ class LeakRadarAPI {
    * Search for URLs by domain
    */
   async getDomainUrls(domain: string, limit = 100, offset = 0): Promise<{ items: any[], total: number }> {
+    const sanitized = this.sanitizeDomain(domain);
     const page = Math.floor(offset / limit) + 1;
-    return this.request<{ items: any[], total: number }>(`/search/domain/${domain}/urls?page=${page}&page_size=${limit}`);
+    return this.request<{ items: any[], total: number }>(`/search/domain/${sanitized}/urls?page=${page}&page_size=${limit}`);
   }
 
   /**
    * Search for subdomains by domain
    */
   async getDomainSubdomains(domain: string, limit = 100, offset = 0): Promise<{ items: any[], total: number }> {
+    const sanitized = this.sanitizeDomain(domain);
     const page = Math.floor(offset / limit) + 1;
-    return this.request<{ items: any[], total: number }>(`/search/domain/${domain}/subdomains?page=${page}&page_size=${limit}`);
+    return this.request<{ items: any[], total: number }>(`/search/domain/${sanitized}/subdomains?page=${page}&page_size=${limit}`);
   }
 
   /**
    * Unlock all results for a domain and category
    */
   async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
-    return this.request<{ success: boolean; message?: string }>(`/search/domain/${domain}/${category}/unlock`, {
+    const sanitized = this.sanitizeDomain(domain);
+    return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock`, {
       method: 'POST'
     });
   }
@@ -226,7 +235,7 @@ class LeakRadarAPI {
    * Export domain search results as PDF
    */
   async exportDomainPDF(domainInput: string): Promise<Blob> {
-    const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+    const domain = this.sanitizeDomain(domainInput);
     const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report`, {
       method: 'POST',
       headers: {
@@ -254,7 +263,7 @@ class LeakRadarAPI {
    * Returns an export_id
    */
   async requestDomainCSV(domainInput: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<{ export_id: number }> {
-    const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+    const domain = this.sanitizeDomain(domainInput);
     return this.request<{ export_id: number }>(`/search/domain/${domain}/export`, {
       method: 'POST',
       headers: {

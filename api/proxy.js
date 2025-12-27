@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
   let targetUrl = isDnsRequest
     ? `https://src.0zqq.com${targetPath.replace('/dns-v1', '/api/v1')}`
-    : `https://api.leakradar.io${targetPath.replace('/leakradar', '')}`;
+    : `https://api.leakradar.io${targetPath.replace('/leakradar', '/v1')}`;
 
   if (!API_KEY) {
     return res.status(500).json({ 

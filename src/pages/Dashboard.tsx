@@ -655,11 +655,13 @@ const Dashboard = () => {
 
       // 轮询逻辑
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 15; // 增加到 15 次，约 30 秒
       
       const checkStatus = async () => {
         try {
-          const { status } = await leakRadarApi.getExportStatus(export_id);
+          const res = await leakRadarApi.getExportStatus(export_id);
+          // 兼容不同 API 响应格式
+          const status = res.status || (res as any).data?.status;
           
           if (status === 'success') {
             const blob = await leakRadarApi.downloadExport(export_id);
@@ -1026,6 +1028,8 @@ const Dashboard = () => {
                         if (activeTab === 'Employees') total = results?.summary.employees.count || 0;
                         else if (activeTab === 'Customers') total = results?.summary.customers.count || 0;
                         else if (activeTab === 'Third-Parties') total = results?.summary.third_parties.count || 0;
+                        else if (activeTab === 'URLs') total = results?.summary.urls_count || 0;
+                        else if (activeTab === 'Subdomains') total = results?.summary.subdomains_count || 0;
                         
                         return innerSearchQuery.trim() 
                           ? `筛选出 ${filteredCredentials.length} 条记录 (总计 ${total} 条)`
@@ -1141,6 +1145,8 @@ const Dashboard = () => {
                     if (activeTab === 'Employees') totalCount = results.summary.employees.count;
                     else if (activeTab === 'Customers') totalCount = results.summary.customers.count;
                     else if (activeTab === 'Third-Parties') totalCount = results.summary.third_parties.count;
+                    else if (activeTab === 'URLs') totalCount = results.summary.urls_count;
+                    else if (activeTab === 'Subdomains') totalCount = results.summary.subdomains_count;
 
                     const totalPages = Math.ceil(totalCount / pageSize);
                     
@@ -1248,7 +1254,7 @@ const Dashboard = () => {
                   </div>
                 )}
                 {weeklyGrowth && weeklyGrowth.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                  <ResponsiveContainer width="100%" height="100%" debounce={50} minWidth={0} minHeight={0}>
                     <AreaChart 
                       key={`chart-${weeklyGrowth.length}`}
                       data={weeklyGrowth} 
