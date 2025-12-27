@@ -114,6 +114,10 @@ export default async function handler(req, res) {
         innerPath.replace('/search/domain', '/v1/domain'), // 13. 尝试 /v1/domain/...
         `/api/v1/search${innerPath.replace('/search', '')}`, // 14. /api/v1/search/advanced
         `/v1/search${innerPath.replace('/search', '')}`, // 15. /v1/search/advanced
+        innerPath.replace('/search/domain', '/v1/search/domain').replace('/unlock', ''), // 16. /v1/search/domain/...
+        innerPath.replace('/search/domain', '/v1/domain').replace('/unlock', ''), // 17. /v1/domain/...
+        innerPath.replace('/search/domain', '/v1/search/domain').replace('/report', ''), // 18. /v1/search/domain/...
+        innerPath.replace('/search/domain', '/v1/search/domain').replace('/export', ''), // 19. /v1/search/domain/...
       ];
     }
 
@@ -131,16 +135,18 @@ export default async function handler(req, res) {
           headers: headers,
           data: req.body,
           responseType: 'arraybuffer',
-          timeout: (req.url.includes('/export') || req.url.includes('/report')) ? 60000 : 15000
+          timeout: (req.url.includes('/export') || req.url.includes('/report')) ? 60000 : 30000
         });
         
+        console.log(`Success with path: ${currentUrl}`);
         targetUrl = currentUrl;
         return sendResponse(res, response, targetUrl);
       } catch (axiosError) {
-        // 如果是 404 或者 400 (Bad Request，有时路径不对也会报400)，则继续尝试下一个路径
         const status = axiosError.response?.status;
+        console.log(`Failed path [${status || 'ERROR'}]: ${currentUrl}`);
+        
+        // 如果是 404 或者 400 (Bad Request，有时路径不对也会报400)，则继续尝试下一个路径
         if (status === 404 || status === 400) {
-          console.log(`Path ${status}: ${currentUrl}`);
           if (i === prefixesToTry.length - 1) throw axiosError;
           continue;
         }

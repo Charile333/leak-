@@ -1351,7 +1351,7 @@ const Dashboard = () => {
               </div>
 
               {/* Chart Container with fixed height to prevent ResponsiveContainer width/height error */}
-              <div className="h-[300px] min-h-[300px] w-full relative min-w-0" style={{ width: '100%', height: '300px' }}>
+              <div className="h-[300px] min-h-[300px] w-full relative min-w-0 bg-white/5 rounded-2xl p-4" style={{ width: '100%', height: '300px', display: 'block' }}>
                 {isLoadingStats && (
                   <div className="absolute top-2 right-2 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                     <Loader2 className="w-3 h-3 text-accent animate-spin" />
