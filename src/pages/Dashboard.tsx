@@ -208,7 +208,7 @@ const Dashboard = () => {
       setIsSearching(true);
       setShowResults(false);
       try {
-        let data;
+        let data: any;
         const searchType = type === 'default' ? 'dns' : type; // 默认使用 DNS 查询
         
         if (searchType === 'dns') {
@@ -362,23 +362,23 @@ const Dashboard = () => {
     if (!searchQuery) return;
     setIsSearching(true);
     try {
-      let data;
+      let data: any;
       switch (tab) {
         case 'Subdomains':
           data = await dnsApi.getSubdomains(searchQuery);
-          setDnsResults(prev => ({ ...prev, subdomains: data }));
+          setDnsResults((prev: any) => ({ ...prev, subdomains: data }));
           break;
         case 'Records':
           data = await dnsApi.getDnsRecords(searchQuery);
-          setDnsResults(prev => ({ ...prev, records: data }));
+          setDnsResults((prev: any) => ({ ...prev, records: data }));
           break;
         case 'Reverse':
           data = await dnsApi.getReverseDns(searchQuery); // 假设 searchQuery 是 IP
-          setDnsResults(prev => ({ ...prev, reverse: data }));
+          setDnsResults((prev: any) => ({ ...prev, reverse: data }));
           break;
         case 'SSL':
           data = await dnsApi.getSslCert(searchQuery);
-          setDnsResults(prev => ({ ...prev, ssl: data }));
+          setDnsResults((prev: any) => ({ ...prev, ssl: data }));
           break;
       }
       setDnsActiveSubTab(tab);
@@ -631,7 +631,7 @@ const Dashboard = () => {
             </div>
 
             {/* 结果内容区域 */}
-            {activeTab === 'Report' ? (
+            {activeTab === 'Report' && results ? (
               <div className="space-y-12">
                 {/* 结果标题 */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
