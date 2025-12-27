@@ -91,24 +91,30 @@ export default async function handler(req, res) {
           `/exports/${id}${isDownload ? '/download' : ''}`,
           `/v1/export/${id}${isDownload ? '/download' : ''}`
         ];
-      } else if (cleanInnerPath.includes('/leaks/@')) {
-        // 彻底解决 /leaks/@domain 404
-        const domainMatch = cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/);
+      } else if (cleanInnerPath.includes('/leaks/@') || cleanInnerPath.includes('/unlock')) {
+        // 彻底解决 /leaks/@domain 和 /unlock 接口 404
+        // 提取 domain: 从 /leaks/@domain 或 /search/domain/domain/unlock 中提取
+        const domainMatch = cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/) || 
+                            cleanInnerPath.match(/\/search\/domain\/([^\/\?]+)/);
         const domain = domainMatch ? domainMatch[1] : '';
-        const typeMatch = req.url.match(/type=([^&]+)/);
+        
+        // 提取 type/category: 从 ?type= 或 路径中间提取
+        const typeMatch = req.url.match(/type=([^&]+)/) || 
+                          cleanInnerPath.match(/\/domain\/[^\/]+\/([^\/\?]+)/);
         const type = typeMatch ? typeMatch[1] : '';
+        const isUnlock = cleanInnerPath.includes('/unlock');
 
         prefixesToTry = [
-          // 方案 1: 标准路径 (带 v1)
-          `/v1/search/domain/${domain}${type ? '/' + type : ''}`,
-          // 方案 2: 直接路径 (带 @)
+          // 1. 标准 search 路径 (解锁或查询)
+          `/v1/search/domain/${domain}${type ? '/' + type : ''}${isUnlock ? '/unlock' : ''}`,
+          // 2. 原始带 @ 路径
           `/v1${cleanInnerPath}`,
-          // 方案 3: 原始路径
+          // 3. 剥离 /search 的路径
+          `/v1/domain/${domain}${type ? '/' + type : ''}${isUnlock ? '/unlock' : ''}`,
+          // 4. 彻底透传
           cleanInnerPath,
-          // 方案 4: 搜索路径
-          `/v1/search${cleanInnerPath}`,
-          // 方案 5: 兼容旧版
-          `/v1/domain/${domain}${type ? '/' + type : ''}`
+          // 5. 加上 /search 前缀
+          `/v1/search${cleanInnerPath}`
         ].filter(Boolean);
       } else if (cleanInnerPath.includes('/export')) {
         const parts = cleanInnerPath.split('/');
