@@ -67,6 +67,14 @@ export default async function handler(req, res) {
     if (response.headers['content-disposition']) {
       res.setHeader('Content-Disposition', response.headers['content-disposition']);
     }
+    if (response.headers['content-length']) {
+      res.setHeader('Content-Length', response.headers['content-length']);
+    }
+
+    // 设置一些额外的头以确保浏览器正确处理下载
+    if (targetPath.includes('/export') || targetPath.includes('/report')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
 
     res.status(response.status).send(response.data);
   } catch (error) {

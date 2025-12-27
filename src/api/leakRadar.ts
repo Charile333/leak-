@@ -227,9 +227,12 @@ class LeakRadarAPI {
    */
   async exportDomainPDF(domain: string): Promise<Blob> {
     const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report`, {
+      method: 'POST',
       headers: {
         'Accept': 'application/pdf',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ format: 'pdf' }),
     });
     
     if (!response.ok) {

@@ -984,7 +984,16 @@ const Dashboard = () => {
                   
                   <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                     <div className="text-xs text-gray-500">
-                      显示 {filteredCredentials.length} 条记录
+                      {(() => {
+                        let total = results?.summary.total || 0;
+                        if (activeTab === 'Employees') total = results?.summary.employees.count || 0;
+                        else if (activeTab === 'Customers') total = results?.summary.customers.count || 0;
+                        else if (activeTab === 'Third-Parties') total = results?.summary.third_parties.count || 0;
+                        
+                        return innerSearchQuery.trim() 
+                          ? `筛选出 ${filteredCredentials.length} 条记录 (总计 ${total} 条)`
+                          : `共计 ${total} 条记录 (当前页显示 ${filteredCredentials.length} 条)`;
+                      })()}
                     </div>
                     <button 
                       onClick={handleExportCSV}
