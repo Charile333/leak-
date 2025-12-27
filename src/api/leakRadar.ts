@@ -276,9 +276,13 @@ class LeakRadarAPI {
    */
   async getLeaksFull(domain: string, category: 'employees' | 'customers' | 'third_parties' | 'all' = 'all'): Promise<LeakRadarSearchResult> {
     const sanitized = this.sanitizeDomain(domain);
-    // 使用用户提供的路径格式：/leaks/@domain?type=category
-    const type = category === 'all' ? '' : `?type=${category}`;
-    return this.request<LeakRadarSearchResult>(`/leaks/@${sanitized}${type}`);
+    // 方案 1: 尝试最原始的 search 路径，因为它在仪表盘显示时是正常的
+    const path = category === 'all' 
+      ? `/search/domain/${sanitized}`
+      : `/search/domain/${sanitized}/${category}`;
+    
+    console.log(`[Debug] Frontend CSV Export requesting path: ${path}`);
+    return this.request<LeakRadarSearchResult>(`${path}?page=1&page_size=10000`);
   }
 
   /**
