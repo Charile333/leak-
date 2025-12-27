@@ -161,14 +161,14 @@ class LeakRadarAPI {
    * Get user profile and quota information
    */
   async getProfile(): Promise<LeakRadarProfile> {
-    return this.request<LeakRadarProfile>('/api/profile');
+    return this.request<LeakRadarProfile>('/profile');
   }
 
   /**
    * Get domain search summary
    */
   async getDomainSummary(domain: string): Promise<LeakRadarDomainSummary> {
-    return this.request<LeakRadarDomainSummary>(`/api/search/domain/${domain}`);
+    return this.request<LeakRadarDomainSummary>(`/search/domain/${domain}`);
   }
 
   /**
@@ -176,7 +176,7 @@ class LeakRadarAPI {
    */
   async searchDomainCategory(domain: string, category: 'employees' | 'customers' | 'third_parties', limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
     const page = Math.floor(offset / limit) + 1;
-    return this.request<LeakRadarSearchResult>(`/api/search/domain/${domain}/${category}?page=${page}&page_size=${limit}`);
+    return this.request<LeakRadarSearchResult>(`/search/domain/${domain}/${category}?page=${page}&page_size=${limit}`);
   }
 
   /**
@@ -184,7 +184,7 @@ class LeakRadarAPI {
    */
   async searchByEmail(email: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
     const page = Math.floor(offset / limit) + 1;
-    return this.request<LeakRadarSearchResult>(`/api/search/email`, {
+    return this.request<LeakRadarSearchResult>(`/search/email`, {
       method: 'POST',
       body: JSON.stringify({ email, page, page_size: limit })
     });
@@ -195,7 +195,7 @@ class LeakRadarAPI {
    */
   async getDomainUrls(domain: string, limit = 100, offset = 0): Promise<{ items: any[], total: number }> {
     const page = Math.floor(offset / limit) + 1;
-    return this.request<{ items: any[], total: number }>(`/api/search/domain/${domain}/urls?page=${page}&page_size=${limit}`);
+    return this.request<{ items: any[], total: number }>(`/search/domain/${domain}/urls?page=${page}&page_size=${limit}`);
   }
 
   /**
@@ -203,14 +203,14 @@ class LeakRadarAPI {
    */
   async getDomainSubdomains(domain: string, limit = 100, offset = 0): Promise<{ items: any[], total: number }> {
     const page = Math.floor(offset / limit) + 1;
-    return this.request<{ items: any[], total: number }>(`/api/search/domain/${domain}/subdomains?page=${page}&page_size=${limit}`);
+    return this.request<{ items: any[], total: number }>(`/search/domain/${domain}/subdomains?page=${page}&page_size=${limit}`);
   }
 
   /**
    * Unlock all results for a domain
    */
   async unlockDomain(domain: string): Promise<{ success: boolean; message?: string }> {
-    return this.request<{ success: boolean; message?: string }>(`/api/search/domain/${domain}/unlock`, {
+    return this.request<{ success: boolean; message?: string }>(`/search/domain/${domain}/unlock`, {
       method: 'POST'
     });
   }
@@ -219,7 +219,7 @@ class LeakRadarAPI {
    * Get global statistics
    */
   async getStats(): Promise<LeakRadarStats> {
-    return this.request<LeakRadarStats>('/api/stats');
+    return this.request<LeakRadarStats>('/stats');
   }
 }
 

@@ -1024,12 +1024,13 @@ const Dashboard = () => {
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">同步中...</span>
                   </div>
                 )}
-                <ResponsiveContainer width="100%" height="100%" debounce={50} minWidth={0} minHeight={0}>
-                  <AreaChart 
-                    key={`chart-${weeklyGrowth.length}`}
-                    data={weeklyGrowth} 
-                    margin={{ top: 10, right: 0, left: -10, bottom: 0 }}
-                  >
+                {weeklyGrowth && weeklyGrowth.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                    <AreaChart 
+                      key={`chart-${weeklyGrowth.length}`}
+                      data={weeklyGrowth} 
+                      margin={{ top: 10, right: 0, left: -10, bottom: 0 }}
+                    >
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
@@ -1151,6 +1152,14 @@ const Dashboard = () => {
                     />
                   </AreaChart>
                 </ResponsiveContainer>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-white/[0.02] rounded-3xl border border-white/5 border-dashed">
+                    <div className="flex flex-col items-center gap-3 opacity-20">
+                      <Activity className="w-12 h-12 text-gray-500" />
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">等待数据加载...</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
