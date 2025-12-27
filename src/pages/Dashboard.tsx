@@ -17,6 +17,8 @@ import {
   Link as LinkIcon,
   Loader2,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   Eye,
   EyeOff,
@@ -68,6 +70,8 @@ const Dashboard = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [activeTab, setActiveTab] = useState('Report');
+  const [filterType, setFilterType] = useState<'All' | 'Email' | 'Username'>('All');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const autoUnlock = true; // 固定开启自动解锁
@@ -81,6 +85,7 @@ const Dashboard = () => {
   // 当页签切换时，滚动到结果区域顶部
   useEffect(() => {
     if (showResults && activeTab) {
+      setFilterType('All'); // Reset filter when tab changes
       const resultElement = document.getElementById('search-results');
       if (resultElement) {
         // 延迟执行以确保内容已开始渲染
@@ -294,6 +299,13 @@ const Dashboard = () => {
     if (activeTab === 'Employees') list = list.filter(c => c.type === 'Employee');
     if (activeTab === 'Third-Parties') list = list.filter(c => c.type === 'Third-Party');
     if (activeTab === 'Customers') list = list.filter(c => c.type === 'Customer');
+
+    // Category filtering
+    if (filterType === 'Email') {
+      list = list.filter(c => c.email?.includes('@'));
+    } else if (filterType === 'Username') {
+      list = list.filter(c => !c.email?.includes('@'));
+    }
 
     // Sorting
     list.sort((a, b) => {
@@ -825,7 +837,49 @@ const Dashboard = () => {
             ) : (
               <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
                 {/* 过滤器和操作栏 */}
-                <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsFilterOpen(!isFilterOpen)}
+                      className="flex items-center gap-3 px-4 py-2 bg-[#25252e] border border-white/10 rounded-xl text-sm font-medium text-gray-200 hover:bg-white/5 transition-all min-w-[120px] justify-between"
+                    >
+                      {filterType}
+                      {isFilterOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+
+                    <AnimatePresence>
+                      {isFilterOpen && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={() => setIsFilterOpen(false)}
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="absolute left-0 mt-2 w-full bg-[#1a1a20] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-20"
+                          >
+                            {(['All', 'Email', 'Username'] as const).map((type) => (
+                              <button
+                                key={type}
+                                onClick={() => {
+                                  setFilterType(type);
+                                  setIsFilterOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-white/5",
+                                  filterType === type ? "text-accent bg-accent/5 font-bold" : "text-gray-400"
+                                )}
+                              >
+                                {type}
+                              </button>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   <div className="text-xs text-gray-500">
                     显示 {filteredCredentials.length} 条记录
                   </div>
