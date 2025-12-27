@@ -32,16 +32,6 @@ interface RiskItem {
   [key: string]: any;
 }
 
-interface LeakResult {
-  id: number;
-  source: string;
-  type: string;
-  date: string;
-  count: string;
-  risk: string;
-  sensitive: boolean;
-}
-
 const RISK_DATA: RiskItem[] = [
   { name: '极高风险', value: 400, color: '#f43f5e' },
   { name: '高风险', value: 300, color: '#f97316' },
