@@ -15,6 +15,26 @@ export default async function handler(req, res) {
     return;
   }
 
+  // 辅助函数：统一发送响应
+  function sendResponse(res, response, targetUrl) {
+    res.setHeader('X-Proxy-Target', targetUrl);
+    if (response.headers['content-type']) {
+      res.setHeader('Content-Type', response.headers['content-type']);
+    }
+    if (response.headers['content-disposition']) {
+      res.setHeader('Content-Disposition', response.headers['content-disposition']);
+    }
+    if (response.headers['content-length']) {
+      res.setHeader('Content-Length', response.headers['content-length']);
+    }
+
+    if (req.url.includes('/export') || req.url.includes('/report')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+
+    return res.status(response.status).send(response.data);
+  }
+
   // 2. 获取目标路径
   const url = new URL(req.url, `http://${req.headers.host}`);
   const targetPath = url.pathname.replace('/api', '');
@@ -24,7 +44,7 @@ export default async function handler(req, res) {
   const isDnsRequest = targetPath.startsWith('/dns-v1');
   const API_KEY = isDnsRequest 
     ? (process.env.DNS_API_TOKEN || process.env.VITE_DNS_API_TOKEN)
-    : process.env.LEAKRADAR_API_KEY;
+    : (process.env.LEAKRADAR_API_KEY || process.env.VITE_LEAKRADAR_API_KEY);
 
   if (!API_KEY) {
     console.error(`Missing API Key for ${isDnsRequest ? 'DNS' : 'LeakRadar'}`);
@@ -38,27 +58,27 @@ export default async function handler(req, res) {
   if (isDnsRequest) {
     targetUrl = `https://src.0zqq.com${targetPath.replace('/dns-v1', '/api/v1')}${searchParams}`;
   } else {
-    // 处理 leakradar 请求
-    // 基础路径映射：/leakradar -> /v1
-    let leakPath = targetPath.replace('/leakradar', '/v1');
-    
-    // 彻查：如果请求的是 /v1/stats，我们尝试自动适配可能的正确路径
-    // 根据官方文档和常见模式，stats 可能在 /metadata/stats 或 /stats
-    targetUrl = `https://api.leakradar.io${leakPath}${searchParams}`;
+    // 彻查：对于 leakradar，我们尝试不带 /v1 的路径作为首选，
+    // 因为 vite.config.ts 中就是这么配置的，而且用户说“突然不行了”
+    // 可能是 API 结构调整或 v1 路径不再是默认
+    const directPath = targetPath.replace('/leakradar', '');
+    targetUrl = `https://api.leakradar.io${directPath}${searchParams}`;
+  }
+
+  const headers = {
+    'Accept': req.headers['accept'] || 'application/json',
+    'Authorization': `Bearer ${API_KEY}`,
+    'X-API-Key': API_KEY,
+    'Host': isDnsRequest ? 'src.0zqq.com' : 'api.leakradar.io'
+  };
+
+  if (req.headers['content-type']) {
+    headers['Content-Type'] = req.headers['content-type'];
   }
 
   try {
     console.log(`Proxying ${req.method} request to: ${targetUrl}`);
     
-    const headers = {
-      'Accept': req.headers['accept'] || 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
-    };
-
-    if (req.headers['content-type']) {
-      headers['Content-Type'] = req.headers['content-type'];
-    }
-
     let response;
     try {
       response = await axios({
@@ -70,77 +90,59 @@ export default async function handler(req, res) {
         timeout: 10000 // 10s timeout
       });
     } catch (axiosError) {
-      // 彻查：如果请求的是 stats 相关路径且返回 404，尝试多种备选路径
-      const isStatsRequest = targetUrl.includes('/v1/stats');
-      
-      if (axiosError.response && axiosError.response.status === 404 && isStatsRequest) {
-        // 尝试列表：常见的统计/信息接口
-        const fallbackPaths = [
-           '/v1/metadata/stats',
-           '/v1/metadata',
-           '/v1/info',
-           '/v1/global/stats',
-           '/stats',
-           '/metadata/stats'
-         ];
+      // 如果 404，尝试 /v1 路径
+      if (axiosError.response && axiosError.response.status === 404 && !isDnsRequest) {
+        const v1Path = targetPath.replace('/leakradar', '/v1');
+        const v1Url = `https://api.leakradar.io${v1Path}${searchParams}`;
         
-        let lastError = axiosError;
-        let success = false;
-
-        for (const path of fallbackPaths) {
-          // 构造备选 URL (保留查询参数)
-          const baseUrl = targetUrl.split('?')[0];
-          const urlObj = new URL(targetUrl);
-          const altUrl = `https://api.leakradar.io${path}${urlObj.search}`;
-          
-          if (altUrl === targetUrl) continue; // 跳过已尝试过的
-
-          console.log(`Primary stats 404, trying fallback: ${altUrl}`);
-          try {
-            response = await axios({
-              method: req.method,
-              url: altUrl,
-              headers: headers,
-              data: req.body,
-              responseType: 'arraybuffer',
-              timeout: 10000
-            });
-            // 如果成功，更新 targetUrl 以便响应头记录正确的路径
-            targetUrl = altUrl;
-            success = true;
-            break;
-          } catch (altError) {
-            lastError = altError;
-            console.log(`Fallback ${path} also failed: ${altError.message}`);
+        console.log(`Direct path 404, trying v1 path: ${v1Url}`);
+        try {
+          response = await axios({
+            method: req.method,
+            url: v1Url,
+            headers: headers,
+            data: req.body,
+            responseType: 'arraybuffer',
+            timeout: 10000
+          });
+          targetUrl = v1Url; // 成功了，更新记录
+        } catch (v1Error) {
+          // 如果还是不行，且是 stats 请求，尝试更多备选路径
+          if (targetPath.includes('stats')) {
+            const statsFallbacks = [
+              '/v1/metadata/stats',
+              '/metadata/stats',
+              '/v1/info',
+              '/info'
+            ];
+            
+            for (const fallback of statsFallbacks) {
+              const fallbackUrl = `https://api.leakradar.io${fallback}${searchParams}`;
+              console.log(`Trying stats fallback: ${fallbackUrl}`);
+              try {
+                response = await axios({
+                  method: req.method,
+                  url: fallbackUrl,
+                  headers: headers,
+                  data: req.body,
+                  responseType: 'arraybuffer',
+                  timeout: 10000
+                });
+                targetUrl = fallbackUrl;
+                return sendResponse(res, response, targetUrl); // 成功即返回
+              } catch (e) {
+                console.log(`Fallback ${fallback} failed: ${e.message}`);
+              }
+            }
           }
-        }
-
-        if (!success) {
-          throw lastError;
+          throw v1Error; // 抛出最后的错误
         }
       } else {
         throw axiosError;
       }
     }
 
-    // 转发上游响应的所有重要头信息
-    res.setHeader('X-Proxy-Target', targetUrl);
-    if (response.headers['content-type']) {
-      res.setHeader('Content-Type', response.headers['content-type']);
-    }
-    if (response.headers['content-disposition']) {
-      res.setHeader('Content-Disposition', response.headers['content-disposition']);
-    }
-    if (response.headers['content-length']) {
-      res.setHeader('Content-Length', response.headers['content-length']);
-    }
-
-    // 设置一些额外的头以确保浏览器正确处理下载
-    if (targetPath.includes('/export') || targetPath.includes('/report')) {
-      res.setHeader('Cache-Control', 'no-cache');
-    }
-
-    res.status(response.status).send(response.data);
+    return sendResponse(res, response, targetUrl);
   } catch (error) {
     console.error('Proxy Error:', error.message);
     if (error.response) {

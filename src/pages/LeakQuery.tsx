@@ -49,13 +49,6 @@ const RISK_DATA: RiskItem[] = [
   { name: '低风险', value: 200, color: '#3b82f6' },
 ];
 
-const INITIAL_RESULTS: LeakResult[] = [
-  { id: 1, source: 'Collection #1-5', type: 'Email/Password', date: '2025-11-20', count: '2.7B', risk: '极高', sensitive: true },
-  { id: 2, source: 'LinkedIn Breach', type: 'Profile/Email', date: '2025-10-15', count: '164M', risk: '高', sensitive: true },
-  { id: 3, source: 'Canva Data Leak', type: 'Names/Usernames', date: '2025-09-02', count: '137M', risk: '中', sensitive: false },
-  { id: 4, source: 'Adobe User Base', type: 'Encrypted Passwords', date: '2025-08-28', count: '153M', risk: '高', sensitive: true },
-];
-
 const LeakQuery = () => {
   const [showDetails, setShowDetails] = useState<number | null>(null);
   const [results, setResults] = useState<any[]>([]);
