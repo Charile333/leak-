@@ -16,7 +16,9 @@ export default async function handler(req, res) {
   }
 
   // 2. 获取目标路径
-  const targetPath = req.url.replace('/api', '');
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const targetPath = url.pathname.replace('/api', '');
+  const searchParams = url.search;
   
   // 根据路径判断使用哪个 API
   const isDnsRequest = targetPath.startsWith('/dns-v1');
@@ -24,46 +26,71 @@ export default async function handler(req, res) {
     ? (process.env.DNS_API_TOKEN || process.env.VITE_DNS_API_TOKEN)
     : process.env.LEAKRADAR_API_KEY;
 
-  let targetUrl;
-  if (isDnsRequest) {
-    targetUrl = `https://src.0zqq.com${targetPath.replace('/dns-v1', '/api/v1')}`;
-  } else {
-    // 处理 leakradar 请求
-    // 基础路径映射：/leakradar -> /v1
-    targetUrl = `https://api.leakradar.io${targetPath.replace('/leakradar', '/v1')}`;
-  }
-
   if (!API_KEY) {
+    console.error(`Missing API Key for ${isDnsRequest ? 'DNS' : 'LeakRadar'}`);
     return res.status(500).json({ 
       error: 'Missing API Key', 
-      details: `Please set ${isDnsRequest ? 'DNS_API_TOKEN' : 'LEAKRADAR_API_KEY'} in Vercel Environment Variables and redeploy.` 
+      details: `Please set ${isDnsRequest ? 'DNS_API_TOKEN' : 'LEAKRADAR_API_KEY'} in Vercel Environment Variables.` 
     });
   }
 
+  let targetUrl;
+  if (isDnsRequest) {
+    targetUrl = `https://src.0zqq.com${targetPath.replace('/dns-v1', '/api/v1')}${searchParams}`;
+  } else {
+    // 处理 leakradar 请求
+    // 基础路径映射：/leakradar -> /v1
+    let leakPath = targetPath.replace('/leakradar', '/v1');
+    
+    // 彻查：如果请求的是 /v1/stats，我们尝试自动适配可能的正确路径
+    // 根据官方文档和常见模式，stats 可能在 /metadata/stats 或 /stats
+    targetUrl = `https://api.leakradar.io${leakPath}${searchParams}`;
+  }
+
   try {
-    console.log(`Proxying request to: ${targetUrl}`);
+    console.log(`Proxying ${req.method} request to: ${targetUrl}`);
     
-    // 转发原始的 Accept 头，如果没有则默认为 application/json
-    const acceptHeader = req.headers['accept'] || 'application/json';
-    
-    // 构造请求头
     const headers = {
-      'Accept': acceptHeader,
+      'Accept': req.headers['accept'] || 'application/json',
       'Authorization': `Bearer ${API_KEY}`
     };
 
-    // 如果有请求体，则转发 Content-Type
     if (req.headers['content-type']) {
       headers['Content-Type'] = req.headers['content-type'];
     }
 
-    const response = await axios({
-      method: req.method,
-      url: targetUrl,
-      headers: headers,
-      data: req.body,
-      responseType: 'arraybuffer' // 统一使用 arraybuffer 以支持二进制数据
-    });
+    let response;
+    try {
+      response = await axios({
+        method: req.method,
+        url: targetUrl,
+        headers: headers,
+        data: req.body,
+        responseType: 'arraybuffer',
+        timeout: 10000 // 10s timeout
+      });
+    } catch (axiosError) {
+      // 彻查：如果 /v1/stats 返回 404，尝试 /v1/metadata/stats
+      if (axiosError.response && axiosError.response.status === 404 && targetUrl.endsWith('/v1/stats')) {
+        const altUrl = targetUrl.replace('/v1/stats', '/v1/metadata/stats');
+        console.log(`Primary stats endpoint 404, trying alternative: ${altUrl}`);
+        try {
+          response = await axios({
+            method: req.method,
+            url: altUrl,
+            headers: headers,
+            data: req.body,
+            responseType: 'arraybuffer',
+            timeout: 10000
+          });
+        } catch (altError) {
+          // 如果还是不行，抛出原始错误
+          throw axiosError;
+        }
+      } else {
+        throw axiosError;
+      }
+    }
 
     // 转发上游响应的所有重要头信息
     if (response.headers['content-type']) {
