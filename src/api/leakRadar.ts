@@ -226,13 +226,10 @@ class LeakRadarAPI {
    * Export domain search results as PDF
    */
   async exportDomainPDF(domain: string): Promise<Blob> {
-    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report`, {
-      method: 'POST',
+    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/pdf`, {
       headers: {
         'Accept': 'application/pdf',
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ format: 'pdf' }),
     });
     
     if (!response.ok) {
@@ -249,29 +246,43 @@ class LeakRadarAPI {
   }
 
   /**
-   * Export domain search results as CSV
+   * Request CSV export for a domain and category
+   * Returns an export_id
    */
-  async exportDomainCSV(domain: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<Blob> {
-    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/${category}/export?format=csv`, {
-      method: 'POST', // The Python client uses POST for exports
+  async requestDomainCSV(domain: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<{ export_id: number }> {
+    return this.request<{ export_id: number }>(`/search/domain/${domain}/${category}/export`, {
+      method: 'POST',
       headers: {
-        'Accept': 'text/csv',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ format: 'csv' }),
     });
+  }
+
+  /**
+   * Download a prepared export file
+   */
+  async downloadExport(exportId: number): Promise<Blob> {
+    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/export/${exportId}/download`, {
+      headers: {
+        'Accept': '*/*',
+      },
+    });
     
     if (!response.ok) {
-      let errorMessage = 'CSV 导出失败';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch (e) {
-        errorMessage = `${errorMessage}: ${response.status} ${response.statusText}`;
-      }
-      throw new Error(errorMessage);
+      throw new Error(`下载失败 (${response.status})`);
     }
     return response.blob();
+  }
+
+  /**
+   * Export domain search results as CSV (Deprecated: use request + download instead)
+   */
+  async exportDomainCSV(domain: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<Blob> {
+    const res = await this.requestDomainCSV(domain, category);
+    // Give it a small delay for backend to prepare
+    await new Promise(r => setTimeout(r, 2000));
+    return this.downloadExport(res.export_id);
   }
 }
 

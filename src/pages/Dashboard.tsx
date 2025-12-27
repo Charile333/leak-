@@ -641,23 +641,46 @@ const Dashboard = () => {
   const handleExportCSV = async () => {
     if (!results?.summary.domain) return;
     try {
+      setIsSearching(true);
       // Mapping tab names to API categories
       let category: 'employees' | 'customers' | 'third_parties' = 'employees';
       if (activeTab === 'Customers') category = 'customers';
       else if (activeTab === 'Third-Parties') category = 'third_parties';
       
-      const blob = await leakRadarApi.exportDomainCSV(results.summary.domain, category);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Leaks_Export_${results.summary.domain}_${category}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const { export_id } = await leakRadarApi.requestDomainCSV(results.summary.domain, category);
+      
+      // 提示用户正在准备
+      const notification = document.createElement('div');
+      notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce";
+      notification.innerText = "正在准备导出数据，请稍候...";
+      document.body.appendChild(notification);
+
+      // 延迟 3 秒下载，通常后端处理需要一点时间
+      setTimeout(async () => {
+        try {
+          const blob = await leakRadarApi.downloadExport(export_id);
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Leaks_Export_${results.summary.domain}_${category}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          document.body.removeChild(notification);
+          setIsSearching(false);
+        } catch (e) {
+          console.error('Download error:', e);
+          alert('下载文件失败，请稍后再试');
+          document.body.removeChild(notification);
+          setIsSearching(false);
+        }
+      }, 3000);
+
     } catch (error: any) {
       console.error('CSV Export Error:', error);
-      alert(error.message || '数据导出失败，请重试');
+      alert(error.message || '数据导出请求失败');
+      setIsSearching(false);
     }
   };
 
