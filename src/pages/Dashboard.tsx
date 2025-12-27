@@ -12,6 +12,7 @@ import {
   Briefcase,
   LayoutGrid,
   Globe,
+  Calendar,
   Link as LinkIcon,
   Loader2,
   ChevronRight,
@@ -45,6 +46,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Report');
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [totalLeaks, setTotalLeaks] = useState<string>('---,---,---,---');
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -236,6 +238,35 @@ const Dashboard = () => {
 
     return list;
   }, [results, activeTab, sortField, sortOrder]);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredCredentials.length && filteredCredentials.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredCredentials.map(c => c.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  // 格式化日期为 YYYY/MM/DD
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   const togglePassword = (id: string) => {
     setShowPasswords(prev => ({ ...prev, [id]: !prev[id] }));
@@ -528,94 +559,79 @@ const Dashboard = () => {
                 </div>
 
                 {/* 凭证列表表格 */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-3xl overflow-hidden overflow-x-auto">
+                <div className="bg-[#1a1a20] border border-white/5 rounded-xl overflow-hidden overflow-x-auto shadow-2xl">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-white/5 bg-white/5">
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">凭证信息</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">密码 / 哈希</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">更多资料</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">日期</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">操作</th>
+                      <tr className="bg-[#25252e] border-b border-white/5">
+                        <th className="px-4 py-3 w-10">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.size === filteredCredentials.length && filteredCredentials.length > 0}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 rounded border-gray-600 bg-transparent text-accent focus:ring-accent focus:ring-offset-0"
+                          />
+                        </th>
+                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">URL</th>
+                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</th>
+                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email / Username</th>
+                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Password</th>
+                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Indexed At</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-white/[0.03]">
                       {filteredCredentials.map((cred) => (
-                        <tr key={cred.id} className="hover:bg-white/[0.02] transition-colors group">
-                          <td className="px-6 py-5">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm font-bold text-white flex items-center gap-2">
-                                {cred.email}
-                                <span className={cn(
-                                  "px-1.5 py-0.5 rounded text-[8px] uppercase font-black",
-                                  cred.type === 'Employee' ? "bg-emerald-500/20 text-emerald-500" :
-                                  cred.type === 'Third-Party' ? "bg-orange-500/20 text-orange-500" :
-                                  "bg-blue-500/20 text-blue-500"
-                                )}>
-                                  {cred.type}
-                                </span>
-                              </span>
-                              <span className="text-[10px] text-gray-500 flex items-center gap-2">
-                                <Globe className="w-3 h-3" />
+                        <tr key={cred.id} className="hover:bg-white/[0.03] transition-colors group">
+                          <td className="px-4 py-4">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedIds.has(cred.id)}
+                              onChange={() => toggleSelect(cred.id)}
+                              className="w-4 h-4 rounded border-gray-600 bg-transparent text-accent focus:ring-accent focus:ring-offset-0"
+                            />
+                          </td>
+                          <td className="px-6 py-4 max-w-[300px]">
+                            <div className="flex items-center gap-2">
+                              <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-200 truncate font-medium">
                                 {cred.website}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-5">
-                            <div className="flex flex-col gap-1.5">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs text-accent bg-accent/5 px-2 py-0.5 rounded">
-                                  {showPasswords[cred.id] ? cred.password_plaintext : '••••••••••••'}
-                                </span>
-                                <button 
-                                  onClick={() => togglePassword(cred.id)}
-                                  className="text-gray-500 hover:text-white transition-colors"
-                                >
-                                  {showPasswords[cred.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(cred.password_plaintext || '');
-                                    // 可以加个 Toast 提示
-                                  }}
-                                  className="text-gray-500 hover:text-white transition-colors"
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-gray-500 font-mono opacity-50 truncate max-w-[150px]">
-                                  {cred.password_hash}
-                                </span>
-                                <span className="text-[9px] text-gray-600 border border-white/5 px-1 rounded uppercase">
-                                  {cred.hash_type}
-                                </span>
-                              </div>
+                          <td className="px-6 py-4">
+                            <span className={cn(
+                              "px-2.5 py-0.5 rounded-full text-[9px] font-bold border",
+                              cred.email?.includes('@') 
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                            )}>
+                              {cred.email?.includes('@') ? 'Email' : 'Username'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-xs text-gray-300 font-mono">
+                              {cred.email}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-300 font-mono">
+                                {showPasswords[cred.id] ? cred.password_plaintext : '••••••••••••'}
+                              </span>
+                              <button 
+                                onClick={() => togglePassword(cred.id)}
+                                className="text-gray-500 hover:text-white transition-colors"
+                              >
+                                {showPasswords[cred.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
                             </div>
                           </td>
-                          <td className="px-6 py-5">
-                            <div className="flex flex-col gap-1 text-[10px]">
-                              {cred.first_name || cred.last_name ? (
-                                <span className="text-gray-300 font-medium">姓名: {cred.first_name} {cred.last_name}</span>
-                              ) : null}
-                              {cred.phone ? (
-                                <span className="text-gray-300 font-medium">电话: {cred.phone}</span>
-                              ) : null}
-                              {cred.country || cred.city ? (
-                                <span className="text-gray-500">位置: {cred.country} {cred.city}</span>
-                              ) : null}
-                              {!cred.first_name && !cred.last_name && !cred.phone && !cred.country && (
-                                <span className="text-gray-600 italic">无额外信息</span>
-                              )}
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2 text-gray-400">
+                              <Calendar className="w-3.5 h-3.5" />
+                              <span className="text-xs font-mono">
+                                {formatDate(cred.leaked_at)}
+                              </span>
                             </div>
-                          </td>
-                          <td className="px-6 py-5">
-                            <span className="text-xs text-gray-500 font-medium">{cred.leaked_at}</span>
-                          </td>
-                          <td className="px-6 py-5">
-                            <button className="p-2 hover:bg-white/5 rounded-lg transition-colors text-gray-500 hover:text-accent">
-                              <ExternalLink className="w-4 h-4" />
-                            </button>
                           </td>
                         </tr>
                       ))}
