@@ -66,44 +66,29 @@ export default async function handler(req, res) {
 
     const innerPath = isDnsRequest ? targetPath.replace('/dns-v1', '') : targetPath.replace('/leakradar', '');
     
-    // 提取域名（如果路径中有的话）
-    let domainFromPath = '';
-    const domainMatch = innerPath.match(/\/domain\/([^\/]+)/) || innerPath.match(/\/leaks\/@([^\/]+)/);
-    if (domainMatch) {
-      domainFromPath = domainMatch[1];
-    }
-
-    // 3. 构建尝试路径列表
+    // 3. 构建尝试路径列表 (优先匹配官方标准路径)
     let prefixesToTry = [];
     if (isDnsRequest) {
       prefixesToTry = [`/api/v1${innerPath}`];
     } else {
-      const cleanInnerPath = innerPath.replace(/\/$/, ''); // 去掉末尾斜杠
-      prefixesToTry = [
-        `/v1${cleanInnerPath}`, 
-        cleanInnerPath.startsWith('/exports') ? `/v1${cleanInnerPath}` : null,
-        cleanInnerPath.startsWith('/exports') ? cleanInnerPath : null,
-        domainFromPath ? `/v1/search/domain/${domainFromPath}/employees/export` : null,
-        domainFromPath ? `/v1/search/domain/${domainFromPath}/customers/export` : null,
-        domainFromPath ? `/v1/search/domain/${domainFromPath}/third_parties/export` : null,
-        domainFromPath ? `/v1/leaks/@${domainFromPath}/export` : null,
-        domainFromPath ? `/leaks/@${domainFromPath}/export` : null,
-        `/v1/search${cleanInnerPath.replace('/search', '')}`,
-        `/v1/domain${cleanInnerPath.replace('/search/domain', '')}`,
-        cleanInnerPath,
-        `/search${cleanInnerPath.replace('/search', '')}`,
-        domainFromPath ? `/v1/export/domain/${domainFromPath}` : null,
-        domainFromPath ? `/v1/search/domain/${domainFromPath}/export` : null,
-        `/v1/search/export`,
-        `/v1/export/all`,
-        innerPath.includes('/unlock') ? `/v1/search/domain${innerPath.replace('/search/domain', '').replace('/unlock', '')}/unlock` : null,
-        innerPath.includes('/report') ? `/v1/report/domain${innerPath.replace('/search/domain', '').replace('/report', '')}` : null,
-        innerPath.includes('/export') ? `/v1/export/domain${innerPath.replace('/search/domain', '').replace('/export', '')}` : null,
-        `/api/v1${cleanInnerPath}`,
-        `/v1/search/domain${cleanInnerPath.replace('/search/domain', '')}`,
-        `/v1/profile/unlocked/export`,
-        `/v1/profile/export`,
-      ].filter(Boolean);
+      const cleanInnerPath = innerPath.replace(/\/$/, '');
+      
+      // 如果是导出相关路径，直接锁定官方端点，不进行多余探测
+      if (cleanInnerPath.startsWith('/exports')) {
+        prefixesToTry = [cleanInnerPath, `/v1${cleanInnerPath}`];
+      } else if (cleanInnerPath.includes('/export')) {
+        prefixesToTry = [cleanInnerPath, `/v1${cleanInnerPath}`];
+      } else {
+        // 其他普通请求保持探测逻辑
+        prefixesToTry = [
+          `/v1${cleanInnerPath}`, 
+          cleanInnerPath,
+          `/v1/search${cleanInnerPath.replace('/search', '')}`,
+          `/v1/domain${cleanInnerPath.replace('/search/domain', '')}`,
+          `/search${cleanInnerPath.replace('/search', '')}`,
+          `/api/v1${cleanInnerPath}`,
+        ].filter(Boolean);
+      }
     }
 
     const host = isDnsRequest ? 'src.0zqq.com' : 'api.leakradar.io';
