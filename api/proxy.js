@@ -75,7 +75,11 @@ export default async function handler(req, res) {
       
       // 如果是导出相关路径，直接锁定官方端点，不进行多余探测
       if (cleanInnerPath.startsWith('/exports')) {
-        prefixesToTry = [cleanInnerPath, `/v1${cleanInnerPath}`];
+        prefixesToTry = [
+          `/v1${cleanInnerPath}`, 
+          cleanInnerPath,
+          `/v1/search${cleanInnerPath}`
+        ];
       } else if (cleanInnerPath.includes('/export')) {
         prefixesToTry = [cleanInnerPath, `/v1${cleanInnerPath}`];
       } else {
