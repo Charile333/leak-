@@ -105,33 +105,7 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true);
-        console.log('[Dashboard] Fetching stats from /api/leakradar/stats...');
-        
-        let stats;
-        try {
-          stats = await leakRadarApi.getStats();
-        } catch (apiError) {
-          console.warn('[Dashboard] API stats fetch failed, using fallback data:', apiError);
-          // 产生一套合理的兜底数据，确保 UI 不报错
-          stats = {
-            leaks: {
-              total: 75240582910, // 更新为最新的约 75B 数据
-              today: 158240,
-              per_week: Array.from({length: 12}, (_, i) => ({
-                week: new Date(Date.now() - (11-i)*7*24*60*60*1000).toISOString().split('T')[0],
-                count: Math.floor(1200000 + Math.random() * 500000)
-              }))
-            },
-            raw_lines: {
-              total: 124582910,
-              today: 452100,
-              per_week: Array.from({length: 12}, (_, i) => ({
-                week: new Date(Date.now() - (11-i)*7*24*60*60*1000).toISOString().split('T')[0],
-                count: Math.floor(4000000 + Math.random() * 1000000)
-              }))
-            }
-          };
-        }
+        const stats = await leakRadarApi.getStats();
         
         const safeNumber = (val: any) => {
           const n = Number(val);

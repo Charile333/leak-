@@ -15,13 +15,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  // 2. 获取目标路径 (还原回最简单的逻辑，确保不丢失路径)
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const targetPath = url.pathname.replace('/api', '');
+  // 2. 获取目标路径
+  const targetPath = req.url.replace('/api', '');
   
-  // 打印调试信息，方便在 Vercel 日志中查看实际收到的路径
-  console.log(`Original URL: ${req.url}, Target Path: ${targetPath}`);
-
   // 根据路径判断使用哪个 API
   const isDnsRequest = targetPath.startsWith('/dns-v1');
   const API_KEY = isDnsRequest 
@@ -33,15 +29,8 @@ export default async function handler(req, res) {
     targetUrl = `https://src.0zqq.com${targetPath.replace('/dns-v1', '/api/v1')}`;
   } else {
     // 处理 leakradar 请求
-    // 强制将所有 /leakradar 请求映射到 /v1
-    let leakPath = targetPath.replace('/leakradar', '/v1');
-    
-    // 如果是 stats 请求，映射到官方正确的 metadata/stats 路径
-    if (leakPath === '/v1/stats') {
-      leakPath = '/v1/metadata/stats';
-    }
-    
-    targetUrl = `https://api.leakradar.io${leakPath}`;
+    // 基础路径映射：/leakradar -> /v1
+    targetUrl = `https://api.leakradar.io${targetPath.replace('/leakradar', '/v1')}`;
   }
 
   if (!API_KEY) {
