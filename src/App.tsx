@@ -13,6 +13,7 @@ function App() {
       <MainLayout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/dns" element={<Dashboard />} />
           <Route path="/monitor" element={<DomainMonitor />} />
           <Route path="/leak-query" element={<LeakQuery />} />
           <Route path="/hash-lookup" element={<HashLookup />} />

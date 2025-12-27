@@ -53,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
       icon: Search,
       items: [
         { name: '情报检索中心', path: '/' },
+        { name: 'DNS数据集', path: '/dns' },
       ]
     }
   ];

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
 import { 
   Search, 
@@ -58,6 +59,8 @@ const AnimatedNumber = ({ value }: { value: string }) => {
 };
 
 const Dashboard = () => {
+  const location = useLocation();
+  const isDnsPage = location.pathname === '/dns';
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -196,6 +199,15 @@ const Dashboard = () => {
     if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
     
+    if (isDnsPage) {
+      // DNS 搜索逻辑 - 暂时显示开发中
+      setIsSearching(true);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsSearching(false);
+      alert('DNS 数据集查询功能正在对接后台接口，敬请期待！');
+      return;
+    }
+
     setIsSearching(true);
     if (page === 0) {
       setShowResults(false);
@@ -387,20 +399,22 @@ const Dashboard = () => {
                 transition={{ duration: 0.5 }}
               >
                 <h1 className="text-7xl md:text-[10rem] font-black text-white tracking-tighter mb-6 leading-none select-none drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                  <AnimatedNumber value={totalLeaks} />
+                  {isDnsPage ? 'DNS' : <AnimatedNumber value={totalLeaks} />}
                 </h1>
               </motion.div>
               
               <div className="flex items-center gap-4 mb-12">
                 <div className="h-px w-12 bg-gradient-to-r from-transparent to-accent" />
                 <p className="text-xs font-black text-accent tracking-[0.5em] uppercase opacity-90">
-                  已索引的泄露记录
+                  {isDnsPage ? '全球 DNS 记录数据库' : '已索引的泄露记录'}
                 </p>
                 <div className="h-px w-12 bg-gradient-to-l from-transparent to-accent" />
               </div>
               
               <p className="max-w-3xl text-xl text-gray-400 mb-14 leading-relaxed font-medium">
-                几秒钟内即可检查域名下的泄露凭证。我们监控全球数千个数据泄露源。
+                {isDnsPage 
+                  ? '查询全球范围内的子域名、解析记录及历史变更。我们索引了超过 50 亿条 DNS 记录。'
+                  : '几秒钟内即可检查域名下的泄露凭证。我们监控全球数千个数据泄露源。'}
               </p>
 
               <form onSubmit={handleSearch} className="w-full max-w-3xl relative group">
@@ -409,7 +423,7 @@ const Dashboard = () => {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="输入域名 (例如: chinabond.com.cn)..."
+                    placeholder={isDnsPage ? "输入域名查询 DNS 记录 (例如: baidu.com)..." : "输入域名 (例如: chinabond.com.cn)..."}
                     className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium"
                   />
                   <button 
