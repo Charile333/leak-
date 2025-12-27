@@ -9,9 +9,9 @@
 // 切换到方案 B：Vercel Serverless 后端
 // 在本地开发时，Vercel 会自动处理 /api 路由
 const BASE_URL = window.location.origin;
+const API_PREFIX = '/api/leakradar';
 
 export interface LeakRadarProfile {
-// ... (保持接口定义不变)
   success: boolean;
   user?: {
     username: string;
@@ -116,7 +116,9 @@ class LeakRadarAPI {
     };
 
     try {
-      const response = await fetch(`${BASE_URL}${endpoint}`, {
+      // Ensure endpoint starts with / if not already
+      const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      const response = await fetch(`${BASE_URL}${API_PREFIX}${formattedEndpoint}`, {
         ...options,
         headers,
       });

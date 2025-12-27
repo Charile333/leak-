@@ -392,6 +392,17 @@ const Dashboard = () => {
   const renderDnsResults = () => {
     if (!dnsResults) return null;
 
+    // 获取当前活动标签页的数据
+    const activeDataKey = dnsActiveSubTab.toLowerCase();
+    const currentData = dnsResults[activeDataKey] || 
+                      (dnsActiveSubTab === 'Subdomains' ? dnsResults.subdomains : 
+                       dnsActiveSubTab === 'Records' ? dnsResults.records : 
+                       dnsActiveSubTab === 'Reverse' ? dnsResults.reverse : 
+                       dnsActiveSubTab === 'SSL' ? dnsResults.ssl : null);
+    
+    const list = currentData?.data?.list || [];
+    const total = currentData?.data?.total || 0;
+
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
         {/* DNS 子页签 */}
@@ -429,21 +440,116 @@ const Dashboard = () => {
               {dnsActiveSubTab === 'Records' && 'DNS 解析记录'}
               {dnsActiveSubTab === 'Reverse' && '反向查询结果'}
               {dnsActiveSubTab === 'SSL' && 'SSL 证书详情'}
+              {total > 0 && (
+                <span className="text-xs font-bold text-gray-500 bg-white/5 px-3 py-1 rounded-full border border-white/5 ml-2">
+                  共 {total} 条记录
+                </span>
+              )}
             </h3>
             <div className="text-xs text-gray-500 font-mono">
               API Status: <span className="text-emerald-500 font-bold">Connected</span>
             </div>
           </div>
 
-          <div className="min-h-[400px] flex items-center justify-center text-gray-500 border-2 border-dashed border-white/5 rounded-2xl">
-            {/* 这里后续根据接口返回数据结构编写具体的表格展示 */}
-            <div className="text-center">
-              <p className="mb-2 font-bold">数据已成功获取</p>
-              <p className="text-xs opacity-50">正在根据 API 返回结构渲染表格...</p>
-              <pre className="mt-4 p-4 bg-black/50 rounded-lg text-left text-[10px] max-h-40 overflow-auto">
-                {JSON.stringify(dnsResults[dnsActiveSubTab.toLowerCase()], null, 2)}
-              </pre>
-            </div>
+          <div className="min-h-[400px] border border-white/5 rounded-2xl overflow-hidden overflow-x-auto bg-black/20">
+            {list.length > 0 ? (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#25252e] border-b border-white/5">
+                    {dnsActiveSubTab === 'Subdomains' && (
+                      <>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">域名</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">IP 地址</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">端口</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">协议</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">更新时间</th>
+                      </>
+                    )}
+                    {dnsActiveSubTab === 'Records' && (
+                      <>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">域名</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">类型</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">记录值</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">更新时间</th>
+                      </>
+                    )}
+                    {dnsActiveSubTab === 'Reverse' && (
+                      <>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">IP 地址</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">反向解析域名</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">更新时间</th>
+                      </>
+                    )}
+                    {dnsActiveSubTab === 'SSL' && (
+                      <>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">域名</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">证书主题</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">颁发者</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">生效时间</th>
+                        <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">截止时间</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.03]">
+                  {list.map((item: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-white/[0.03] transition-colors group">
+                      {dnsActiveSubTab === 'Subdomains' && (
+                        <>
+                          <td className="px-6 py-4 font-mono text-sm text-white">{item.domain || '-'}</td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded text-xs font-mono border border-blue-500/20">
+                              {item.ip || '-'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-400">{item.port || '-'}</td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold uppercase">
+                              {item.protocol || '-'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right text-xs text-gray-500 font-mono">{item.update_time || '-'}</td>
+                        </>
+                      )}
+                      {dnsActiveSubTab === 'Records' && (
+                        <>
+                          <td className="px-6 py-4 font-mono text-sm text-white">{item.domain || '-'}</td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 bg-accent/10 text-accent rounded text-[10px] font-bold uppercase border border-accent/20">
+                              {item.type || '-'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs text-gray-400 break-all max-w-xs">{item.value || '-'}</td>
+                          <td className="px-6 py-4 text-right text-xs text-gray-500 font-mono">{item.update_time || '-'}</td>
+                        </>
+                      )}
+                      {dnsActiveSubTab === 'Reverse' && (
+                        <>
+                          <td className="px-6 py-4 font-mono text-sm text-white">{item.ip || '-'}</td>
+                          <td className="px-6 py-4 font-mono text-sm text-gray-400">{item.domain || '-'}</td>
+                          <td className="px-6 py-4 text-right text-xs text-gray-500 font-mono">{item.update_time || '-'}</td>
+                        </>
+                      )}
+                      {dnsActiveSubTab === 'SSL' && (
+                        <>
+                          <td className="px-6 py-4 font-mono text-sm text-white">{item.domain || '-'}</td>
+                          <td className="px-6 py-4 text-xs text-gray-400 max-w-xs truncate">{item.subject || '-'}</td>
+                          <td className="px-6 py-4 text-xs text-gray-400 truncate">{item.issuer || '-'}</td>
+                          <td className="px-6 py-4 text-xs text-gray-500 font-mono">{item.start_time || '-'}</td>
+                          <td className="px-6 py-4 text-right text-xs text-gray-500 font-mono">{item.end_time || '-'}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                <Search className="w-12 h-12 mb-4 opacity-20" />
+                <p className="font-bold">未找到相关记录</p>
+                <p className="text-xs opacity-50">尝试更换搜索关键词或稍后再试</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

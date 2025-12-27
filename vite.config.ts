@@ -69,10 +69,13 @@ export default defineConfig(({ mode }) => {
             proxy.on('proxyReq', (proxyReq, req) => {
               const apiToken = env.VITE_DNS_API_TOKEN?.trim();
               if (apiToken) {
-                proxyReq.removeHeader('Authorization');
-                proxyReq.setHeader('Authorization', `Bearer ${apiToken}`);
+                // Hunter.how uses api-key in query parameter, not Bearer token
+                const url = new URL(proxyReq.path, 'https://api.hunter.how');
+                url.searchParams.set('api-key', apiToken);
+                proxyReq.path = url.pathname + url.search;
+                
                 proxyReq.setHeader('Host', 'api.hunter.how');
-                console.log(`\x1b[36m[DNS Proxy Request]\x1b[0m ${req.method} ${req.url} -> api.hunter.how`);
+                console.log(`\x1b[36m[DNS Proxy Request]\x1b[0m ${req.method} ${proxyReq.path} -> api.hunter.how`);
               }
             });
             

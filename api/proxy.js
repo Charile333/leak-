@@ -24,9 +24,15 @@ export default async function handler(req, res) {
     ? (process.env.DNS_API_TOKEN || process.env.VITE_DNS_API_TOKEN)
     : process.env.LEAKRADAR_API_KEY;
 
-  const targetUrl = isDnsRequest
+  let targetUrl = isDnsRequest
     ? `https://api.hunter.how${targetPath.replace('/dns-v1', '/api/v1')}`
-    : `https://api.leakradar.io${targetPath}`;
+    : `https://api.leakradar.io${targetPath.replace('/leakradar', '')}`;
+
+  // hunter.how 需要在 query parameter 中传递 api-key
+  if (isDnsRequest) {
+    const separator = targetUrl.includes('?') ? '&' : '?';
+    targetUrl += `${separator}api-key=${API_KEY}`;
+  }
 
   if (!API_KEY) {
     return res.status(500).json({ 
@@ -37,14 +43,22 @@ export default async function handler(req, res) {
 
   try {
     console.log(`Proxying request to: ${targetUrl}`);
+    
+    // 构造请求头
+    const headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    // leakradar.io 通常使用 Bearer Token
+    if (!isDnsRequest) {
+      headers['Authorization'] = `Bearer ${API_KEY}`;
+    }
+
     const response = await axios({
       method: req.method,
       url: targetUrl,
-      headers: {
-        'Authorization': `Bearer ${API_KEY}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       data: req.body
     });
 
