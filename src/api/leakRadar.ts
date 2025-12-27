@@ -327,7 +327,8 @@ class LeakRadarAPI {
     category: 'employees' | 'customers' | 'third_parties' | 'all' = 'all'
   ): Promise<{ export_id: number }> {
     const domain = this.sanitizeDomain(domainInput);
-    return this.request<{ export_id: number }>(`/search/domain/${domain}/export`, {
+    // 使用用户提供的最新路径格式: /leaks/@<domain>/export
+    return this.request<{ export_id: number }>(`/leaks/@${domain}/export`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

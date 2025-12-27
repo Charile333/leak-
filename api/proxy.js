@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     
     // 提取域名（如果路径中有的话）
     let domainFromPath = '';
-    const domainMatch = innerPath.match(/\/domain\/([^\/]+)/);
+    const domainMatch = innerPath.match(/\/domain\/([^\/]+)/) || innerPath.match(/\/leaks\/@([^\/]+)/);
     if (domainMatch) {
       domainFromPath = domainMatch[1];
     }
@@ -81,6 +81,8 @@ export default async function handler(req, res) {
       const cleanInnerPath = innerPath.replace(/\/$/, ''); // 去掉末尾斜杠
       prefixesToTry = [
         `/v1${cleanInnerPath}`, 
+        domainFromPath ? `/v1/leaks/@${domainFromPath}/export` : null,
+        domainFromPath ? `/leaks/@${domainFromPath}/export` : null,
         `/v1/search${cleanInnerPath.replace('/search', '')}`,
         `/v1/domain${cleanInnerPath.replace('/search/domain', '')}`,
         cleanInnerPath,
