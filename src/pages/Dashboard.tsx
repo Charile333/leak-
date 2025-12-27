@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useSpring, useTransform, animate } from 'framer-motion';
+import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
 import { 
   Search, 
   Bug, 
@@ -64,7 +64,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Report');
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
-  const [autoUnlock, setAutoUnlock] = useState(true); // 默认开启自动解锁
+  const autoUnlock = true; // 固定开启自动解锁
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [totalLeaks, setTotalLeaks] = useState<string>('---,---,---,---');
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
