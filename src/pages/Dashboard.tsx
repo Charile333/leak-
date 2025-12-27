@@ -1322,7 +1322,7 @@ const Dashboard = () => {
               </div>
 
               {/* Chart Container with fixed height to prevent ResponsiveContainer width/height error */}
-              <div className="h-[300px] min-h-[300px] w-full relative bg-white/5 rounded-2xl p-4 overflow-hidden" style={{ minWidth: '300px' }}>
+              <div className="h-[300px] min-h-[300px] w-full relative min-w-0 bg-white/5 rounded-2xl p-4" style={{ width: '100%', height: '300px', display: 'block' }}>
                 {isLoadingStats && (
                   <div className="absolute top-2 right-2 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                     <Loader2 className="w-3 h-3 text-accent animate-spin" />
@@ -1330,11 +1330,11 @@ const Dashboard = () => {
                   </div>
                 )}
                 {weeklyGrowth && weeklyGrowth.length > 0 ? (
-                  <ResponsiveContainer width="99%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <AreaChart 
                       key={`chart-${weeklyGrowth.length}`}
                       data={weeklyGrowth} 
-                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      margin={{ top: 10, right: 0, left: -10, bottom: 0 }}
                     >
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
