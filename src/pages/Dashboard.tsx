@@ -21,7 +21,6 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Copy,
   ChevronLeft
 } from 'lucide-react';
 import { 
