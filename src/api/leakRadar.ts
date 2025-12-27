@@ -289,6 +289,20 @@ class LeakRadarAPI {
   }
 
   /**
+   * Export unlocked leaks for the current profile
+   * Optional query to filter results
+   */
+  async exportUnlockedLeaks(format: 'csv' | 'json' | 'txt' = 'csv', query?: string): Promise<Blob> {
+    return this.requestBlob('/profile/unlocked/export', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ format, query }),
+    });
+  }
+
+  /**
    * Export domain search results as PDF
    */
   async exportDomainPDF(domainInput: string): Promise<Blob> {

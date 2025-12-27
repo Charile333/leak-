@@ -641,61 +641,80 @@ const Dashboard = () => {
     if (!results?.summary.domain) return;
     try {
       setIsSearching(true);
-      let category: 'employees' | 'customers' | 'third_parties' = 'employees';
-      if (activeTab === 'Customers') category = 'customers';
-      else if (activeTab === 'Third-Parties') category = 'third_parties';
       
-      const { export_id } = await leakRadarApi.requestDomainCSV(results.summary.domain, category);
+      // 使用用户建议的新接口：导出已解锁的泄露
+      // 这种方式更可靠，且直接返回文件流
+      const blob = await leakRadarApi.exportUnlockedLeaks('csv', results.summary.domain);
       
-      const notification = document.createElement('div');
-      notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
-      notification.innerHTML = `<span class="animate-spin">⏳</span> 正在准备 ${activeTab} 导出数据...`;
-      document.body.appendChild(notification);
-
-      // 轮询逻辑
-      let attempts = 0;
-      const maxAttempts = 15; // 增加到 15 次，约 30 秒
-      
-      const checkStatus = async () => {
-        try {
-          const res = await leakRadarApi.getExportStatus(export_id);
-          // 兼容不同 API 响应格式
-          const status = res.status || (res as any).data?.status;
-          
-          if (status === 'success') {
-            const blob = await leakRadarApi.downloadExport(export_id);
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Leaks_Export_${results.summary.domain}_${category}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            document.body.removeChild(notification);
-            setIsSearching(false);
-          } else if (status === 'failed') {
-            throw new Error('服务器生成导出文件失败');
-          } else if (attempts < maxAttempts) {
-            attempts++;
-            setTimeout(checkStatus, 2000); // 每2秒检查一次
-          } else {
-            throw new Error('导出超时，请稍后重试');
-          }
-        } catch (e: any) {
-          console.error('Download error:', e);
-          alert(e.message || '下载文件失败');
-          if (document.body.contains(notification)) document.body.removeChild(notification);
-          setIsSearching(false);
-        }
-      };
-
-      setTimeout(checkStatus, 2000);
-
-    } catch (error: any) {
-      console.error('CSV Export Error:', error);
-      alert(error.message || '数据导出请求失败');
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Unlocked_Leaks_${results.summary.domain}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
       setIsSearching(false);
+      
+    } catch (error: any) {
+      console.warn('New export interface failed, falling back to legacy export:', error);
+      // 如果新接口失败，尝试回退到旧的异步导出逻辑
+      try {
+        let category: 'employees' | 'customers' | 'third_parties' = 'employees';
+        if (activeTab === 'Customers') category = 'customers';
+        else if (activeTab === 'Third-Parties') category = 'third_parties';
+        
+        const { export_id } = await leakRadarApi.requestDomainCSV(results.summary.domain, category);
+        
+        const notification = document.createElement('div');
+        notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
+        notification.innerHTML = `<span class="animate-spin">⏳</span> 正在准备 ${activeTab} 导出数据...`;
+        document.body.appendChild(notification);
+
+        // 轮询逻辑
+        let attempts = 0;
+        const maxAttempts = 15;
+        
+        const checkStatus = async () => {
+          try {
+            const res = await leakRadarApi.getExportStatus(export_id);
+            const status = res.status || (res as any).data?.status;
+            
+            if (status === 'success') {
+              const blob = await leakRadarApi.downloadExport(export_id);
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `Leaks_Export_${results.summary.domain}_${category}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+              if (document.body.contains(notification)) document.body.removeChild(notification);
+              setIsSearching(false);
+            } else if (status === 'failed') {
+              throw new Error('服务器生成导出文件失败');
+            } else if (attempts < maxAttempts) {
+              attempts++;
+              setTimeout(checkStatus, 2000);
+            } else {
+              throw new Error('导出超时，请稍后重试');
+            }
+          } catch (e: any) {
+            console.error('Download error:', e);
+            alert(e.message || '下载文件失败');
+            if (document.body.contains(notification)) document.body.removeChild(notification);
+            setIsSearching(false);
+          }
+        };
+
+        setTimeout(checkStatus, 2000);
+
+      } catch (fallbackError: any) {
+        console.error('Legacy Export Error:', fallbackError);
+        alert(fallbackError.message || '数据导出请求失败');
+        setIsSearching(false);
+      }
     }
   };
 
