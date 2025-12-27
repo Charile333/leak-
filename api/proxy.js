@@ -94,26 +94,30 @@ export default async function handler(req, res) {
         ];
       } else if (cleanInnerPath.includes('/domain/') || cleanInnerPath.includes('/leaks/@')) {
         // 针对域名查询和解锁的路径优化
+        // 1. 提取域名
         const domainMatch = cleanInnerPath.match(/\/domain\/([^\/\?]+)/) || 
                             cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/);
         const domain = domainMatch ? domainMatch[1] : '';
-        const isUnlock = cleanInnerPath.includes('/unlock');
         
-        // 自动识别 category
-        let category = '';
-        if (cleanInnerPath.includes('/employees')) category = 'employees';
-        else if (cleanInnerPath.includes('/customers')) category = 'customers';
-        else if (cleanInnerPath.includes('/third_parties')) category = 'third_parties';
-        
+        // 2. 提取子路径 (如 /subdomains, /urls, /employees/unlock)
+        // 找到域名后面的部分
+        let subPath = '';
+        if (domain) {
+          const domainIndex = cleanInnerPath.indexOf(domain);
+          subPath = cleanInnerPath.substring(domainIndex + domain.length);
+        }
+
         prefixesToTry = [
-          // 方案 1: 最稳健的 v1 search 路径
-          `/v1/search/domain/${domain}${category ? '/' + category : ''}${isUnlock ? '/unlock' : ''}`,
-          // 方案 2: 极简路径
-          `/v1/domain/${domain}${category ? '/' + category : ''}${isUnlock ? '/unlock' : ''}`,
-          // 方案 3: 带 @ 的 leaks 路径
-          `/v1/leaks/@${domain}${category ? '?type=' + category : ''}`,
+          // 方案 1: 最标准的 v1 search 路径 (保留子路径)
+          `/v1/search/domain/${domain}${subPath}`,
+          // 方案 2: 极简 v1 路径
+          `/v1/domain/${domain}${subPath}`,
+          // 方案 3: 带 @ 的 leaks 路径 (如果是查询)
+          !subPath || subPath === '/' ? `/v1/leaks/@${domain}` : null,
           // 方案 4: 直接透传
-          cleanInnerPath.startsWith('/v1') ? cleanInnerPath : `/v1${cleanInnerPath}`
+          cleanInnerPath.startsWith('/v1') ? cleanInnerPath : `/v1${cleanInnerPath}`,
+          // 方案 5: 原始路径
+          cleanInnerPath
         ].filter(Boolean);
       } else if (cleanInnerPath.includes('/export')) {
         const parts = cleanInnerPath.split('/');
@@ -245,11 +249,13 @@ export default async function handler(req, res) {
     
     // 所有尝试都失败
     console.error(`All ${prefixesToTry.length} attempts failed for ${innerPath}. Last error:`, lastError?.message);
-    return res.status(lastError?.response?.status || 500).json({
+    return res.status(lastError?.response?.status || 404).json({
       error: "Proxy request failed after multiple attempts",
       message: lastError?.message,
       path: innerPath,
-      tried: prefixesToTry
+      tried: prefixesToTry,
+      api_key_status: API_KEY ? 'Present' : 'Missing',
+      is_dns: isDnsRequest
     });
 
   } catch (error) {
