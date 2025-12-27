@@ -226,10 +226,13 @@ class LeakRadarAPI {
    * Export domain search results as PDF
    */
   async exportDomainPDF(domain: string): Promise<Blob> {
-    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/pdf`, {
+    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/report`, {
+      method: 'POST',
       headers: {
         'Accept': 'application/pdf',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ format: 'pdf' }),
     });
     
     if (!response.ok) {
@@ -250,13 +253,23 @@ class LeakRadarAPI {
    * Returns an export_id
    */
   async requestDomainCSV(domain: string, category: 'employees' | 'customers' | 'third_parties' = 'employees'): Promise<{ export_id: number }> {
-    return this.request<{ export_id: number }>(`/search/domain/${domain}/${category}/export`, {
+    return this.request<{ export_id: number }>(`/search/domain/${domain}/export`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ format: 'csv' }),
+      body: JSON.stringify({ 
+        format: 'csv',
+        category: category 
+      }),
     });
+  }
+
+  /**
+   * Get export status
+   */
+  async getExportStatus(exportId: number): Promise<{ status: 'pending' | 'success' | 'failed'; download_url?: string }> {
+    return this.request<{ status: 'pending' | 'success' | 'failed'; download_url?: string }>(`/search/export/${exportId}`);
   }
 
   /**
