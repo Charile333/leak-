@@ -600,9 +600,40 @@ const Dashboard = () => {
     );
   };
 
-  const handleDownloadPDF = () => {
-    // 简单的下载 PDF 功能实现：打印当前页面或显示提示
-    window.print();
+  const handleDownloadPDF = async () => {
+    if (!results?.summary.domain) return;
+    try {
+      const blob = await leakRadarApi.exportDomainPDF(results.summary.domain);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Security_Report_${results.summary.domain}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('PDF Download Error:', error);
+      alert('PDF 导出失败，请重试');
+    }
+  };
+
+  const handleExportCSV = async () => {
+    if (!results?.summary.domain) return;
+    try {
+      const blob = await leakRadarApi.exportDomainCSV(results.summary.domain);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Leaks_Export_${results.summary.domain}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('CSV Export Error:', error);
+      alert('数据导出失败，请重试');
+    }
   };
 
   const DetailCard = ({ title, icon: Icon, data, colorClass, onClick }: { title: string, icon: any, data: any, colorClass: string, onClick?: () => void }) => (
@@ -913,8 +944,18 @@ const Dashboard = () => {
                       />
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    显示 {filteredCredentials.length} 条记录
+                  
+                  <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                    <div className="text-xs text-gray-500">
+                      显示 {filteredCredentials.length} 条记录
+                    </div>
+                    <button 
+                      onClick={handleExportCSV}
+                      className="flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded-xl text-sm font-bold text-accent transition-all hover:scale-105 active:scale-95"
+                    >
+                      <Download className="w-4 h-4" />
+                      导出数据
+                    </button>
                   </div>
                 </div>
 

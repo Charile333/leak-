@@ -221,6 +221,32 @@ class LeakRadarAPI {
   async getStats(): Promise<LeakRadarStats> {
     return this.request<LeakRadarStats>('/stats');
   }
+
+  /**
+   * Export domain search results as PDF
+   */
+  async exportDomainPDF(domain: string): Promise<Blob> {
+    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/pdf`, {
+      headers: {
+        'Accept': 'application/pdf',
+      },
+    });
+    if (!response.ok) throw new Error('PDF 导出失败');
+    return response.blob();
+  }
+
+  /**
+   * Export domain search results as CSV
+   */
+  async exportDomainCSV(domain: string): Promise<Blob> {
+    const response = await fetch(`${BASE_URL}${API_PREFIX}/search/domain/${domain}/csv`, {
+      headers: {
+        'Accept': 'text/csv',
+      },
+    });
+    if (!response.ok) throw new Error('CSV 导出失败');
+    return response.blob();
+  }
 }
 
 export const leakRadarApi = new LeakRadarAPI();
