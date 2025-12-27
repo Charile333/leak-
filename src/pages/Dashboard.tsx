@@ -480,7 +480,7 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h4 className="text-xl font-black text-white tracking-tight">查看详细泄露项分析</h4>
-                      <p className="text-gray-500 font-medium">深度解析受影响的凭证详情、来源及修复建议</p>
+                      <p className="text-gray-500 font-medium">深度解析受影响的凭证详情及修复建议</p>
                     </div>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:translate-x-2 transition-transform">
@@ -535,7 +535,6 @@ const Dashboard = () => {
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">凭证信息</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">密码 / 哈希</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">更多资料</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">泄露来源</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">日期</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">操作</th>
                       </tr>
@@ -607,17 +606,6 @@ const Dashboard = () => {
                               ) : null}
                               {!cred.first_name && !cred.last_name && !cred.phone && !cred.country && (
                                 <span className="text-gray-600 italic">无额外信息</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-5">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs font-medium text-gray-300 flex items-center gap-2">
-                                <Bug className="w-3 h-3 text-rose-500" />
-                                {cred.source}
-                              </span>
-                              {cred.ip_address && (
-                                <span className="text-[10px] text-gray-500">IP: {cred.ip_address}</span>
                               )}
                             </div>
                           </td>
