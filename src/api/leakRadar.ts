@@ -277,13 +277,22 @@ class LeakRadarAPI {
   async getLeaksFull(domain: string, category: 'employees' | 'customers' | 'third_parties' | 'all' = 'all'): Promise<LeakRadarSearchResult> {
     const sanitized = this.sanitizeDomain(domain);
     // 方案 1: 尝试最原始的 search 路径，因为它在仪表盘显示时是正常的
-    // 将 page_size 从 10000 降低到 1000，防止被服务器拒绝
     const path = category === 'all' 
       ? `/search/domain/${sanitized}`
       : `/search/domain/${sanitized}/${category}`;
     
     console.log(`[Debug] Frontend CSV Export requesting path: ${path}`);
-    return this.request<LeakRadarSearchResult>(`${path}?page=1&page_size=1000`);
+    return this.request<LeakRadarSearchResult>(`${path}?page=1&page_size=10000`);
+  }
+
+  /**
+   * Unlock all results for a domain and category
+   */
+  async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
+    const sanitized = this.sanitizeDomain(domain);
+    return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock`, {
+      method: 'POST'
+    });
   }
 
   /**

@@ -93,10 +93,11 @@ export default async function handler(req, res) {
           `/v1/export/${id}${isDownload ? '/download' : ''}`
         ];
       } else if (cleanInnerPath.includes('/domain/') || cleanInnerPath.includes('/leaks/@')) {
-        // 针对域名查询的路径优化
+        // 针对域名查询和解锁的路径优化
         const domainMatch = cleanInnerPath.match(/\/domain\/([^\/\?]+)/) || 
                             cleanInnerPath.match(/\/leaks\/@([^\/\?]+)/);
         const domain = domainMatch ? domainMatch[1] : '';
+        const isUnlock = cleanInnerPath.includes('/unlock');
         
         // 自动识别 category
         let category = '';
@@ -106,9 +107,9 @@ export default async function handler(req, res) {
         
         prefixesToTry = [
           // 方案 1: 最稳健的 v1 search 路径
-          `/v1/search/domain/${domain}${category ? '/' + category : ''}`,
+          `/v1/search/domain/${domain}${category ? '/' + category : ''}${isUnlock ? '/unlock' : ''}`,
           // 方案 2: 极简路径
-          `/v1/domain/${domain}${category ? '/' + category : ''}`,
+          `/v1/domain/${domain}${category ? '/' + category : ''}${isUnlock ? '/unlock' : ''}`,
           // 方案 3: 带 @ 的 leaks 路径
           `/v1/leaks/@${domain}${category ? '?type=' + category : ''}`,
           // 方案 4: 直接透传
