@@ -272,6 +272,16 @@ class LeakRadarAPI {
   }
 
   /**
+   * 获取域名的完整泄露数据（用于前端生成 CSV）
+   */
+  async getLeaksFull(domain: string, category: 'employees' | 'customers' | 'third_parties' | 'all' = 'all'): Promise<LeakRadarSearchResult> {
+    const sanitized = this.sanitizeDomain(domain);
+    // 使用用户提供的路径格式：/leaks/@domain?type=category
+    const type = category === 'all' ? '' : `?type=${category}`;
+    return this.request<LeakRadarSearchResult>(`/leaks/@${sanitized}${type}`);
+  }
+
+  /**
    * Unlock all results for a domain and category
    */
   async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {

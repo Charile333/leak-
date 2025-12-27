@@ -700,67 +700,79 @@ const Dashboard = () => {
     if (!results?.summary.domain) return;
     try {
       setIsSearching(true);
-      console.log('Starting CSV Export for:', results.summary.domain, 'Category:', activeTab);
+      console.log('Starting Frontend CSV Export for:', results.summary.domain, 'Category:', activeTab);
       
-      let category: 'employees' | 'customers' | 'third_parties' = 'employees';
+      let category: 'employees' | 'customers' | 'third_parties' | 'all' = 'employees';
       if (activeTab === 'Customers') category = 'customers';
       else if (activeTab === 'Third-Parties') category = 'third_parties';
+      else if (activeTab === 'Report') category = 'all';
 
-      // 优先尝试使用 Domain Export 接口 (这是官网图片中 17513 的类型)
-      const res = await leakRadarApi.requestDomainExport(results.summary.domain, 'csv', category);
-      console.log('Export requested successfully, ID:', res.export_id);
-      const export_id = res.export_id;
-      
       const notification = document.createElement('div');
       notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
-      notification.innerHTML = `<span class="animate-spin">⏳</span> 正在准备 ${activeTab} 数据导出...`;
+      notification.innerHTML = `<span class="animate-spin">⏳</span> 正在从服务器获取完整数据并生成 CSV...`;
       document.body.appendChild(notification);
 
-      // 轮询逻辑
-      let attempts = 0;
-      const maxAttempts = 20;
+      // 1. 获取完整 JSON 数据
+      const data = await leakRadarApi.getLeaksFull(results.summary.domain, category);
       
-      const checkStatus = async () => {
-        try {
-          console.log(`Checking CSV export status for ID: ${export_id}, Attempt: ${attempts + 1}`);
-          const res = await leakRadarApi.getExportStatus(export_id);
-          console.log('CSV Status Response:', res);
-          const status = res.status || (res as any).data?.status;
-          
-          if (status === 'success') {
-            const blob = await leakRadarApi.downloadExport(export_id);
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Leaks_Export_${results.summary.domain}_${category}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            if (document.body.contains(notification)) document.body.removeChild(notification);
-            setIsSearching(false);
-          } else if (status === 'failed') {
-            throw new Error('服务器生成 CSV 失败');
-          } else if (attempts < maxAttempts) {
-            attempts++;
-            setTimeout(checkStatus, 3000);
-          } else {
-            throw new Error('导出超时，请稍后重试');
-          }
-        } catch (e: any) {
-          console.error('CSV Download error:', e);
-          alert(e.message || '生成 CSV 失败');
-          if (document.body.contains(notification)) document.body.removeChild(notification);
-          setIsSearching(false);
-        }
-      };
+      if (!data.items || data.items.length === 0) {
+        throw new Error('没有找到可导出的数据');
+      }
 
-      setTimeout(checkStatus, 2000);
+      // 2. 将 JSON 转换为 CSV
+      const headers = [
+        'Email', 'Username', 'Password (Plain)', 'Password (Hash)', 'Hash Type', 
+        'Website', 'Source', 'URL', 'IP Address', 'First Name', 'Last Name', 
+        'Phone', 'City', 'Country', 'Leaked At', 'Added At'
+      ];
+
+      const csvRows = [headers.join(',')];
+
+      data.items.forEach(item => {
+        const row = [
+          `"${(item.email || '').replace(/"/g, '""')}"`,
+          `"${(item.username || '').replace(/"/g, '""')}"`,
+          `"${(item.password_plaintext || item.password || '').replace(/"/g, '""')}"`,
+          `"${(item.password_hash || '').replace(/"/g, '""')}"`,
+          `"${(item.hash_type || '').replace(/"/g, '""')}"`,
+          `"${(item.website || '').replace(/"/g, '""')}"`,
+          `"${(item.source || '').replace(/"/g, '""')}"`,
+          `"${(item.url || '').replace(/"/g, '""')}"`,
+          `"${(item.ip_address || '').replace(/"/g, '""')}"`,
+          `"${(item.first_name || '').replace(/"/g, '""')}"`,
+          `"${(item.last_name || '').replace(/"/g, '""')}"`,
+          `"${(item.phone || '').replace(/"/g, '""')}"`,
+          `"${(item.city || '').replace(/"/g, '""')}"`,
+          `"${(item.country || '').replace(/"/g, '""')}"`,
+          `"${(item.leaked_at || '').replace(/"/g, '""')}"`,
+          `"${(item.added_at || '').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvString = csvRows.join('\n');
+
+      // 3. 触发下载
+      const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Leaks_${results.summary.domain}_${category}_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      if (document.body.contains(notification)) document.body.removeChild(notification);
+      setIsSearching(false);
       
     } catch (error: any) {
       console.error('CSV Export Error:', error);
-      alert(error.message || 'CSV 导出请求失败');
+      alert(error.message || 'CSV 导出失败');
       setIsSearching(false);
+      // 清除通知
+      const notifications = document.querySelectorAll('.animate-bounce');
+      notifications.forEach(n => n.remove());
     }
   };
 
