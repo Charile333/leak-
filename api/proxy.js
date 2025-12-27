@@ -16,7 +16,12 @@ export default async function handler(req, res) {
   }
 
   // 2. 获取目标路径 (去掉 /api 部分)
-  const targetPath = req.url.replace('/api', '');
+  let targetPath = req.url.replace('/api', '');
+  
+  // 处理 stats 路径映射
+  if (targetPath === '/leakradar/stats') {
+    targetPath = '/leakradar/metadata/stats';
+  }
   
   // 根据路径判断使用哪个 API
   const isDnsRequest = targetPath.startsWith('/dns-v1');
