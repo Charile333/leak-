@@ -219,8 +219,31 @@ export const dataService = {
    * Search specific category leaks with pagination
    * 直接调用API获取数据，不包含解锁步骤
    */
-  searchCategory: async (domain: string, category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains', limit = 100, offset = 0): Promise<LeakedCredential[]> => {
+  searchCategory: async (domainInput: string, category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains', limit = 100, offset = 0): Promise<LeakedCredential[]> => {
     try {
+      // 统一处理domain，确保缓存键一致
+      const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+      
+      // 检查解锁缓存，确保调用API前域名已解锁
+      const now = Date.now();
+      const cached = unlockCache[domain];
+      const isUnlocked = cached && now - cached.timestamp < CACHE_DURATION && cached.unlocked;
+      
+      if (!isUnlocked) {
+        console.log(`[Debug] 域名 ${domain} 未解锁，正在执行解锁...`);
+        // 执行解锁流程
+        const unlockCategories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
+        const unlockResults = await Promise.allSettled(
+          unlockCategories.map(cat => leakRadarApi.unlockDomain(domain, cat).catch(err => {
+            console.error(`[Debug] 解锁请求失败 (${cat}):`, err.message);
+            return { success: true, message: `异步解锁任务已提交 (${cat})` };
+          }))
+        );
+        
+        // 更新解锁缓存
+        unlockCache[domain] = { unlocked: true, timestamp: now };
+      }
+      
       if (category === 'urls') {
         const res = await leakRadarApi.getDomainUrls(domain, 1000, 0); // 获取所有数据进行统计
         
