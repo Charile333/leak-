@@ -65,10 +65,6 @@ const DomainMonitor = () => {
             </div>
             <h3 className="font-bold text-white uppercase tracking-wider text-sm">通知方式 (Notification Methods)</h3>
           </div>
-          <button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20">
-            <Plus className="w-4 h-4" />
-            添加通知方式
-          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -123,22 +119,11 @@ const DomainMonitor = () => {
             </div>
             <h3 className="font-bold text-white uppercase tracking-wider text-sm">监控目标 (Monitored Targets 1/100)</h3>
           </div>
-          <div className="flex gap-3">
-            <button className="bg-white/5 hover:bg-white/10 text-gray-400 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 border border-white/10">
-              <Trash2 className="w-4 h-4" />
-              删除选中
-            </button>
-            <button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20">
-              <Plus className="w-4 h-4" />
-              添加资产
-            </button>
-          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] bg-black/20">
-                <th className="px-6 py-4 w-12"><input type="checkbox" className="rounded border-white/10 bg-black/40" /></th>
                 <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">状态</th>
                 <th className="px-6 py-4">类型</th>
@@ -155,7 +140,6 @@ const DomainMonitor = () => {
             <tbody className="divide-y divide-white/5">
               {monitoredTargets.map((target) => (
                 <tr key={target.id} className="text-sm hover:bg-white/[0.02] transition-colors group">
-                  <td className="px-6 py-4"><input type="checkbox" className="rounded border-white/10 bg-black/40" /></td>
                   <td className="px-6 py-4 text-gray-500 font-mono">{target.id}</td>
                   <td className="px-6 py-4">
                     <div className={cn(
@@ -272,7 +256,7 @@ const DomainMonitor = () => {
 
       {/* Footer info */}
       <div className="flex justify-center pt-8 pb-12">
-        <p className="text-gray-600 text-xs font-bold tracking-[0.3em] uppercase">LeakRadar Security Platform</p>
+        <p className="text-gray-600 text-xs font-bold tracking-[0.3em] uppercase">理是高级威胁泄露监测</p>
       </div>
     </div>
   );
