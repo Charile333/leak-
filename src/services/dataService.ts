@@ -52,7 +52,7 @@ export const dataService = {
    * 清理域名：移除 http(s):// 和 www. 前缀
    */
   sanitizeDomain(domain: string): string {
-    return domain.replace(/^(https?://)?(www.)?/, '').split('/')[0].toLowerCase();
+    return domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
   },
 
   searchDomain: async (domainInput: string, limit = 100, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
