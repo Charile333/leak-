@@ -84,16 +84,13 @@ export default async function handler(req, res) {
       });
     }
 
-    if (isDnsRequest) {
-      innerPath = innerPath.replace('/dns-v1', '');
-    }
-    
     // 3. 构建尝试路径列表 (优先匹配官方标准路径)
     let prefixesToTry = [];
+    const cleanInnerPath = isDnsRequest ? innerPath.replace('/dns-v1', '') : innerPath.replace(/\/$/, '');
+
     if (isDnsRequest) {
-      prefixesToTry = [`/api/v1${innerPath}`];
+      prefixesToTry = [`/api/v1${cleanInnerPath}`];
     } else {
-      const cleanInnerPath = innerPath.replace(/\/$/, '');
       
       // 特殊处理：如果路径以 /exports 开头（轮询状态接口）
       if (cleanInnerPath.startsWith('/exports/')) {
