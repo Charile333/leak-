@@ -173,7 +173,8 @@ export default async function handler(req, res) {
       
       const authHeadersToTry = [
         { 'Authorization': `Bearer ${API_KEY}`, 'X-API-Key': API_KEY },
-        { 'Authorization': API_KEY, 'X-API-Key': API_KEY }
+        { 'Authorization': API_KEY, 'X-API-Key': API_KEY },
+        { 'X-API-Key': API_KEY }
       ];
 
       for (const authHeaders of authHeadersToTry) {
@@ -199,11 +200,20 @@ export default async function handler(req, res) {
           };
 
           if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
-            // 确保 POST 请求即使没有 body 也能正确处理
-            axiosConfig.data = req.body || {};
+            // 如果请求本身有 body，则透传
+            if (req.body && (typeof req.body === 'object' ? Object.keys(req.body).length > 0 : true)) {
+              axiosConfig.data = req.body;
+            } else {
+              // 对于解锁接口，有些 API 可能需要一个空的 JSON 对象，有些则不需要
+              // 我们优先尝试不带 body，如果报错再看日志
+              axiosConfig.data = null;
+            }
+
             // 如果是解锁接口，确保 Content-Type 正确
             if (currentUrl.includes('/unlock')) {
               headers['Content-Type'] = 'application/json';
+              // 某些 API 在 POST 时即使没有 body 也要求 Content-Length: 0
+              headers['Content-Length'] = axiosConfig.data ? JSON.stringify(axiosConfig.data).length : '0';
             }
           }
 
@@ -214,7 +224,21 @@ export default async function handler(req, res) {
         } catch (axiosError) {
           lastError = axiosError;
           const status = axiosError.response?.status;
-          console.log(`[Proxy] [Failed ${status || 'ERR'}] ${currentUrl}`);
+          
+          // 读取详细错误信息
+          let errorDetail = 'No detail';
+          if (axiosError.response?.data) {
+            try {
+              const decoder = new TextDecoder('utf-8');
+              errorDetail = decoder.decode(axiosError.response.data);
+            } catch (e) {
+              errorDetail = 'Failed to decode error data';
+            }
+          }
+          
+          console.log(`[Proxy] [Failed ${status || 'ERR'}] ${currentUrl} | Detail: ${errorDetail}`);
+          
+          // 如果是 401 且已经试过了所有 authHeaders，再继续尝试下一个路径
           if (status !== 404 && status !== 400 && status !== 401) break;
         }
       }
