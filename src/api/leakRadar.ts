@@ -292,8 +292,17 @@ class LeakRadarAPI {
    */
   async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
     const sanitized = this.sanitizeDomain(domain);
+    
+    // 强制加上 Authorization 请求头 (如果环境变量中有 Key)
+    const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY;
+    const headers: Record<string, string> = {};
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
     return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock`, {
       method: 'POST',
+      headers,
       body: JSON.stringify({}) // 增加空 body 确保代理层能正确识别并转发 POST 请求
     });
   }

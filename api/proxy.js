@@ -58,9 +58,18 @@ export default async function handler(req, res) {
 
     // 根据路径判断使用哪个 API
     const isDnsRequest = innerPath.startsWith('/dns-v1');
-    const API_KEY = isDnsRequest 
+    let API_KEY = isDnsRequest 
       ? (process.env.DNS_API_TOKEN || process.env.VITE_DNS_API_TOKEN)
       : (process.env.LEAKRADAR_API_KEY || process.env.VITE_LEAKRADAR_API_KEY);
+
+    // 如果环境变量没有配置 Key，尝试从请求头获取 (支持前端传过来的 Authorization)
+    if (!API_KEY) {
+      if (req.headers['authorization']?.startsWith('Bearer ')) {
+        API_KEY = req.headers['authorization'].replace('Bearer ', '');
+      } else if (req.headers['x-api-key']) {
+        API_KEY = req.headers['x-api-key'];
+      }
+    }
 
     if (!API_KEY) {
       console.error(`Missing API Key for ${isDnsRequest ? 'DNS' : 'LeakRadar'}`);
