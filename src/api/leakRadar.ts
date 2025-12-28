@@ -313,11 +313,14 @@ class LeakRadarAPI {
 
   /**
    * Unlock all results for a domain and category
+   * 使用 searchBuffer 域代替同步端点，解决 "Too many unlocks" 错误
    */
   async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
     const sanitized = this.sanitizeDomain(domain);
     
-    return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock`, {
+    // 根据 API 错误提示，使用 searchBuffer 域代替同步端点
+    // 错误信息："Too many unlocks for syncronous endpoint (10k). Use 'searchBuffer' domain instead."
+    return this.request<{ success: boolean; message?: string }>(`/searchBuffer/domain/${sanitized}/${category}/unlock`, {
       method: 'POST',
       body: JSON.stringify({}) // 增加空 body 确保代理层能正确识别并转发 POST 请求
     });

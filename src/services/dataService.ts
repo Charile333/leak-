@@ -70,6 +70,10 @@ export const dataService = {
           console.log(`[Debug] 解锁成功 (${categories[index]}):`, result.value);
         } else {
           console.error(`[Debug] 解锁失败 (${categories[index]}):`, result.reason);
+          // 尝试打印更详细的错误信息，方便用户反馈
+          if (result.reason?.response?.data) {
+             console.error(`[Debug] 详细错误信息 (${categories[index]}):`, JSON.stringify(result.reason.response.data, null, 2));
+          }
         }
       });
 
