@@ -119,8 +119,9 @@ export const dataService = {
           console.log(`[Debug] 解锁超时，使用当前可用数据...`);
         }
         
-        // 更新解锁缓存
-        unlockCache[domain] = { unlocked: isUnlocked, timestamp: now };
+        // 更新解锁缓存 - 只要发送了解锁请求，就认为域名已解锁
+        // 避免轮询失败导致的重复解锁问题
+        unlockCache[domain] = { unlocked: true, timestamp: now };
       }
 
       // 3. 动作 B：取数 (Search) - 在解锁完成或超时后执行
@@ -240,7 +241,7 @@ export const dataService = {
           }))
         );
         
-        // 更新解锁缓存
+        // 更新解锁缓存 - 只要发送了解锁请求，就认为域名已解锁
         unlockCache[domain] = { unlocked: true, timestamp: now };
       }
       
