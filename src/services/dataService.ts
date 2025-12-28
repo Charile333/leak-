@@ -201,42 +201,75 @@ export const dataService = {
 
   /**
    * Search specific category leaks with pagination
+   * 直接调用API获取数据，不包含解锁步骤
    */
   searchCategory: async (domain: string, category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains', limit = 100, offset = 0): Promise<LeakedCredential[]> => {
     try {
       if (category === 'urls') {
-        const res = await leakRadarApi.getDomainUrls(domain, limit, offset);
-        return res.items.map(item => ({
-          id: `url-${Math.random()}`,
+        const res = await leakRadarApi.getDomainUrls(domain, 1000, 0); // 获取所有数据进行统计
+        
+        // 统计URL出现次数
+        const urlCounts: Record<string, number> = {};
+        res.items.forEach(item => {
+          const url = item.url || item.website || '';
+          if (url) {
+            urlCounts[url] = (urlCounts[url] || 0) + (item.count || 1);
+          }
+        });
+        
+        // 转换为数组并按出现次数从多到少排序
+        const sortedUrls = Object.entries(urlCounts)
+          .map(([url, count]) => ({ url, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(offset, offset + limit); // 应用分页
+        
+        return sortedUrls.map(({ url, count }) => ({
+          id: `url-${url}`,
           email: '',
           username: '',
           password_plaintext: '',
           password_hash: '',
           hash_type: '',
-          website: item.url || item.website || '',
+          website: url,
           source: '',
           leaked_at: '',
           type: 'Employee',
           strength: 'Medium',
-          count: item.count || 0
+          count
         }));
       }
 
       if (category === 'subdomains') {
-        const res = await leakRadarApi.getDomainSubdomains(domain, limit, offset);
-        return res.items.map(item => ({
-          id: `sub-${Math.random()}`,
+        const res = await leakRadarApi.getDomainSubdomains(domain, 1000, 0); // 获取所有数据进行统计
+        
+        // 统计子域名出现次数
+        const subdomainCounts: Record<string, number> = {};
+        res.items.forEach(item => {
+          const subdomain = item.subdomain || item.domain || '';
+          if (subdomain) {
+            subdomainCounts[subdomain] = (subdomainCounts[subdomain] || 0) + (item.count || 1);
+          }
+        });
+        
+        // 转换为数组并按出现次数从多到少排序
+        const sortedSubdomains = Object.entries(subdomainCounts)
+          .map(([subdomain, count]) => ({ subdomain, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(offset, offset + limit); // 应用分页
+        
+        return sortedSubdomains.map(({ subdomain, count }) => ({
+          id: `sub-${subdomain}`,
           email: '',
           username: '',
           password_plaintext: '',
           password_hash: '',
           hash_type: '',
-          website: item.subdomain || item.domain || '',
+          website: subdomain,
           source: '',
           leaked_at: '',
           type: 'Employee',
           strength: 'Medium',
-          count: item.count || 0
+          count
         }));
       }
 
