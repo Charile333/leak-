@@ -222,24 +222,22 @@ export default async function handler(req, res) {
 
           if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
             // 如果请求本身有 body，则透传
-            if (req.body !== undefined && req.body !== null) {
-              if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-                axiosConfig.data = JSON.stringify(req.body);
-                headers['Content-Type'] = 'application/json';
-              } else {
-                axiosConfig.data = req.body;
-              }
+            if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+              axiosConfig.data = JSON.stringify(req.body);
+              headers['Content-Type'] = 'application/json';
             } else {
-              // 针对 POST 请求即使没有 body 也提供空对象
-              if (req.method.toUpperCase() === 'POST') {
-                axiosConfig.data = '{}';
-                headers['Content-Type'] = 'application/json';
-              } else {
-                axiosConfig.data = null;
-              }
+              axiosConfig.data = req.body;
             }
-            
-            // 移除手动设置 Content-Length，让 axios/node-fetch 自动处理，减少 401/400 风险
+
+            // 增加兜底：如果是 POST 且没有 body，发送空对象，防止某些后端返回 400
+            if (!axiosConfig.data && req.method.toUpperCase() === 'POST') {
+              axiosConfig.data = '{}';
+              headers['Content-Type'] = 'application/json';
+            }
+
+            if (axiosConfig.data) {
+              headers['Content-Length'] = Buffer.byteLength(axiosConfig.data).toString();
+            }
           }
 
           const response = await axios(axiosConfig);
@@ -258,8 +256,10 @@ export default async function handler(req, res) {
               if (axiosError.response.data instanceof ArrayBuffer || axiosError.response.data instanceof Buffer) {
                 const decoder = new TextDecoder('utf-8');
                 errorDetail = decoder.decode(axiosError.response.data);
-              } else {
+              } else if (typeof axiosError.response.data === 'object') {
                 errorDetail = JSON.stringify(axiosError.response.data);
+              } else {
+                errorDetail = String(axiosError.response.data);
               }
             } catch (e) {
               errorDetail = 'Failed to decode error data';
@@ -268,58 +268,33 @@ export default async function handler(req, res) {
           
           console.log(`[Proxy] [Failed ${status || 'ERR'}] ${currentUrl} - Detail: ${errorDetail}`);
           
-          // 特殊处理 401：如果返回 401，记录下 API Key 的前几位以便调试
-          if (status === 401) {
-            const keyHint = API_KEY ? `${API_KEY.substring(0, 4)}...${API_KEY.substring(API_KEY.length - 4)}` : 'MISSING';
-            console.log(`[Proxy] 401 Unauthorized with API Key: ${keyHint}`);
-          }
-          
           // 如果是 401，继续尝试下一个 authHeader
           if (status === 401) continue;
           
+          // 记录下非 401 的错误详情，以便最后返回
+          if (status && status >= 400) {
+            lastError = {
+              status,
+              message: axiosError.message,
+              detail: errorDetail,
+              url: currentUrl
+            };
+          }
+
           // 如果是其他错误（包括 404, 500, 400），跳过当前 path 的其他 authHeader，尝试下一个 path
           break;
         }
       }
     }
 
-    // 5. 最后的兜底 (针对 stats 等)
-    if (!isDnsRequest && targetPath.includes('stats')) {
-      const statsFallbacks = [
-        '/v1/metadata/stats',
-        '/metadata/stats',
-        '/v1/info',
-        '/info'
-      ];
-      
-      for (const fallback of statsFallbacks) {
-        const fallbackUrl = `https://api.leakradar.io${fallback}${searchParams}`;
-        console.log(`Trying stats fallback: ${fallbackUrl}`);
-        try {
-          const authHeaders = { 'Authorization': `Bearer ${API_KEY}`, 'X-API-Key': API_KEY };
-          const axiosConfig = {
-            method: req.method,
-            url: fallbackUrl,
-            headers: { ...authHeaders, 'Host': 'api.leakradar.io' },
-            responseType: 'arraybuffer',
-            timeout: 15000
-          };
-          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase()) && req.body) {
-            axiosConfig.data = req.body;
-          }
-          const response = await axios(axiosConfig);
-          return sendResponse(res, response, fallbackUrl);
-        } catch (e) {
-          console.log(`Fallback ${fallback} failed: ${e.message}`);
-        }
-      }
-    }
+    // 5. 所有尝试都失败
+    const finalStatus = lastError?.status || 500;
+    const finalDetail = lastError?.detail || lastError?.message || 'Unknown error';
     
-    // 所有尝试都失败
-    console.error(`All ${prefixesToTry.length} attempts failed for ${innerPath}. Last error:`, lastError?.message);
-    return res.status(lastError?.response?.status || 404).json({
-      error: "Proxy request failed after multiple attempts",
-      message: lastError?.message,
+    return res.status(finalStatus).json({
+      error: 'Proxy request failed after multiple attempts',
+      message: lastError?.message || 'Multiple attempts failed',
+      detail: finalDetail,
       path: innerPath,
       tried: prefixesToTry,
       api_key_status: API_KEY ? 'Present' : 'Missing',

@@ -386,7 +386,7 @@ const LeakQuery = () => {
             全网风险分布
           </h3>
           <div className="h-48 relative" style={{ minHeight: '192px' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+            <ResponsiveContainer key={`pie-chart-${results.length}`} width="100%" height="100%" minWidth={100} minHeight={100}>
               <PieChart>
                 <Pie
                   data={RISK_DATA}

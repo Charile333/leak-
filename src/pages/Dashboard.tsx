@@ -1386,7 +1386,13 @@ const Dashboard = () => {
                   </div>
                 )}
                 {weeklyGrowth && weeklyGrowth.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+                  <ResponsiveContainer 
+                    key={`chart-container-${weeklyGrowth.length}-${activeTab}`}
+                    width="100%" 
+                    height="100%" 
+                    minWidth={100} 
+                    minHeight={100}
+                  >
                     <AreaChart 
                       key={`chart-${weeklyGrowth.length}`}
                       data={weeklyGrowth} 

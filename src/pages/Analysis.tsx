@@ -30,7 +30,6 @@ const SECTOR_DATA = [
 ];
 
 const Analysis = () => {
-  // Fix Recharts width error by ensuring container is visible and has size
   useEffect(() => {
     const timers = [100, 500, 1000, 2000].map(delay => 
       setTimeout(() => {
