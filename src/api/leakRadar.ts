@@ -313,12 +313,14 @@ class LeakRadarAPI {
 
   /**
    * Unlock all results for a domain and category
+   * 使用异步任务端点，解决 "Too many unlocks" 错误
    */
   async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
     const sanitized = this.sanitizeDomain(domain);
     
-    // 使用标准 search 端点，移除 searchBuffer 尝试
-    return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock`, {
+    // 根据 API 错误提示，使用异步任务端点
+    // 错误信息："Too many unlocks for synchronous endpoint (>10k). Use /search/domain/{domain}/{leak_type}/unlock/task."
+    return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock/task`, {
       method: 'POST',
       body: JSON.stringify({})
     });
