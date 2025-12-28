@@ -695,7 +695,15 @@ const Dashboard = () => {
       setIsSearching(true);
       // 尝试直接下载（Report 接口）
       try {
-        const blob = await leakRadarApi.exportDomainPDF(results.summary.domain);
+        // 配置自定义报告选项：中文语言 + 自定义标题
+        const reportOptions = {
+          language: 'zh-CN' as const, // 使用as const确保类型安全
+          title: `安全报告: ${results.summary.domain}`,
+          // 可在此添加logoUrl参数，例如：
+          // logoUrl: 'https://your-company-logo-url.com/logo.png'
+        };
+        
+        const blob = await leakRadarApi.exportDomainPDF(results.summary.domain, reportOptions);
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;

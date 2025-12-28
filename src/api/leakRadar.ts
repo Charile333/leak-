@@ -350,7 +350,16 @@ class LeakRadarAPI {
   /**
    * Export domain search results as PDF
    */
-  async exportDomainPDF(domainInput: string): Promise<Blob> {
+  /**
+   * Export domain search results as PDF with custom settings
+   * @param domainInput - The domain to search
+   * @param options - Custom options for the report
+   */
+  async exportDomainPDF(domainInput: string, options?: {
+    language?: 'en' | 'zh-CN';
+    logoUrl?: string;
+    title?: string;
+  }): Promise<Blob> {
     const domain = this.sanitizeDomain(domainInput);
     return this.requestBlob(`/search/domain/${domain}/report`, {
       method: 'POST',
@@ -358,7 +367,12 @@ class LeakRadarAPI {
         'Accept': 'application/pdf',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ format: 'pdf' }),
+      body: JSON.stringify({
+        format: 'pdf',
+        language: options?.language || 'zh-CN', // 默认中文
+        logo_url: options?.logoUrl,
+        custom_title: options?.title
+      }),
     });
   }
 
