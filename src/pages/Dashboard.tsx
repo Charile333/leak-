@@ -84,6 +84,8 @@ const Dashboard = () => {
   const [pageSize] = useState(100);
   // 保存各个分类的数据，避免替换原始完整数据
   const [categoryCredentials, setCategoryCredentials] = useState<Record<string, LeakedCredential[]>>({});
+  // 控制骨架屏显示
+  const [isLoadingCategory, setIsLoadingCategory] = useState(false);
   
   // 当页签切换时，滚动到结果区域顶部
   useEffect(() => {
@@ -103,7 +105,7 @@ const Dashboard = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [activeTab]); // 仅依赖 activeTab，移除 showResults 依赖以避免循环
+  }, [activeTab, showResults]);
 
   // 当 Tab 变化时，重置筛选和页码 (独立副作用)
   useEffect(() => {
@@ -113,6 +115,25 @@ const Dashboard = () => {
       setCurrentPage(0);
     }
   }, [activeTab]);
+  
+  // 当标签页切换到URLs或Subdomains时，如果没有缓存数据，自动加载数据
+  useEffect(() => {
+    if (showResults && activeTab) {
+      const categoryMap: Record<string, string> = {
+        'Employees': 'employees',
+        'Customers': 'customers',
+        'Third-Parties': 'third_parties',
+        'URLs': 'urls',
+        'Subdomains': 'subdomains'
+      };
+      const currentCategory = categoryMap[activeTab];
+      
+      // 对于URLs和Subdomains标签页，如果没有缓存数据，自动加载
+      if (currentCategory && (currentCategory === 'urls' || currentCategory === 'subdomains') && !categoryCredentials[currentCategory]) {
+        handleSearch(undefined, 'default', 0);
+      }
+    }
+  }, [activeTab, showResults, categoryCredentials, searchQuery]);
   
   // Fetch global stats
   React.useEffect(() => {
@@ -299,6 +320,7 @@ const Dashboard = () => {
         else if (activeTab === 'Subdomains') category = 'subdomains';
 
         if (category) {
+          setIsLoadingCategory(true);
           const newCredentials = await dataService.searchCategory(searchQuery, category, pageSize, page * pageSize);
           // 保存当前分类的数据到 categoryCredentials，不替换原始完整数据
           setCategoryCredentials(prev => ({
@@ -306,6 +328,7 @@ const Dashboard = () => {
             [category]: newCredentials
           }));
           setIsSearching(false);
+          setIsLoadingCategory(false);
           setCurrentPage(page);
           return;
         }
@@ -332,6 +355,7 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Search failed:', error);
       setIsSearching(false);
+      setIsLoadingCategory(false);
     }
   };
 
@@ -993,19 +1017,6 @@ const Dashboard = () => {
                     onClick={() => {
                       setActiveTab(tab.name);
                       setCurrentPage(0);
-                      // 如果当前分类没有缓存数据，才触发刷新
-                      const categoryMap: Record<string, string> = {
-                        'Employees': 'employees',
-                        'Customers': 'customers',
-                        'Third-Parties': 'third_parties',
-                        'URLs': 'urls',
-                        'Subdomains': 'subdomains'
-                      };
-                      const currentCategory = categoryMap[tab.name];
-                      if (currentCategory && !categoryCredentials[currentCategory]) {
-                        // 使用 setTimeout 确保 activeTab 更新后再调用 handleSearch
-                        setTimeout(() => handleSearch(undefined, 'default', 0), 0);
-                      }
                     }}
                     className={cn(
                       "flex items-center gap-3 px-8 py-4 rounded-[24px] text-base font-black transition-all group",
@@ -1220,75 +1231,121 @@ const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.03]">
-                      {filteredCredentials.map((cred) => (
-                        <tr key={cred.id} className="hover:bg-white/[0.03] transition-colors group">
-                          <td className="px-4 py-4">
-                            <input 
-                              type="checkbox" 
-                              checked={selectedIds.has(cred.id)}
-                              onChange={() => toggleSelect(cred.id)}
-                              className="w-4 h-4 rounded border-gray-600 bg-transparent text-accent focus:ring-accent focus:ring-offset-0"
-                            />
-                          </td>
-                          <td className="px-6 py-4 max-w-[300px]">
-                            <div className="flex items-center gap-2">
-                              <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              <span className="text-xs text-gray-200 truncate font-medium">
-                                {cred.website}
-                              </span>
-                            </div>
-                          </td>
-                          {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
-                            <td className="px-6 py-4 text-right">
-                              <span className="text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-lg">
-                                {(cred as any).count || 1} 次
-                              </span>
+                      {/* 骨架屏显示 */}
+                      {isLoadingCategory ? (
+                        // 显示10行骨架屏
+                        Array.from({ length: 10 }).map((_, index) => (
+                          <tr key={`skeleton-${index}`} className="hover:bg-white/[0.03] transition-colors group">
+                            <td className="px-4 py-4">
+                              <div className="w-4 h-4 rounded border-gray-600 bg-white/5 animate-pulse"></div>
                             </td>
-                          )}
-                          {activeTab !== 'URLs' && activeTab !== 'Subdomains' && (
-                            <>
-                              <td className="px-6 py-4">
-                                <span className={cn(
-                                  "px-2.5 py-0.5 rounded-full text-[9px] font-bold border",
-                                  cred.email?.includes('@') 
-                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
-                                    : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                )}>
-                                  {cred.email?.includes('@') ? 'Email' : 'Username'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className="text-xs text-gray-300 font-mono">
-                                  {cred.email}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-gray-300 font-mono">
-                                    {autoUnlock || showPasswords[cred.id] ? cred.password_plaintext : '••••••••••••'}
-                                  </span>
-                                  {!autoUnlock && (
-                                    <button 
-                                      onClick={() => togglePassword(cred.id)}
-                                      className="text-gray-500 hover:text-white transition-colors"
-                                    >
-                                      {showPasswords[cred.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
+                            <td className="px-6 py-4 max-w-[300px]">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-white/5 rounded animate-pulse"></div>
+                                <div className="w-32 h-4 bg-white/5 rounded animate-pulse"></div>
+                              </div>
+                            </td>
+                            {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
                               <td className="px-6 py-4 text-right">
-                                <div className="flex items-center justify-end gap-2 text-gray-400">
-                                  <Calendar className="w-3.5 h-3.5" />
-                                  <span className="text-xs font-mono">
-                                    {formatDate(cred.leaked_at)}
-                                  </span>
-                                </div>
+                                <div className="inline-block w-16 h-6 bg-white/5 rounded-lg animate-pulse"></div>
                               </td>
-                            </>
-                          )}
-                        </tr>
-                      ))}
+                            )}
+                            {activeTab !== 'URLs' && activeTab !== 'Subdomains' && (
+                              <>
+                                <td className="px-6 py-4">
+                                  <div className="w-16 h-5 bg-white/5 rounded-full animate-pulse"></div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="w-32 h-4 bg-white/5 rounded animate-pulse"></div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-32 h-4 bg-white/5 rounded animate-pulse"></div>
+                                    <div className="w-5 h-5 bg-white/5 rounded animate-pulse"></div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <div className="w-5 h-5 bg-white/5 rounded animate-pulse"></div>
+                                    <div className="w-16 h-4 bg-white/5 rounded animate-pulse"></div>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ))
+                      ) : (
+                        // 正常显示数据
+                        filteredCredentials.map((cred) => (
+                          <tr key={cred.id} className="hover:bg-white/[0.03] transition-colors group">
+                            <td className="px-4 py-4">
+                              <input 
+                                type="checkbox" 
+                                checked={selectedIds.has(cred.id)}
+                                onChange={() => toggleSelect(cred.id)}
+                                className="w-4 h-4 rounded border-gray-600 bg-transparent text-accent focus:ring-accent focus:ring-offset-0"
+                              />
+                            </td>
+                            <td className="px-6 py-4 max-w-[300px]">
+                              <div className="flex items-center gap-2">
+                                <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                <span className="text-xs text-gray-200 truncate font-medium">
+                                  {cred.website}
+                                </span>
+                              </div>
+                            </td>
+                            {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
+                              <td className="px-6 py-4 text-right">
+                                <span className="text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-lg">
+                                  {(cred as any).count || 1} 次
+                                </span>
+                              </td>
+                            )}
+                            {activeTab !== 'URLs' && activeTab !== 'Subdomains' && (
+                              <>
+                                <td className="px-6 py-4">
+                                  <span className={cn(
+                                    "px-2.5 py-0.5 rounded-full text-[9px] font-bold border",
+                                    cred.email?.includes('@') 
+                                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                                      : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                  )}>
+                                    {cred.email?.includes('@') ? 'Email' : 'Username'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="text-xs text-gray-300 font-mono">
+                                    {cred.email}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-300 font-mono">
+                                      {autoUnlock || showPasswords[cred.id] ? cred.password_plaintext : '••••••••••••'}
+                                    </span>
+                                    {!autoUnlock && (
+                                      <button 
+                                        onClick={() => togglePassword(cred.id)}
+                                        className="text-gray-500 hover:text-white transition-colors"
+                                      >
+                                        {showPasswords[cred.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <div className="flex items-center justify-end gap-2 text-gray-400">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    <span className="text-xs font-mono">
+                                      {formatDate(cred.leaked_at)}
+                                    </span>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                   
