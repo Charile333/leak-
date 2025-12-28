@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { BarChart3, TrendingUp, ShieldAlert, Zap, Globe, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { 
   BarChart, 
