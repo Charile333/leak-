@@ -82,6 +82,8 @@ const Dashboard = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
+  // 保存各个分类的数据，避免替换原始完整数据
+  const [categoryCredentials, setCategoryCredentials] = useState<Record<string, LeakedCredential[]>>({});
   
   // 当页签切换时，滚动到结果区域顶部
   useEffect(() => {
@@ -296,15 +298,13 @@ const Dashboard = () => {
         else if (activeTab === 'URLs') category = 'urls';
         else if (activeTab === 'Subdomains') category = 'subdomains';
 
-        if (category && results) {
+        if (category) {
           const newCredentials = await dataService.searchCategory(searchQuery, category, pageSize, page * pageSize);
-          setResults(prev => {
-             if (!prev) return null;
-             return {
-                ...prev,
-                credentials: newCredentials
-             }
-          });
+          // 保存当前分类的数据到 categoryCredentials，不替换原始完整数据
+          setCategoryCredentials(prev => ({
+            ...prev,
+            [category]: newCredentials
+          }));
           setIsSearching(false);
           setCurrentPage(page);
           return;
@@ -342,12 +342,36 @@ const Dashboard = () => {
   const filteredCredentials = useMemo(() => {
     if (!results) return [];
     
-    let list = [...results.credentials];
+    // 根据当前活动标签页选择数据源
+    let list: LeakedCredential[];
+    const categoryMap: Record<string, string> = {
+      'Employees': 'employees',
+      'Customers': 'customers',
+      'Third-Parties': 'third_parties',
+      'URLs': 'urls',
+      'Subdomains': 'subdomains'
+    };
     
-    // Tab filtering
-    if (activeTab === 'Employees') list = list.filter(c => c.type === 'Employee');
-    if (activeTab === 'Third-Parties') list = list.filter(c => c.type === 'Third-Party');
-    if (activeTab === 'Customers') list = list.filter(c => c.type === 'Customer');
+    const currentCategory = categoryMap[activeTab];
+    
+    // 如果当前分类有缓存数据，优先使用缓存数据
+    if (currentCategory && categoryCredentials[currentCategory]) {
+      list = [...categoryCredentials[currentCategory]];
+    } else {
+      // 否则使用原始完整数据，并根据标签页进行过滤
+      list = [...results.credentials];
+      
+      // Tab filtering
+      if (activeTab === 'Report') {
+        // Report标签页显示所有数据，不需要过滤
+      } else if (activeTab === 'Employees') {
+        list = list.filter(c => c.type === 'Employee');
+      } else if (activeTab === 'Third-Parties') {
+        list = list.filter(c => c.type === 'Third-Party');
+      } else if (activeTab === 'Customers') {
+        list = list.filter(c => c.type === 'Customer');
+      }
+    }
 
     // Category filtering
     if (filterType === 'Email') {
@@ -390,7 +414,7 @@ const Dashboard = () => {
     });
 
     return list;
-  }, [results, activeTab, sortField, sortOrder, filterType, innerSearchQuery]);
+  }, [results, activeTab, sortField, sortOrder, filterType, innerSearchQuery, categoryCredentials]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredCredentials.length && filteredCredentials.length > 0) {
