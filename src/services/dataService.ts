@@ -79,11 +79,35 @@ export const dataService = {
         }
       });
 
-      // 增加一个微小的延迟，确保后端缓存已更新（可选，但更稳健）
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 2. 轮询检查解锁状态 - 确保数据已解锁
+      console.log(`[Debug] 等待解锁完成...`);
+      let maxRetries = 5; // 最多重试 5 次
+      let retryDelay = 1000; // 每次重试间隔 1 秒
+      let isUnlocked = false;
+      
+      while (maxRetries > 0 && !isUnlocked) {
+        // 检查是否有明文数据可用（测试一个分类即可）
+        const testResult = await leakRadarApi.searchDomainCategory(domain, 'employees', 1, 0).catch(() => ({ items: [], total: 0, success: false }));
+        
+        // 检查是否有解锁的数据（包含 password_plaintext 或 unlocked 字段）
+        isUnlocked = testResult.items.some(item => item.password_plaintext || item.unlocked);
+        
+        if (isUnlocked) {
+          console.log(`[Debug] 解锁完成，开始取数...`);
+          break;
+        }
+        
+        maxRetries--;
+        console.log(`[Debug] 解锁未完成，等待 ${retryDelay}ms 后重试 (剩余 ${maxRetries} 次)...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        retryDelay *= 1.5; // 指数退避
+      }
+      
+      if (!isUnlocked) {
+        console.log(`[Debug] 解锁超时，使用当前可用数据...`);
+      }
 
-      // 2. 动作 B：取数 (Search) - 在解锁完成后执行
-      console.log(`[Debug] 解锁动作完成，开始取数...`);
+      // 3. 动作 B：取数 (Search) - 在解锁完成或超时后执行
       const [apiSummary, urlsRes, subdomainsRes] = await Promise.all([
         leakRadarApi.getDomainSummary(domain),
         leakRadarApi.getDomainUrls(domain, 1, 0).catch(() => ({ total: 0 })),
