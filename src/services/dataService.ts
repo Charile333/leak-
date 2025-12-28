@@ -41,8 +41,63 @@ export interface DomainSearchSummary {
 }
 
 // 解锁状态缓存，避免重复解锁
-const unlockCache: Record<string, { unlocked: boolean; timestamp: number }> = {};
-const CACHE_DURATION = 30 * 60 * 1000; // 缓存有效期：30分钟
+// 使用sessionStorage持久化缓存，避免页面刷新后缓存丢失
+class UnlockCache {
+  private readonly CACHE_KEY = 'leakradar_unlock_cache';
+  private readonly CACHE_DURATION = 30 * 60 * 1000; // 缓存有效期：30分钟
+  
+  get(domain: string): { unlocked: boolean; timestamp: number } | undefined {
+    try {
+      const cacheStr = sessionStorage.getItem(this.CACHE_KEY);
+      if (!cacheStr) return undefined;
+      
+      const cache = JSON.parse(cacheStr) as Record<string, { unlocked: boolean; timestamp: number }>;
+      const entry = cache[domain];
+      if (!entry) return undefined;
+      
+      // 检查缓存是否过期
+      if (Date.now() - entry.timestamp > this.CACHE_DURATION) {
+        this.remove(domain);
+        return undefined;
+      }
+      
+      return entry;
+    } catch (e) {
+      console.error('[UnlockCache] Get cache error:', e);
+      return undefined;
+    }
+  }
+  
+  set(domain: string, value: { unlocked: boolean; timestamp: number }): void {
+    try {
+      const cacheStr = sessionStorage.getItem(this.CACHE_KEY);
+      const cache = cacheStr ? JSON.parse(cacheStr) as Record<string, { unlocked: boolean; timestamp: number }> : {};
+      
+      cache[domain] = value;
+      sessionStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
+      console.log(`[UnlockCache] 缓存已更新: 域名 ${domain}, 状态: ${value.unlocked}, 时间: ${new Date(value.timestamp).toLocaleString()}`);
+    } catch (e) {
+      console.error('[UnlockCache] Set cache error:', e);
+    }
+  }
+  
+  remove(domain: string): void {
+    try {
+      const cacheStr = sessionStorage.getItem(this.CACHE_KEY);
+      if (!cacheStr) return;
+      
+      const cache = JSON.parse(cacheStr) as Record<string, { unlocked: boolean; timestamp: number }>;
+      delete cache[domain];
+      sessionStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {
+      console.error('[UnlockCache] Remove cache error:', e);
+    }
+  }
+}
+
+const unlockCache = new UnlockCache();
+// 删除旧的常量定义，因为现在使用UnlockCache类
+// const CACHE_DURATION = 30 * 60 * 1000;
 
 export const dataService = {
   /**
@@ -62,66 +117,31 @@ export const dataService = {
       
       // 检查解锁缓存，避免重复解锁
       const now = Date.now();
-      const cached = unlockCache[domain];
-      let isUnlocked = cached && now - cached.timestamp < CACHE_DURATION && cached.unlocked;
+      const cached = unlockCache.get(domain);
+      const isUnlocked = cached?.unlocked === true;
+      
+      console.log(`[Debug] 检查解锁缓存: 域名 ${domain}, 已解锁: ${isUnlocked}, 缓存存在: ${!!cached}`);
       
       if (isUnlocked) {
         console.log(`[Debug] 域名 ${domain} 已解锁，直接使用缓存...`);
       } else {
-        // 1. 动作 A：解锁 (Unlock) - 顺序执行并等待
-        console.log(`[Debug] 正在解锁域名数据: ${domain}...`);
+        console.log(`[Debug] 域名 ${domain} 未解锁，执行解锁流程...`);
+        
+        // 简化解锁流程：只发送解锁请求，不等待解锁完成
+        // 异步解锁端点会在后台处理，我们直接获取当前可用数据
         const categories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
         
-        // 使用 Promise.allSettled 确保即使某个分类解锁失败，也能继续后续取数动作
-        const unlockResults = await Promise.allSettled(
+        console.log(`[Debug] 发送解锁请求到异步端点...`);
+        await Promise.allSettled(
           categories.map(cat => leakRadarApi.unlockDomain(domain, cat).catch(err => {
-            // 捕获并处理解锁错误，避免影响后续操作
             console.error(`[Debug] 解锁请求失败 (${cat}):`, err.message);
-            // 对于异步任务端点，即使返回错误，也视为成功提交任务
             return { success: true, message: `异步解锁任务已提交 (${cat})` };
           }))
         );
         
-        unlockResults.forEach((result, index) => {
-          if (result.status === 'fulfilled') {
-            // 异步任务端点可能返回不同格式，我们只需要确认请求已发送
-            console.log(`[Debug] 解锁任务已提交 (${categories[index]}):`, result.value.message || '成功');
-          } else {
-            console.error(`[Debug] 解锁执行失败 (${categories[index]}):`, result.reason);
-          }
-        });
-
-        // 2. 轮询检查解锁状态 - 确保数据已解锁
-        console.log(`[Debug] 等待解锁完成...`);
-        let maxRetries = 5; // 最多重试 5 次
-        let retryDelay = 1000; // 每次重试间隔 1 秒
-        isUnlocked = false;
-        
-        while (maxRetries > 0 && !isUnlocked) {
-          // 检查是否有明文数据可用（测试一个分类即可）
-          const testResult = await leakRadarApi.searchDomainCategory(domain, 'employees', 1, 0).catch(() => ({ items: [], total: 0, success: false }));
-          
-          // 检查是否有解锁的数据（包含 password_plaintext 或 unlocked 字段）
-          isUnlocked = testResult.items.some(item => item.password_plaintext || item.unlocked);
-          
-          if (isUnlocked) {
-            console.log(`[Debug] 解锁完成，开始取数...`);
-            break;
-          }
-          
-          maxRetries--;
-          console.log(`[Debug] 解锁未完成，等待 ${retryDelay}ms 后重试 (剩余 ${maxRetries} 次)...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-          retryDelay *= 1.5; // 指数退避
-        }
-        
-        if (!isUnlocked) {
-          console.log(`[Debug] 解锁超时，使用当前可用数据...`);
-        }
-        
-        // 更新解锁缓存 - 只要发送了解锁请求，就认为域名已解锁
-        // 避免轮询失败导致的重复解锁问题
-        unlockCache[domain] = { unlocked: true, timestamp: now };
+        // 立即更新缓存，标记为已解锁，避免重复发送解锁请求
+        console.log(`[Debug] 解锁请求发送完成，更新缓存...`);
+        unlockCache.set(domain, { unlocked: true, timestamp: now });
       }
 
       // 3. 动作 B：取数 (Search) - 在解锁完成或超时后执行
@@ -227,8 +247,10 @@ export const dataService = {
       
       // 检查解锁缓存，确保调用API前域名已解锁
       const now = Date.now();
-      const cached = unlockCache[domain];
-      const isUnlocked = cached && now - cached.timestamp < CACHE_DURATION && cached.unlocked;
+      const cached = unlockCache.get(domain);
+      const isUnlocked = cached?.unlocked === true;
+      
+      console.log(`[Debug] 检查解锁缓存: 域名 ${domain}, 已解锁: ${isUnlocked}, 缓存存在: ${!!cached}`);
       
       if (!isUnlocked) {
         console.log(`[Debug] 域名 ${domain} 未解锁，正在执行解锁...`);
@@ -242,7 +264,7 @@ export const dataService = {
         );
         
         // 更新解锁缓存 - 只要发送了解锁请求，就认为域名已解锁
-        unlockCache[domain] = { unlocked: true, timestamp: now };
+        unlockCache.set(domain, { unlocked: true, timestamp: now });
       }
       
       if (category === 'urls') {
