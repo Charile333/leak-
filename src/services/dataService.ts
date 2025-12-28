@@ -159,12 +159,12 @@ export const dataService = {
           }
         },
         urls_count: urlsRes.total || 0,
-        subdomains_count: subdomainsRes.total || 0
+        subdomains_count: subdomainsRes.total || 0,
       };
 
       return { summary, credentials };
-    } catch (error: any) {
-      console.error('[dataService] API Search failed:', error);
+    } catch (error) {
+      console.error('[dataService] Error searching domain:', error);
       throw error;
     }
   },
@@ -172,9 +172,44 @@ export const dataService = {
   /**
    * Search specific category leaks with pagination
    */
-  searchCategory: async (domain: string, category: 'employees' | 'customers' | 'third_parties', limit = 100, offset = 0): Promise<LeakedCredential[]> => {
+  searchCategory: async (domain: string, category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains', limit = 100, offset = 0): Promise<LeakedCredential[]> => {
     try {
-      console.log(`[dataService] Searching category ${category} for domain: ${domain}, offset: ${offset}`);
+      if (category === 'urls') {
+        const res = await leakRadarApi.getDomainUrls(domain, limit, offset);
+        return res.items.map(item => ({
+          id: `url-${Math.random()}`,
+          email: '',
+          username: '',
+          password_plaintext: '',
+          password_hash: '',
+          hash_type: '',
+          website: item.url || item.website || '',
+          source: '',
+          leaked_at: '',
+          type: 'Employee',
+          strength: 'Medium',
+          count: item.count || 0
+        }));
+      }
+
+      if (category === 'subdomains') {
+        const res = await leakRadarApi.getDomainSubdomains(domain, limit, offset);
+        return res.items.map(item => ({
+          id: `sub-${Math.random()}`,
+          email: '',
+          username: '',
+          password_plaintext: '',
+          password_hash: '',
+          hash_type: '',
+          website: item.subdomain || item.domain || '',
+          source: '',
+          leaked_at: '',
+          type: 'Employee',
+          strength: 'Medium',
+          count: item.count || 0
+        }));
+      }
+
       const res = await leakRadarApi.searchDomainCategory(domain, category, limit, offset);
       
       const transformItem = (item: any, type: LeakedCredential['type']): LeakedCredential => {
@@ -195,8 +230,8 @@ export const dataService = {
           website: item.website || item.url || domain || 'N/A',
           source: item.source || 'Leak Database',
           leaked_at: item.leaked_at || item.added_at || new Date().toISOString(),
-          type: type,
-          strength: strength,
+          type,
+          strength,
           ip_address: item.ip_address,
           first_name: item.first_name,
           last_name: item.last_name,
@@ -206,15 +241,15 @@ export const dataService = {
         };
       };
 
-      const typeMap: Record<string, LeakedCredential['type']> = {
+      const typeMap = {
         'employees': 'Employee',
         'customers': 'Customer',
         'third_parties': 'Third-Party'
-      };
+      } as const;
 
-      return (res.items || []).map(item => transformItem(item, typeMap[category]));
+      return res.items.map(item => transformItem(item, typeMap[category as keyof typeof typeMap]));
     } catch (error) {
-      console.error(`[dataService] Category search failed:`, error);
+      console.error(`[dataService] Error searching category ${category}:`, error);
       return [];
     }
   }

@@ -264,12 +264,14 @@ const Dashboard = () => {
     }
     
     try {
-      if (page > 0) {
+      if (page > 0 || (activeTab === 'URLs' || activeTab === 'Subdomains')) {
         // 分页逻辑：如果当前在特定分类下，只请求该分类的数据
-        let category: 'employees' | 'customers' | 'third_parties' | null = null;
+        let category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains' | null = null;
         if (activeTab === 'Employees') category = 'employees';
         else if (activeTab === 'Customers') category = 'customers';
         else if (activeTab === 'Third-Parties') category = 'third_parties';
+        else if (activeTab === 'URLs') category = 'urls';
+        else if (activeTab === 'Subdomains') category = 'subdomains';
 
         if (category && results) {
           const newCredentials = await dataService.searchCategory(searchQuery, category, pageSize, page * pageSize);
@@ -336,24 +338,6 @@ const Dashboard = () => {
         c.website?.toLowerCase().includes(query) ||
         c.password_plaintext?.toLowerCase().includes(query)
       );
-    }
-
-    // Special handling for URLs and Subdomains: Grouping and counting
-    if (activeTab === 'URLs' || activeTab === 'Subdomains') {
-      const groups = new Map<string, any>();
-      list.forEach(c => {
-        const key = c.website;
-        if (groups.has(key)) {
-          groups.get(key).count++;
-        } else {
-          groups.set(key, { 
-            ...c, 
-            count: 1,
-            // For URLs/Subdomains, we only care about the website/url
-          });
-        }
-      });
-      list = Array.from(groups.values());
     }
 
     // Sorting
@@ -959,6 +943,11 @@ const Dashboard = () => {
                     onClick={() => {
                       setActiveTab(tab.name);
                       setCurrentPage(0);
+                      // If switching to URLs or Subdomains, trigger a refresh for that specific category
+                      if (tab.name === 'URLs' || tab.name === 'Subdomains') {
+                        // Use a small delay to ensure activeTab is updated or pass the name directly
+                        setTimeout(() => handleSearch(undefined, 'default', 0), 0);
+                      }
                     }}
                     className={cn(
                       "flex items-center gap-3 px-8 py-4 rounded-[24px] text-base font-black transition-all group",
