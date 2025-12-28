@@ -715,57 +715,12 @@ const Dashboard = () => {
         setIsSearching(false);
         return;
       } catch (e) {
-        console.warn('Direct PDF report failed, trying Exports API...', e);
+        console.warn('Direct PDF report failed:', e);
+        // 处理API错误，提供友好的错误信息
+        alert('PDF报告生成失败：\n\n1. 请检查网络连接\n2. 确保域名正确\n3. 稍后重试\n\n详细错误：' + (e as Error).message);
+        setIsSearching(false);
+        return;
       }
-
-      // 如果直接下载失败，尝试使用 Exports 接口（异步）
-      const { export_id } = await leakRadarApi.requestDomainExport(results.summary.domain, 'pdf', 'all');
-      
-      const notification = document.createElement('div');
-      notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
-      notification.innerHTML = `<span class="animate-spin">⏳</span> 正在准备 PDF 安全报告...`;
-      document.body.appendChild(notification);
-
-      // 轮询逻辑
-      let attempts = 0;
-      const maxAttempts = 20;
-      
-      const checkStatus = async () => {
-        try {
-          console.log(`Checking export status for ID: ${export_id}, Attempt: ${attempts + 1}`);
-          const res = await leakRadarApi.getExportStatus(export_id);
-          console.log('Status Response:', res);
-          const status = res.status || (res as any).data?.status;
-          
-          if (status === 'success') {
-            const blob = await leakRadarApi.downloadExport(export_id);
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Security_Report_${results.summary.domain}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            if (document.body.contains(notification)) document.body.removeChild(notification);
-            setIsSearching(false);
-          } else if (status === 'failed') {
-            throw new Error('服务器生成 PDF 失败');
-          } else if (attempts < maxAttempts) {
-            attempts++;
-            setTimeout(checkStatus, 3000);
-          } else {
-            throw new Error('PDF 生成超时，请稍后重试');
-          }
-        } catch (e: any) {
-          console.error('PDF Download error:', e);
-          alert(e.message || '生成 PDF 失败');
-          if (document.body.contains(notification)) document.body.removeChild(notification);
-          setIsSearching(false);
-        }
-      };
-
-      setTimeout(checkStatus, 2000);
 
     } catch (error: any) {
       console.error('PDF Export Error:', error);
