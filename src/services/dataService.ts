@@ -245,7 +245,81 @@ export const dataService = {
       // 统一处理domain，确保缓存键一致
       const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
       
-      // 检查解锁缓存，确保调用API前域名已解锁
+      // URL和subdomains分类不需要解锁，直接获取数据
+      if (category === 'urls' || category === 'subdomains') {
+        console.log(`[Debug] ${category} 分类不需要解锁，直接获取数据...`);
+        
+        if (category === 'urls') {
+          const res = await leakRadarApi.getDomainUrls(domain, 1000, 0); // 获取所有数据进行统计
+          
+          // 统计URL出现次数
+          const urlCounts: Record<string, number> = {};
+          res.items.forEach(item => {
+            const url = item.url || item.website || '';
+            if (url) {
+              urlCounts[url] = (urlCounts[url] || 0) + (item.count || 1);
+            }
+          });
+          
+          // 转换为数组并按出现次数从多到少排序
+          const sortedUrls = Object.entries(urlCounts)
+            .map(([url, count]) => ({ url, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(offset, offset + limit); // 应用分页
+          
+          return sortedUrls.map(({ url, count }) => ({
+            id: `url-${url}`,
+            email: '',
+            username: '',
+            password_plaintext: '',
+            password_hash: '',
+            hash_type: '',
+            website: url,
+            source: '',
+            leaked_at: '',
+            type: 'Employee',
+            strength: 'Medium',
+            count
+          }));
+        }
+
+        if (category === 'subdomains') {
+          const res = await leakRadarApi.getDomainSubdomains(domain, 1000, 0); // 获取所有数据进行统计
+          
+          // 统计子域名出现次数
+          const subdomainCounts: Record<string, number> = {};
+          res.items.forEach(item => {
+            const subdomain = item.subdomain || item.domain || '';
+            if (subdomain) {
+              subdomainCounts[subdomain] = (subdomainCounts[subdomain] || 0) + (item.count || 1);
+            }
+          });
+          
+          // 转换为数组并按出现次数从多到少排序
+          const sortedSubdomains = Object.entries(subdomainCounts)
+            .map(([subdomain, count]) => ({ subdomain, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(offset, offset + limit); // 应用分页
+          
+          return sortedSubdomains.map(({ subdomain, count }) => ({
+            id: `sub-${subdomain}`,
+            email: '',
+            username: '',
+            password_plaintext: '',
+            password_hash: '',
+            hash_type: '',
+            website: subdomain,
+            source: '',
+            leaked_at: '',
+            type: 'Employee',
+            strength: 'Medium',
+            count
+          }));
+        }
+      }
+      
+      // 其他分类（Employees、Customers、Third-Parties）需要检查解锁状态
+      console.log(`[Debug] ${category} 分类需要检查解锁状态...`);
       const now = Date.now();
       const cached = unlockCache.get(domain);
       const isUnlocked = cached?.unlocked === true;
@@ -265,74 +339,6 @@ export const dataService = {
         
         // 更新解锁缓存 - 只要发送了解锁请求，就认为域名已解锁
         unlockCache.set(domain, { unlocked: true, timestamp: now });
-      }
-      
-      if (category === 'urls') {
-        const res = await leakRadarApi.getDomainUrls(domain, 1000, 0); // 获取所有数据进行统计
-        
-        // 统计URL出现次数
-        const urlCounts: Record<string, number> = {};
-        res.items.forEach(item => {
-          const url = item.url || item.website || '';
-          if (url) {
-            urlCounts[url] = (urlCounts[url] || 0) + (item.count || 1);
-          }
-        });
-        
-        // 转换为数组并按出现次数从多到少排序
-        const sortedUrls = Object.entries(urlCounts)
-          .map(([url, count]) => ({ url, count }))
-          .sort((a, b) => b.count - a.count)
-          .slice(offset, offset + limit); // 应用分页
-        
-        return sortedUrls.map(({ url, count }) => ({
-          id: `url-${url}`,
-          email: '',
-          username: '',
-          password_plaintext: '',
-          password_hash: '',
-          hash_type: '',
-          website: url,
-          source: '',
-          leaked_at: '',
-          type: 'Employee',
-          strength: 'Medium',
-          count
-        }));
-      }
-
-      if (category === 'subdomains') {
-        const res = await leakRadarApi.getDomainSubdomains(domain, 1000, 0); // 获取所有数据进行统计
-        
-        // 统计子域名出现次数
-        const subdomainCounts: Record<string, number> = {};
-        res.items.forEach(item => {
-          const subdomain = item.subdomain || item.domain || '';
-          if (subdomain) {
-            subdomainCounts[subdomain] = (subdomainCounts[subdomain] || 0) + (item.count || 1);
-          }
-        });
-        
-        // 转换为数组并按出现次数从多到少排序
-        const sortedSubdomains = Object.entries(subdomainCounts)
-          .map(([subdomain, count]) => ({ subdomain, count }))
-          .sort((a, b) => b.count - a.count)
-          .slice(offset, offset + limit); // 应用分页
-        
-        return sortedSubdomains.map(({ subdomain, count }) => ({
-          id: `sub-${subdomain}`,
-          email: '',
-          username: '',
-          password_plaintext: '',
-          password_hash: '',
-          hash_type: '',
-          website: subdomain,
-          source: '',
-          leaked_at: '',
-          type: 'Employee',
-          strength: 'Medium',
-          count
-        }));
       }
 
       const res = await leakRadarApi.searchDomainCategory(domain, category, limit, offset);
