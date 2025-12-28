@@ -85,10 +85,13 @@ const Dashboard = () => {
   
   // 当页签切换时，滚动到结果区域顶部
   useEffect(() => {
+    // 只有当 showResults 为 true 且不是初始化状态时才触发
     if (showResults && activeTab) {
-      setFilterType('All'); // Reset filter when tab changes
-      setInnerSearchQuery(''); // Reset search when tab changes
-      setCurrentPage(0); // Reset page when tab changes
+      // 避免在此副作用中重置状态导致无限循环
+      // setFilterType('All'); 
+      // setInnerSearchQuery(''); 
+      // setCurrentPage(0); 
+
       const resultElement = document.getElementById('search-results');
       if (resultElement) {
         // 延迟执行以确保内容已开始渲染
@@ -98,7 +101,16 @@ const Dashboard = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [activeTab, showResults]);
+  }, [activeTab]); // 仅依赖 activeTab，移除 showResults 依赖以避免循环
+
+  // 当 Tab 变化时，重置筛选和页码 (独立副作用)
+  useEffect(() => {
+    if (showResults) {
+      setFilterType('All');
+      setInnerSearchQuery('');
+      setCurrentPage(0);
+    }
+  }, [activeTab]);
   
   // Fetch global stats
   React.useEffect(() => {
@@ -285,9 +297,12 @@ const Dashboard = () => {
 
         if (category && results) {
           const newCredentials = await dataService.searchCategory(searchQuery, category, pageSize, page * pageSize);
-          setResults({
-            ...results,
-            credentials: newCredentials
+          setResults(prev => {
+             if (!prev) return null;
+             return {
+                ...prev,
+                credentials: newCredentials
+             }
           });
           setIsSearching(false);
           setCurrentPage(page);
