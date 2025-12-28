@@ -54,36 +54,37 @@ export const dataService = {
   searchDomain: async (domainInput: string, limit = 100, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
     const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
     try {
-      console.log(`[dataService] Searching domain: ${domain}`);
+      console.log(`[dataService] Starting sequential search for domain: ${domain}`);
       
-      // 1. Get summary and counts from API
+      // 1. 动作 A：解锁 (Unlock) - 顺序执行并等待
+      console.log(`[Debug] 正在解锁域名数据: ${domain}...`);
+      const categories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
+      
+      // 使用 Promise.allSettled 确保即使某个分类解锁失败，也能继续后续取数动作
+      const unlockResults = await Promise.allSettled(
+        categories.map(cat => leakRadarApi.unlockDomain(domain, cat))
+      );
+      
+      unlockResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          console.log(`[Debug] 解锁成功 (${categories[index]}):`, result.value);
+        } else {
+          console.error(`[Debug] 解锁失败 (${categories[index]}):`, result.reason);
+        }
+      });
+
+      // 增加一个微小的延迟，确保后端缓存已更新（可选，但更稳健）
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 2. 动作 B：取数 (Search) - 在解锁完成后执行
+      console.log(`[Debug] 解锁动作完成，开始取数...`);
       const [apiSummary, urlsRes, subdomainsRes] = await Promise.all([
         leakRadarApi.getDomainSummary(domain),
         leakRadarApi.getDomainUrls(domain, 1, 0).catch(() => ({ total: 0 })),
         leakRadarApi.getDomainSubdomains(domain, 1, 0).catch(() => ({ total: 0 })),
       ]);
       
-      // 2. 自动解锁域名 (方案 B: 增加详细调试日志)
-      try {
-        console.log(`[Debug] 准备自动解锁域名分类: ${domain}`);
-        const categories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
-        
-        // 依次尝试解锁，并记录每个请求的结果
-        categories.forEach(cat => {
-          leakRadarApi.unlockDomain(domain, cat)
-            .then(res => {
-              console.log(`[Debug] 解锁成功 (${cat}):`, res);
-            })
-            .catch(err => {
-              console.error(`[Debug] 解锁失败 (${cat}):`, err.message);
-            });
-        });
-      } catch (e) {
-        console.error(`[Debug] 自动解锁流程发生异常:`, e);
-      }
-      
-      // 3. Fetch some credentials for display (we combine them for the table)
-      // For performance, we fetch from each category based on limit and offset
+      // Fetch credentials for display
       const itemsPerCat = Math.floor(limit / 3);
       const [empRes, custRes, thirdRes] = await Promise.all([
         leakRadarApi.searchDomainCategory(domain, 'employees', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
