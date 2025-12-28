@@ -222,6 +222,16 @@ const Dashboard = () => {
   const [dnsResults, setDnsResults] = useState<any>(null);
   const [dnsActiveSubTab, setDnsActiveSubTab] = useState('Subdomains');
 
+  // Fix Recharts width error by ensuring container is visible and has size
+  useEffect(() => {
+    const handleResize = () => {
+      // Force chart re-render on resize if needed
+      window.dispatchEvent(new Event('resize'));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleSearch = async (e?: React.FormEvent, type: 'dns' | 'cert' | 'dnsx' | 'default' = 'default', page: number = 0) => {
     if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -1360,7 +1370,7 @@ const Dashboard = () => {
                   </div>
                 )}
                 {weeklyGrowth && weeklyGrowth.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
                     <AreaChart 
                       key={`chart-${weeklyGrowth.length}`}
                       data={weeklyGrowth} 
