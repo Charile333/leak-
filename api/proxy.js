@@ -160,6 +160,7 @@ export default async function handler(req, res) {
       } else if (cleanInnerPath.includes('/stats')) {
         prefixesToTry = [
           '/v1/metadata/stats',
+          '/v1/search/stats',
           '/v1/stats',
           '/metadata/stats',
           '/stats',
@@ -200,7 +201,7 @@ export default async function handler(req, res) {
           'Host': host
         };
 
-        if (req.headers['content-type']) {
+        if (req.headers['content-type'] && req.method.toUpperCase() !== 'GET') {
           headers['Content-Type'] = req.headers['content-type'];
         }
 
@@ -214,6 +215,10 @@ export default async function handler(req, res) {
             timeout: (req.url.includes('/export') || req.url.includes('/report')) ? 60000 : 30000,
             validateStatus: (status) => status < 400
           };
+
+          // 强制删除 Host 标头，让 Axios 根据 URL 自动生成正确的 Host
+          delete axiosConfig.headers['Host'];
+          delete axiosConfig.headers['host'];
 
           if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
             // 如果请求本身有 body，则透传
@@ -249,20 +254,7 @@ export default async function handler(req, res) {
           let errorDetail = 'No detail';
           if (axiosError.response?.data) {
             try {
-              const decoder = new TextDecoder('utf-8');
-              errorDetail = decoder.decode(axiosError.response.data);
-            } catch (e) {
-              errorDetail = 'Failed to decode error data';
-            }
-          }
-          
-          console.log(`[Proxy] [Failed ${status || 'ERR'}] ${currentUrl}`);
-          
-          // 读取详细错误信息
-          let errorDetail = 'No detail';
-          if (axiosError.response?.data) {
-            try {
-              // 尝试解析 JSON 错误信息
+              // 尝试解析错误信息
               if (axiosError.response.data instanceof ArrayBuffer || axiosError.response.data instanceof Buffer) {
                 const decoder = new TextDecoder('utf-8');
                 errorDetail = decoder.decode(axiosError.response.data);
@@ -274,16 +266,19 @@ export default async function handler(req, res) {
             }
           }
           
-          console.log(`[Proxy] Detail: ${errorDetail}`);
+          console.log(`[Proxy] [Failed ${status || 'ERR'}] ${currentUrl} - Detail: ${errorDetail}`);
           
-          // 特殊处理 401：如果返回 401，记录下 API Key 的前几位以便调试（不泄露完整 Key）
+          // 特殊处理 401：如果返回 401，记录下 API Key 的前几位以便调试
           if (status === 401) {
             const keyHint = API_KEY ? `${API_KEY.substring(0, 4)}...${API_KEY.substring(API_KEY.length - 4)}` : 'MISSING';
             console.log(`[Proxy] 401 Unauthorized with API Key: ${keyHint}`);
           }
           
-          // 如果是 401 且已经试过了所有 authHeaders，再继续尝试下一个路径
-          if (status !== 404 && status !== 400 && status !== 401) break;
+          // 如果是 401，继续尝试下一个 authHeader
+          if (status === 401) continue;
+          
+          // 如果是其他错误（包括 404, 500, 400），跳过当前 path 的其他 authHeader，尝试下一个 path
+          break;
         }
       }
     }
