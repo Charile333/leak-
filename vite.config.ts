@@ -5,10 +5,12 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // 加载当前模式下的环境变量
-  const env = loadEnv(mode, process.cwd());
+  const env = loadEnv(mode, process.cwd(), ''); // 第三个参数为空字符串，加载所有环境变量 (包括不带 VITE_ 前缀的)
   
-  if (!env.VITE_LEAKRADAR_API_KEY) {
-    console.warn('\x1b[33m%s\x1b[0m', '⚠️  Warning: VITE_LEAKRADAR_API_KEY is not set in .env file.');
+  const LEAKRADAR_KEY = env.VITE_LEAKRADAR_API_KEY || env.LEAKRADAR_API_KEY;
+  
+  if (!LEAKRADAR_KEY) {
+    console.warn('\x1b[33m%s\x1b[0m', '⚠️  Warning: LEAKRADAR_API_KEY (or VITE_LEAKRADAR_API_KEY) is not set in .env file.');
   } else {
     console.log('\x1b[32m%s\x1b[0m', '✅ LeakRadar API Key loaded from .env');
   }
@@ -33,7 +35,7 @@ export default defineConfig(({ mode }) => {
           // 关键：在转发请求前注入 API Key
           configure: (proxy) => {
             proxy.on('proxyReq', (proxyReq, req) => {
-              const apiKey = env.VITE_LEAKRADAR_API_KEY?.trim();
+              const apiKey = LEAKRADAR_KEY?.trim();
               if (apiKey) {
                 // 彻底解决认证问题：移除可能冲突的头，重新注入
                 proxyReq.removeHeader('Authorization');
