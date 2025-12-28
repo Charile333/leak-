@@ -117,8 +117,15 @@ class LeakRadarAPI {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...options.headers,
     };
+
+    if (options.headers) {
+      Object.entries(options.headers).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          headers[key] = value;
+        }
+      });
+    }
 
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
@@ -193,9 +200,15 @@ class LeakRadarAPI {
 
   private async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
     const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
-    const headers: Record<string, string> = {
-      ...options.headers,
-    };
+    const headers: Record<string, string> = {};
+
+    if (options.headers) {
+      Object.entries(options.headers).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          headers[key] = value;
+        }
+      });
+    }
 
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
