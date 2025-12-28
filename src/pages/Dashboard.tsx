@@ -993,9 +993,17 @@ const Dashboard = () => {
                     onClick={() => {
                       setActiveTab(tab.name);
                       setCurrentPage(0);
-                      // If switching to URLs or Subdomains, trigger a refresh for that specific category
-                      if (tab.name === 'URLs' || tab.name === 'Subdomains') {
-                        // Use a small delay to ensure activeTab is updated or pass the name directly
+                      // 如果当前分类没有缓存数据，才触发刷新
+                      const categoryMap: Record<string, string> = {
+                        'Employees': 'employees',
+                        'Customers': 'customers',
+                        'Third-Parties': 'third_parties',
+                        'URLs': 'urls',
+                        'Subdomains': 'subdomains'
+                      };
+                      const currentCategory = categoryMap[tab.name];
+                      if (currentCategory && !categoryCredentials[currentCategory]) {
+                        // 使用 setTimeout 确保 activeTab 更新后再调用 handleSearch
                         setTimeout(() => handleSearch(undefined, 'default', 0), 0);
                       }
                     }}
