@@ -233,7 +233,7 @@ export const dataService = {
         console.log(`[Debug] 域名 ${domain} 未解锁，正在执行解锁...`);
         // 执行解锁流程
         const unlockCategories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
-        const unlockResults = await Promise.allSettled(
+        await Promise.allSettled(
           unlockCategories.map(cat => leakRadarApi.unlockDomain(domain, cat).catch(err => {
             console.error(`[Debug] 解锁请求失败 (${cat}):`, err.message);
             return { success: true, message: `异步解锁任务已提交 (${cat})` };
