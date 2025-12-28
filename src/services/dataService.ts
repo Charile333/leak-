@@ -250,14 +250,22 @@ export const dataService = {
         console.log(`[Debug] ${category} 分类不需要解锁，直接获取数据...`);
         
         if (category === 'urls') {
-          const res = await leakRadarApi.getDomainUrls(domain, 1000, 0); // 获取所有数据进行统计
+          // 分别获取所有分类的数据，然后合并统计URL出现次数
+          const [empRes, custRes, thirdRes] = await Promise.all([
+            leakRadarApi.searchDomainCategory(domain, 'employees', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+            leakRadarApi.searchDomainCategory(domain, 'customers', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+            leakRadarApi.searchDomainCategory(domain, 'third_parties', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+          ]);
+          
+          // 合并所有结果
+          const allItems = [...empRes.items, ...custRes.items, ...thirdRes.items];
           
           // 统计URL出现次数
           const urlCounts: Record<string, number> = {};
-          res.items.forEach(item => {
+          allItems.forEach(item => {
             const url = item.url || item.website || '';
             if (url) {
-              urlCounts[url] = (urlCounts[url] || 0) + (item.count || 1);
+              urlCounts[url] = (urlCounts[url] || 0) + 1;
             }
           });
           
@@ -284,14 +292,26 @@ export const dataService = {
         }
 
         if (category === 'subdomains') {
-          const res = await leakRadarApi.getDomainSubdomains(domain, 1000, 0); // 获取所有数据进行统计
+          // 分别获取所有分类的数据，然后合并统计子域名出现次数
+          const [empRes, custRes, thirdRes] = await Promise.all([
+            leakRadarApi.searchDomainCategory(domain, 'employees', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+            leakRadarApi.searchDomainCategory(domain, 'customers', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+            leakRadarApi.searchDomainCategory(domain, 'third_parties', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+          ]);
+          
+          // 合并所有结果
+          const allItems = [...empRes.items, ...custRes.items, ...thirdRes.items];
           
           // 统计子域名出现次数
           const subdomainCounts: Record<string, number> = {};
-          res.items.forEach(item => {
-            const subdomain = item.subdomain || item.domain || '';
-            if (subdomain) {
-              subdomainCounts[subdomain] = (subdomainCounts[subdomain] || 0) + (item.count || 1);
+          allItems.forEach(item => {
+            const url = item.url || item.website || '';
+            if (url) {
+              // 从URL中提取子域名
+              const subdomain = url.replace(/^(https?:\/\/)?/, '').split('/')[0];
+              if (subdomain) {
+                subdomainCounts[subdomain] = (subdomainCounts[subdomain] || 0) + 1;
+              }
             }
           });
           
