@@ -76,7 +76,6 @@ const Dashboard = () => {
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const autoUnlock = true; // 固定开启自动解锁
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [totalLeaks, setTotalLeaks] = useState<string>('---,---,---,---');
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -447,24 +446,6 @@ const Dashboard = () => {
 
     return list;
   }, [results, activeTab, sortField, sortOrder, filterType, innerSearchQuery, categoryCredentials]);
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredCredentials.length && filteredCredentials.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredCredentials.map(c => c.id)));
-    }
-  };
-
-  const toggleSelect = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
-  };
 
   // 格式化日期为 YYYY/MM/DD
   const formatDate = (dateStr: string) => {
@@ -1189,12 +1170,15 @@ const Dashboard = () => {
                   <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                     <div className="text-xs text-gray-500">
                       {(() => {
+                        // 对于URLs和Subdomains，使用实际数据数量作为总计
                         let total = results?.summary.total || 0;
                         if (activeTab === 'Employees') total = results?.summary.employees.count || 0;
                         else if (activeTab === 'Customers') total = results?.summary.customers.count || 0;
                         else if (activeTab === 'Third-Parties') total = results?.summary.third_parties.count || 0;
-                        else if (activeTab === 'URLs') total = results?.summary.urls_count || 0;
-                        else if (activeTab === 'Subdomains') total = results?.summary.subdomains_count || 0;
+                        else if (activeTab === 'URLs' || activeTab === 'Subdomains') {
+                          // 使用实际数据数量作为总计，解决统计不一致问题
+                          total = filteredCredentials.length;
+                        }
                         
                         return innerSearchQuery.trim() 
                           ? `筛选出 ${filteredCredentials.length} 条记录 (总计 ${total} 条)`
@@ -1216,14 +1200,6 @@ const Dashboard = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#25252e] border-b border-white/5">
-                        <th className="px-4 py-3 w-10">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedIds.size === filteredCredentials.length && filteredCredentials.length > 0}
-                            onChange={toggleSelectAll}
-                            className="w-4 h-4 rounded border-gray-600 bg-transparent text-accent focus:ring-accent focus:ring-offset-0"
-                          />
-                        </th>
                         <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">URL</th>
                         {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
                           <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">出现次数</th>
@@ -1244,12 +1220,8 @@ const Dashboard = () => {
                         // 显示10行骨架屏
                         Array.from({ length: 10 }).map((_, index) => (
                           <tr key={`skeleton-${index}`} className="hover:bg-white/[0.03] transition-colors group">
-                            <td className="px-4 py-4">
-                              <div className="w-4 h-4 rounded border-gray-600 bg-white/5 animate-pulse"></div>
-                            </td>
                             <td className="px-6 py-4 max-w-[300px]">
                               <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-white/5 rounded animate-pulse"></div>
                                 <div className="w-32 h-4 bg-white/5 rounded animate-pulse"></div>
                               </div>
                             </td>
@@ -1286,14 +1258,6 @@ const Dashboard = () => {
                         // 正常显示数据
                         filteredCredentials.map((cred) => (
                           <tr key={cred.id} className="hover:bg-white/[0.03] transition-colors group">
-                            <td className="px-4 py-4">
-                              <input 
-                                type="checkbox" 
-                                checked={selectedIds.has(cred.id)}
-                                onChange={() => toggleSelect(cred.id)}
-                                className="w-4 h-4 rounded border-gray-600 bg-transparent text-accent focus:ring-accent focus:ring-offset-0"
-                              />
-                            </td>
                             <td className="px-6 py-4 max-w-[300px]">
                               <div className="flex items-center gap-2">
                                 <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
