@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Buffer } from 'buffer';
 
 export default async function handler(req, res) {
   try {
@@ -236,7 +237,14 @@ export default async function handler(req, res) {
             }
 
             if (axiosConfig.data) {
-              headers['Content-Length'] = Buffer.byteLength(axiosConfig.data).toString();
+              try {
+                // 只有字符串或 Buffer 才计算长度，避免对象导致崩溃
+                if (typeof axiosConfig.data === 'string' || Buffer.isBuffer(axiosConfig.data)) {
+                  headers['Content-Length'] = Buffer.byteLength(axiosConfig.data).toString();
+                }
+              } catch (e) {
+                console.warn('[Proxy] Failed to set Content-Length:', e.message);
+              }
             }
           }
 
