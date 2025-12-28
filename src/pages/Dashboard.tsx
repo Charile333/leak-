@@ -236,20 +236,19 @@ const Dashboard = () => {
 
   // Fix Recharts width error by ensuring container is visible and has size
   useEffect(() => {
-    const handleResize = () => {
-      // Force chart re-render on resize if needed
+    const timer = setTimeout(() => {
       window.dispatchEvent(new Event('resize'));
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [results]);
 
   const handleSearch = async (e?: React.FormEvent, type: 'dns' | 'cert' | 'dnsx' | 'default' = 'default', page: number = 0) => {
     if (e) e.preventDefault();
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || isSearching) return;
 
+    setIsSearching(true);
+    
     if (isDnsPage) {
-      setIsSearching(true);
       setShowResults(false);
       try {
         let data: any;
@@ -279,7 +278,6 @@ const Dashboard = () => {
       return;
     }
 
-    setIsSearching(true);
     if (page === 0) {
       setShowResults(false);
       setCurrentPage(0);

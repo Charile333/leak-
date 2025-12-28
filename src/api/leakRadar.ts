@@ -113,11 +113,16 @@ class LeakRadarAPI {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const headers = {
+    const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...options.headers,
     };
+
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
 
     try {
       // Ensure endpoint starts with / if not already
@@ -187,9 +192,14 @@ class LeakRadarAPI {
   }
 
   private async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
-    const headers = {
+    const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
+    const headers: Record<string, string> = {
       ...options.headers,
     };
+
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
 
     try {
       const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -293,16 +303,8 @@ class LeakRadarAPI {
   async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
     const sanitized = this.sanitizeDomain(domain);
     
-    // 强制加上 Authorization 请求头 (如果环境变量中有 Key)
-    const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY;
-    const headers: Record<string, string> = {};
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-    }
-
     return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock`, {
       method: 'POST',
-      headers,
       body: JSON.stringify({}) // 增加空 body 确保代理层能正确识别并转发 POST 请求
     });
   }

@@ -107,8 +107,8 @@ const Analysis = () => {
             <TrendingUp className="w-5 h-5 text-accent" />
             近半年风险趋势
           </h3>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72" style={{ minHeight: '288px' }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
               <AreaChart data={TREND_DATA}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -134,8 +134,8 @@ const Analysis = () => {
             <Zap className="w-5 h-5 text-accent" />
             资产风险分布 (按行业)
           </h3>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72" style={{ minHeight: '288px' }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
               <BarChart data={SECTOR_DATA} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
                 <XAxis type="number" hide />
