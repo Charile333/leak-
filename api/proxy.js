@@ -273,11 +273,21 @@ export default async function handler(req, res) {
           
           // 记录下非 401 的错误详情，以便最后返回
           if (status && status >= 400) {
+            // 确保 errorDetail 被正确赋值
+            if (!errorDetail || errorDetail === 'No detail') {
+               try {
+                 errorDetail = JSON.stringify(axiosError.response?.data || {});
+               } catch (e) {
+                 errorDetail = 'Could not stringify error data';
+               }
+            }
+
             lastError = {
               status,
               message: axiosError.message,
               detail: errorDetail,
-              url: currentUrl
+              url: currentUrl,
+              response_data: axiosError.response?.data // 直接保存原始数据以防 stringify 失败
             };
           }
 
@@ -289,13 +299,17 @@ export default async function handler(req, res) {
 
     // 5. 所有尝试都失败
     const finalStatus = lastError?.status || 500;
+    // 优先使用 detail，如果没有则使用 message
     const finalDetail = lastError?.detail || lastError?.message || 'Unknown error';
+    // 尝试获取原始响应数据（如果是对象）
+    const finalResponseData = lastError?.response_data || null;
     
     return res.status(finalStatus).json({
       error: 'Proxy request failed after multiple attempts',
       message: lastError?.message || 'Multiple attempts failed',
-      detail: finalDetail,
-      path: innerPath,
+      detail: finalDetail, // 这是一个字符串
+      data: finalResponseData, // 这是一个对象（如果可用），方便前端展开查看
+      path: cleanInnerPath,
       tried: prefixesToTry,
       api_key_status: API_KEY ? 'Present' : 'Missing',
       is_dns: isDnsRequest
