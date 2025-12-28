@@ -63,24 +63,23 @@ export const dataService = {
         leakRadarApi.getDomainSubdomains(domain, 1, 0).catch(() => ({ total: 0 })),
       ]);
       
-      // 2. 自动解锁域名 (用户要求搜索后自动解锁)
+      // 2. 自动解锁域名 (方案 B: 增加详细调试日志)
       try {
-        console.log(`[dataService] Auto-unlocking domain categories: ${domain}`);
-        // 解锁所有分类，不等待它们完成以加快响应速度，但通过 Promise.allSettled 确保尝试过
-        Promise.allSettled([
-          leakRadarApi.unlockDomain(domain, 'employees'),
-          leakRadarApi.unlockDomain(domain, 'customers'),
-          leakRadarApi.unlockDomain(domain, 'third_parties')
-        ]).then(results => {
-          results.forEach((res, i) => {
-            const cats = ['employees', 'customers', 'third_parties'];
-            if (res.status === 'rejected') {
-              console.warn(`[dataService] Auto-unlock failed for ${cats[i]}:`, res.reason);
-            }
-          });
+        console.log(`[Debug] 准备自动解锁域名分类: ${domain}`);
+        const categories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
+        
+        // 依次尝试解锁，并记录每个请求的结果
+        categories.forEach(cat => {
+          leakRadarApi.unlockDomain(domain, cat)
+            .then(res => {
+              console.log(`[Debug] 解锁成功 (${cat}):`, res);
+            })
+            .catch(err => {
+              console.error(`[Debug] 解锁失败 (${cat}):`, err.message);
+            });
         });
       } catch (e) {
-        console.warn(`[dataService] Auto-unlock process error:`, e);
+        console.error(`[Debug] 自动解锁流程发生异常:`, e);
       }
       
       // 3. Fetch some credentials for display (we combine them for the table)

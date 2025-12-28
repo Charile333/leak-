@@ -129,15 +129,16 @@ class LeakRadarAPI {
 
       if (!response.ok) {
         let errorMsg = `请求失败 (${response.status})`;
+        let detail = '';
         try {
           const errorData = await response.json();
-          errorMsg = errorData.message || errorData.error || errorData.detail || errorMsg;
-          if (Array.isArray(errorMsg)) errorMsg = JSON.stringify(errorMsg);
+          console.error(`[LeakRadar API] 401/Error Detail for ${endpoint}:`, errorData);
+          detail = errorData.message || errorData.error || errorData.detail || JSON.stringify(errorData);
         } catch (e) {
-          const text = await response.text().catch(() => '');
-          if (text) errorMsg += `: ${text.substring(0, 100)}`;
+          detail = await response.text().catch(() => '无法读取错误响应体');
+          console.error(`[LeakRadar API] Raw Error Text for ${endpoint}:`, detail);
         }
-        throw new Error(errorMsg);
+        throw new Error(`${errorMsg}: ${detail}`);
       }
 
       return response.json();
