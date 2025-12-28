@@ -200,12 +200,10 @@ export default async function handler(req, res) {
           };
 
           if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
-            // 如果请求本身有 body，则透传
-            if (req.body && (typeof req.body === 'object' ? Object.keys(req.body).length > 0 : true)) {
+            // 如果请求本身有 body，则透传 (包括空对象 {})
+            if (req.body !== undefined && req.body !== null) {
               axiosConfig.data = req.body;
             } else {
-              // 对于解锁接口，有些 API 可能需要一个空的 JSON 对象，有些则不需要
-              // 我们优先尝试不带 body，如果报错再看日志
               axiosConfig.data = null;
             }
 
@@ -213,7 +211,9 @@ export default async function handler(req, res) {
             if (currentUrl.includes('/unlock')) {
               headers['Content-Type'] = 'application/json';
               // 某些 API 在 POST 时即使没有 body 也要求 Content-Length: 0
-              headers['Content-Length'] = axiosConfig.data ? JSON.stringify(axiosConfig.data).length : '0';
+              // 如果 data 是对象，转为字符串计算长度
+              const dataStr = axiosConfig.data ? JSON.stringify(axiosConfig.data) : '';
+              headers['Content-Length'] = dataStr.length.toString();
             }
           }
 

@@ -293,7 +293,8 @@ class LeakRadarAPI {
   async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
     const sanitized = this.sanitizeDomain(domain);
     return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock`, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({}) // 增加空 body 确保代理层能正确识别并转发 POST 请求
     });
   }
 
