@@ -338,8 +338,31 @@ const Dashboard = () => {
       );
     }
 
+    // Special handling for URLs and Subdomains: Grouping and counting
+    if (activeTab === 'URLs' || activeTab === 'Subdomains') {
+      const groups = new Map<string, any>();
+      list.forEach(c => {
+        const key = c.website;
+        if (groups.has(key)) {
+          groups.get(key).count++;
+        } else {
+          groups.set(key, { 
+            ...c, 
+            count: 1,
+            // For URLs/Subdomains, we only care about the website/url
+          });
+        }
+      });
+      list = Array.from(groups.values());
+    }
+
     // Sorting
     list.sort((a, b) => {
+      // If we are in URLs/Subdomains tab, we might want to sort by count
+      if ((activeTab === 'URLs' || activeTab === 'Subdomains') && sortField === 'count') {
+        return sortOrder === 'asc' ? a.count - b.count : b.count - a.count;
+      }
+
       const valA = a[sortField] || '';
       const valB = b[sortField] || '';
       
@@ -1136,10 +1159,17 @@ const Dashboard = () => {
                           />
                         </th>
                         <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">URL</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email / Username</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Password</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Indexed At</th>
+                        {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
+                          <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">出现次数</th>
+                        )}
+                        {activeTab !== 'URLs' && activeTab !== 'Subdomains' && (
+                          <>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email / Username</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Password</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Indexed At</th>
+                          </>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.03]">
@@ -1161,44 +1191,55 @@ const Dashboard = () => {
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={cn(
-                              "px-2.5 py-0.5 rounded-full text-[9px] font-bold border",
-                              cred.email?.includes('@') 
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
-                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                            )}>
-                              {cred.email?.includes('@') ? 'Email' : 'Username'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-xs text-gray-300 font-mono">
-                              {cred.email}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-300 font-mono">
-                                {autoUnlock || showPasswords[cred.id] ? cred.password_plaintext : '••••••••••••'}
+                          {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
+                            <td className="px-6 py-4 text-right">
+                              <span className="text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-lg">
+                                {(cred as any).count || 1} 次
                               </span>
-                              {!autoUnlock && (
-                                <button 
-                                  onClick={() => togglePassword(cred.id)}
-                                  className="text-gray-500 hover:text-white transition-colors"
-                                >
-                                  {showPasswords[cred.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2 text-gray-400">
-                              <Calendar className="w-3.5 h-3.5" />
-                              <span className="text-xs font-mono">
-                                {formatDate(cred.leaked_at)}
-                              </span>
-                            </div>
-                          </td>
+                            </td>
+                          )}
+                          {activeTab !== 'URLs' && activeTab !== 'Subdomains' && (
+                            <>
+                              <td className="px-6 py-4">
+                                <span className={cn(
+                                  "px-2.5 py-0.5 rounded-full text-[9px] font-bold border",
+                                  cred.email?.includes('@') 
+                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                                    : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                )}>
+                                  {cred.email?.includes('@') ? 'Email' : 'Username'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="text-xs text-gray-300 font-mono">
+                                  {cred.email}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-300 font-mono">
+                                    {autoUnlock || showPasswords[cred.id] ? cred.password_plaintext : '••••••••••••'}
+                                  </span>
+                                  {!autoUnlock && (
+                                    <button 
+                                      onClick={() => togglePassword(cred.id)}
+                                      className="text-gray-500 hover:text-white transition-colors"
+                                    >
+                                      {showPasswords[cred.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2 text-gray-400">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  <span className="text-xs font-mono">
+                                    {formatDate(cred.leaked_at)}
+                                  </span>
+                                </div>
+                              </td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
