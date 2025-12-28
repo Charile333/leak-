@@ -359,8 +359,8 @@ const Dashboard = () => {
     // Sorting
     list.sort((a, b) => {
       // If we are in URLs/Subdomains tab, we might want to sort by count
-      if ((activeTab === 'URLs' || activeTab === 'Subdomains') && sortField === 'count') {
-        return sortOrder === 'asc' ? a.count - b.count : b.count - a.count;
+      if ((activeTab === 'URLs' || activeTab === 'Subdomains') && (sortField as string) === 'count') {
+        return sortOrder === 'asc' ? (a.count || 0) - (b.count || 0) : (b.count || 0) - (a.count || 0);
       }
 
       const valA = a[sortField] || '';

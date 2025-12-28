@@ -18,6 +18,7 @@ export interface LeakedCredential {
   phone?: string;
   city?: string;
   country?: string;
+  count?: number;
 }
 
 export interface DomainSearchSummary {
