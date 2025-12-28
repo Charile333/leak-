@@ -118,7 +118,7 @@ const Dashboard = () => {
   
   // 当标签页切换到URLs或Subdomains时，如果没有缓存数据，自动加载数据
   useEffect(() => {
-    if (showResults && activeTab) {
+    if (showResults && activeTab && searchQuery) {
       const categoryMap: Record<string, string> = {
         'Employees': 'employees',
         'Customers': 'customers',
@@ -330,6 +330,8 @@ const Dashboard = () => {
           setIsSearching(false);
           setIsLoadingCategory(false);
           setCurrentPage(page);
+          // 确保结果区域显示
+          setShowResults(true);
           return;
         }
       }
@@ -378,11 +380,17 @@ const Dashboard = () => {
     
     const currentCategory = categoryMap[activeTab];
     
-    // 如果当前分类有缓存数据，优先使用缓存数据
-    if (currentCategory && categoryCredentials[currentCategory]) {
-      list = [...categoryCredentials[currentCategory]];
+    // 对于URLs和Subdomains标签页，只能从categoryCredentials获取数据
+    if (activeTab === 'URLs' || activeTab === 'Subdomains') {
+      // 如果没有缓存数据，返回空数组
+      if (currentCategory && categoryCredentials[currentCategory]) {
+        list = [...categoryCredentials[currentCategory]];
+      } else {
+        // 返回空数组，等待数据加载
+        list = [];
+      }
     } else {
-      // 否则使用原始完整数据，并根据标签页进行过滤
+      // 对于其他标签页，使用原始数据并过滤
       list = [...results.credentials];
       
       // Tab filtering
