@@ -40,6 +40,10 @@ export interface DomainSearchSummary {
   subdomains_count: number;
 }
 
+// 解锁状态缓存，避免重复解锁
+const unlockCache: Record<string, { unlocked: boolean; timestamp: number }> = {};
+const CACHE_DURATION = 30 * 60 * 1000; // 缓存有效期：30分钟
+
 export const dataService = {
   /**
    * Search domain leaks using Real API
@@ -48,7 +52,7 @@ export const dataService = {
    * 清理域名：移除 http(s):// 和 www. 前缀
    */
   sanitizeDomain(domain: string): string {
-    return domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+    return domain.replace(/^(https?://)?(www.)?/, '').split('/')[0].toLowerCase();
   },
 
   searchDomain: async (domainInput: string, limit = 100, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
@@ -56,55 +60,67 @@ export const dataService = {
     try {
       console.log(`[dataService] Starting sequential search for domain: ${domain}`);
       
-      // 1. 动作 A：解锁 (Unlock) - 顺序执行并等待
-      console.log(`[Debug] 正在解锁域名数据: ${domain}...`);
-      const categories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
+      // 检查解锁缓存，避免重复解锁
+      const now = Date.now();
+      const cached = unlockCache[domain];
+      let isUnlocked = cached && now - cached.timestamp < CACHE_DURATION && cached.unlocked;
       
-      // 使用 Promise.allSettled 确保即使某个分类解锁失败，也能继续后续取数动作
-      const unlockResults = await Promise.allSettled(
-        categories.map(cat => leakRadarApi.unlockDomain(domain, cat).catch(err => {
-          // 捕获并处理解锁错误，避免影响后续操作
-          console.error(`[Debug] 解锁请求失败 (${cat}):`, err.message);
-          // 对于异步任务端点，即使返回错误，也视为成功提交任务
-          return { success: true, message: `异步解锁任务已提交 (${cat})` };
-        }))
-      );
-      
-      unlockResults.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          // 异步任务端点可能返回不同格式，我们只需要确认请求已发送
-          console.log(`[Debug] 解锁任务已提交 (${categories[index]}):`, result.value.message || '成功');
-        } else {
-          console.error(`[Debug] 解锁执行失败 (${categories[index]}):`, result.reason);
-        }
-      });
+      if (isUnlocked) {
+        console.log(`[Debug] 域名 ${domain} 已解锁，直接使用缓存...`);
+      } else {
+        // 1. 动作 A：解锁 (Unlock) - 顺序执行并等待
+        console.log(`[Debug] 正在解锁域名数据: ${domain}...`);
+        const categories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
+        
+        // 使用 Promise.allSettled 确保即使某个分类解锁失败，也能继续后续取数动作
+        const unlockResults = await Promise.allSettled(
+          categories.map(cat => leakRadarApi.unlockDomain(domain, cat).catch(err => {
+            // 捕获并处理解锁错误，避免影响后续操作
+            console.error(`[Debug] 解锁请求失败 (${cat}):`, err.message);
+            // 对于异步任务端点，即使返回错误，也视为成功提交任务
+            return { success: true, message: `异步解锁任务已提交 (${cat})` };
+          }))
+        );
+        
+        unlockResults.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            // 异步任务端点可能返回不同格式，我们只需要确认请求已发送
+            console.log(`[Debug] 解锁任务已提交 (${categories[index]}):`, result.value.message || '成功');
+          } else {
+            console.error(`[Debug] 解锁执行失败 (${categories[index]}):`, result.reason);
+          }
+        });
 
-      // 2. 轮询检查解锁状态 - 确保数据已解锁
-      console.log(`[Debug] 等待解锁完成...`);
-      let maxRetries = 5; // 最多重试 5 次
-      let retryDelay = 1000; // 每次重试间隔 1 秒
-      let isUnlocked = false;
-      
-      while (maxRetries > 0 && !isUnlocked) {
-        // 检查是否有明文数据可用（测试一个分类即可）
-        const testResult = await leakRadarApi.searchDomainCategory(domain, 'employees', 1, 0).catch(() => ({ items: [], total: 0, success: false }));
+        // 2. 轮询检查解锁状态 - 确保数据已解锁
+        console.log(`[Debug] 等待解锁完成...`);
+        let maxRetries = 5; // 最多重试 5 次
+        let retryDelay = 1000; // 每次重试间隔 1 秒
+        isUnlocked = false;
         
-        // 检查是否有解锁的数据（包含 password_plaintext 或 unlocked 字段）
-        isUnlocked = testResult.items.some(item => item.password_plaintext || item.unlocked);
-        
-        if (isUnlocked) {
-          console.log(`[Debug] 解锁完成，开始取数...`);
-          break;
+        while (maxRetries > 0 && !isUnlocked) {
+          // 检查是否有明文数据可用（测试一个分类即可）
+          const testResult = await leakRadarApi.searchDomainCategory(domain, 'employees', 1, 0).catch(() => ({ items: [], total: 0, success: false }));
+          
+          // 检查是否有解锁的数据（包含 password_plaintext 或 unlocked 字段）
+          isUnlocked = testResult.items.some(item => item.password_plaintext || item.unlocked);
+          
+          if (isUnlocked) {
+            console.log(`[Debug] 解锁完成，开始取数...`);
+            break;
+          }
+          
+          maxRetries--;
+          console.log(`[Debug] 解锁未完成，等待 ${retryDelay}ms 后重试 (剩余 ${maxRetries} 次)...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          retryDelay *= 1.5; // 指数退避
         }
         
-        maxRetries--;
-        console.log(`[Debug] 解锁未完成，等待 ${retryDelay}ms 后重试 (剩余 ${maxRetries} 次)...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-        retryDelay *= 1.5; // 指数退避
-      }
-      
-      if (!isUnlocked) {
-        console.log(`[Debug] 解锁超时，使用当前可用数据...`);
+        if (!isUnlocked) {
+          console.log(`[Debug] 解锁超时，使用当前可用数据...`);
+        }
+        
+        // 更新解锁缓存
+        unlockCache[domain] = { unlocked: isUnlocked, timestamp: now };
       }
 
       // 3. 动作 B：取数 (Search) - 在解锁完成或超时后执行
