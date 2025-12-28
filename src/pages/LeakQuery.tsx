@@ -40,6 +40,16 @@ const RISK_DATA: RiskItem[] = [
 ];
 
 const LeakQuery = () => {
+  // Fix Recharts width error by ensuring container is visible and has size
+  useEffect(() => {
+    const timers = [100, 500, 1000, 2000].map(delay => 
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, delay)
+    );
+    return () => timers.forEach(t => clearTimeout(t));
+  }, []);
+
   const [showDetails, setShowDetails] = useState<number | null>(null);
   const [results, setResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);

@@ -145,7 +145,8 @@ class LeakRadarAPI {
         try {
           const errorData = await response.json();
           console.error(`[LeakRadar API] 401/Error Detail for ${endpoint}:`, errorData);
-          detail = errorData.message || errorData.error || errorData.detail || JSON.stringify(errorData);
+          // 将错误详情转为字符串，方便在 Error 对象中查看
+          detail = typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData);
         } catch (e) {
           detail = await response.text().catch(() => '无法读取错误响应体');
           console.error(`[LeakRadar API] Raw Error Text for ${endpoint}:`, detail);

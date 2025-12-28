@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, ShieldAlert, Zap, Globe, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { 
   BarChart, 
@@ -29,6 +30,16 @@ const SECTOR_DATA = [
 ];
 
 const Analysis = () => {
+  // Fix Recharts width error by ensuring container is visible and has size
+  useEffect(() => {
+    const timers = [100, 500, 1000, 2000].map(delay => 
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, delay)
+    );
+    return () => timers.forEach(t => clearTimeout(t));
+  }, []);
+
   return (
     <div className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

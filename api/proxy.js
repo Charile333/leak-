@@ -62,6 +62,10 @@ export default async function handler(req, res) {
       ? (process.env.DNS_API_TOKEN || process.env.VITE_DNS_API_TOKEN)
       : (process.env.LEAKRADAR_API_KEY || process.env.VITE_LEAKRADAR_API_KEY);
 
+    if (typeof API_KEY === 'string') {
+      API_KEY = API_KEY.trim();
+    }
+
     // 如果环境变量没有配置 Key，尝试从请求头获取 (支持前端传过来的 Authorization)
     if (!API_KEY) {
       if (req.headers['authorization']?.startsWith('Bearer ')) {
@@ -121,6 +125,9 @@ export default async function handler(req, res) {
           `/v1/search/domain/${domain}${subPath}`,
           // 方案 2: 极简 v1 路径
           `/v1/domain/${domain}${subPath}`,
+          // 方案 2.5: 针对解锁的备选路径 (移除 category 直接在 domain 下解锁)
+          subPath.includes('/unlock') ? `/v1/search/domain/${domain}/unlock` : null,
+          subPath.includes('/unlock') ? `/v1/domain/${domain}/unlock` : null,
           // 方案 3: 带 @ 的 leaks 路径 (如果是查询)
           !subPath || subPath === '/' ? `/v1/leaks/@${domain}` : null,
           // 方案 4: 直接透传
@@ -181,9 +188,9 @@ export default async function handler(req, res) {
       lastTriedUrl = currentUrl;
       
       const authHeadersToTry = [
-        { 'Authorization': `Bearer ${API_KEY}`, 'X-API-Key': API_KEY },
-        { 'Authorization': API_KEY, 'X-API-Key': API_KEY },
-        { 'X-API-Key': API_KEY }
+        { 'Authorization': `Bearer ${API_KEY}` },
+        { 'X-API-Key': API_KEY },
+        { 'Authorization': API_KEY }
       ];
 
       for (const authHeaders of authHeadersToTry) {
@@ -209,21 +216,25 @@ export default async function handler(req, res) {
           };
 
           if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
-            // 如果请求本身有 body，则透传 (包括空对象 {})
+            // 如果请求本身有 body，则透传
             if (req.body !== undefined && req.body !== null) {
-              axiosConfig.data = req.body;
+              if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+                axiosConfig.data = JSON.stringify(req.body);
+                headers['Content-Type'] = 'application/json';
+              } else {
+                axiosConfig.data = req.body;
+              }
             } else {
-              axiosConfig.data = null;
+              // 针对 POST 请求即使没有 body 也提供空对象
+              if (req.method.toUpperCase() === 'POST') {
+                axiosConfig.data = '{}';
+                headers['Content-Type'] = 'application/json';
+              } else {
+                axiosConfig.data = null;
+              }
             }
-
-            // 如果是解锁接口，确保 Content-Type 正确
-            if (currentUrl.includes('/unlock')) {
-              headers['Content-Type'] = 'application/json';
-              // 某些 API 在 POST 时即使没有 body 也要求 Content-Length: 0
-              // 如果 data 是对象，转为字符串计算长度
-              const dataStr = axiosConfig.data ? JSON.stringify(axiosConfig.data) : '';
-              headers['Content-Length'] = dataStr.length.toString();
-            }
+            
+            // 移除手动设置 Content-Length，让 axios/node-fetch 自动处理，减少 401/400 风险
           }
 
           const response = await axios(axiosConfig);
@@ -245,7 +256,31 @@ export default async function handler(req, res) {
             }
           }
           
-          console.log(`[Proxy] [Failed ${status || 'ERR'}] ${currentUrl} | Detail: ${errorDetail}`);
+          console.log(`[Proxy] [Failed ${status || 'ERR'}] ${currentUrl}`);
+          
+          // 读取详细错误信息
+          let errorDetail = 'No detail';
+          if (axiosError.response?.data) {
+            try {
+              // 尝试解析 JSON 错误信息
+              if (axiosError.response.data instanceof ArrayBuffer || axiosError.response.data instanceof Buffer) {
+                const decoder = new TextDecoder('utf-8');
+                errorDetail = decoder.decode(axiosError.response.data);
+              } else {
+                errorDetail = JSON.stringify(axiosError.response.data);
+              }
+            } catch (e) {
+              errorDetail = 'Failed to decode error data';
+            }
+          }
+          
+          console.log(`[Proxy] Detail: ${errorDetail}`);
+          
+          // 特殊处理 401：如果返回 401，记录下 API Key 的前几位以便调试（不泄露完整 Key）
+          if (status === 401) {
+            const keyHint = API_KEY ? `${API_KEY.substring(0, 4)}...${API_KEY.substring(API_KEY.length - 4)}` : 'MISSING';
+            console.log(`[Proxy] 401 Unauthorized with API Key: ${keyHint}`);
+          }
           
           // 如果是 401 且已经试过了所有 authHeaders，再继续尝试下一个路径
           if (status !== 404 && status !== 400 && status !== 401) break;

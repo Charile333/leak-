@@ -236,11 +236,14 @@ const Dashboard = () => {
 
   // Fix Recharts width error by ensuring container is visible and has size
   useEffect(() => {
-    const timer = setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [results]);
+    // 增加多次触发，确保在不同渲染阶段都能捕捉到容器尺寸
+    const timers = [100, 500, 1000, 2000].map(delay => 
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, delay)
+    );
+    return () => timers.forEach(t => clearTimeout(t));
+  }, [results, activeTab]);
 
   const handleSearch = async (e?: React.FormEvent, type: 'dns' | 'cert' | 'dnsx' | 'default' = 'default', page: number = 0) => {
     if (e) e.preventDefault();
