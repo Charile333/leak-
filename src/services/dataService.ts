@@ -62,18 +62,22 @@ export const dataService = {
       
       // 使用 Promise.allSettled 确保即使某个分类解锁失败，也能继续后续取数动作
       const unlockResults = await Promise.allSettled(
-        categories.map(cat => leakRadarApi.unlockDomain(domain, cat))
+        categories.map(cat => leakRadarApi.unlockDomain(domain, cat).catch(err => {
+          // 捕获并处理解锁错误，避免影响后续操作
+          console.error(`[Debug] 解锁请求失败 (${cat}):`, err.message);
+          return { success: false, message: `解锁失败: ${err.message}` };
+        }))
       );
       
       unlockResults.forEach((result, index) => {
         if (result.status === 'fulfilled') {
-          console.log(`[Debug] 解锁成功 (${categories[index]}):`, result.value);
-        } else {
-          console.error(`[Debug] 解锁失败 (${categories[index]}):`, result.reason);
-          // 尝试打印更详细的错误信息，方便用户反馈
-          if (result.reason?.response?.data) {
-             console.error(`[Debug] 详细错误信息 (${categories[index]}):`, JSON.stringify(result.reason.response.data, null, 2));
+          if (result.value.success) {
+            console.log(`[Debug] 解锁成功 (${categories[index]}):`, result.value.message || '成功');
+          } else {
+            console.warn(`[Debug] 解锁结果失败 (${categories[index]}):`, result.value.message);
           }
+        } else {
+          console.error(`[Debug] 解锁执行失败 (${categories[index]}):`, result.reason);
         }
       });
 
