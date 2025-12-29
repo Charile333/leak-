@@ -138,9 +138,9 @@ export const dataService = {
           }))
         );
         
-        // 等待1秒，确保解锁有足够时间完成
-        console.log(`[Debug] 解锁请求发送完成，等待1秒后获取数据...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // 等待更可靠的时间，确保解锁有足够时间完成
+        console.log(`[Debug] 解锁请求发送完成，等待2秒后获取数据...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // 更新缓存，标记为已解锁，避免重复发送解锁请求
         unlockCache.set(domain, { unlocked: true, timestamp: now });
@@ -155,11 +155,30 @@ export const dataService = {
       
       // Fetch credentials for display
       const itemsPerCat = Math.floor(limit / 3);
-      const [empRes, custRes, thirdRes] = await Promise.all([
+      let [empRes, custRes, thirdRes] = await Promise.all([
         leakRadarApi.searchDomainCategory(domain, 'employees', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
         leakRadarApi.searchDomainCategory(domain, 'customers', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
         leakRadarApi.searchDomainCategory(domain, 'third_parties', limit - (2 * itemsPerCat), offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
       ]);
+
+      // 检查获取的数据是否已解锁，如果未解锁，尝试再次获取
+      const isDataUnlocked = empRes.items.some(item => item.unlocked || item.password_plaintext) || 
+                             custRes.items.some(item => item.unlocked || item.password_plaintext) || 
+                             thirdRes.items.some(item => item.unlocked || item.password_plaintext);
+      
+      if (!isDataUnlocked && isUnlocked) {
+        console.log(`[Debug] 首次获取的数据未解锁，等待1秒后重试...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 再次获取数据
+        [empRes, custRes, thirdRes] = await Promise.all([
+          leakRadarApi.searchDomainCategory(domain, 'employees', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+          leakRadarApi.searchDomainCategory(domain, 'customers', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+          leakRadarApi.searchDomainCategory(domain, 'third_parties', limit - (2 * itemsPerCat), offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        ]);
+        
+        console.log(`[Debug] 数据重试获取完成`);
+      }
 
       const transformItem = (item: any, type: LeakedCredential['type']): LeakedCredential => {
         // Map strength number to string
@@ -359,15 +378,30 @@ export const dataService = {
           }))
         );
         
-        // 等待1秒，确保解锁有足够时间完成
-        console.log(`[Debug] 解锁请求发送完成，等待1秒后获取数据...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // 等待更可靠的时间，确保解锁有足够时间完成
+        console.log(`[Debug] 解锁请求发送完成，等待2秒后获取数据...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // 更新解锁缓存 - 解锁完成后标记为已解锁
         unlockCache.set(domain, { unlocked: true, timestamp: now });
       }
 
-      const res = await leakRadarApi.searchDomainCategory(domain, category, limit, offset);
+      // 确保解锁完成后再获取数据
+      console.log(`[Debug] 开始获取${category}分类数据...`);
+      let res = await leakRadarApi.searchDomainCategory(domain, category, limit, offset);
+      
+      // 检查获取的数据是否已解锁，如果未解锁，尝试再次获取
+      const isDataUnlocked = res.items.some(item => item.unlocked || item.password_plaintext);
+      
+      if (!isDataUnlocked && isUnlocked) {
+        console.log(`[Debug] 首次获取的${category}分类数据未解锁，等待1秒后重试...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 再次获取数据
+        res = await leakRadarApi.searchDomainCategory(domain, category, limit, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult));
+        
+        console.log(`[Debug] ${category}分类数据重试获取完成`);
+      }
       
       const transformItem = (item: any, type: LeakedCredential['type']): LeakedCredential => {
         let strength: LeakedCredential['strength'] = 'Medium';
