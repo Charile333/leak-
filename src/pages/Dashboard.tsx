@@ -69,7 +69,7 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [activeTab, setActiveTab] = useState('Report');
+  const [activeTab, setActiveTab] = useState('报告');
   const [filterType, setFilterType] = useState<'All' | 'Email' | 'Username'>('All');
   const [innerSearchQuery, setInnerSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -119,11 +119,11 @@ const Dashboard = () => {
   useEffect(() => {
     if (showResults && activeTab && searchQuery) {
       const categoryMap: Record<string, string> = {
-        'Employees': 'employees',
-        'Customers': 'customers',
-        'Third-Parties': 'third_parties',
+        '员工': 'employees',
+        '客户': 'customers',
+        '第三方': 'third_parties',
         'URLs': 'urls',
-        'Subdomains': 'subdomains'
+        '子域名': 'subdomains'
       };
       const currentCategory = categoryMap[activeTab];
       
@@ -309,14 +309,14 @@ const Dashboard = () => {
     }
     
     try {
-      if (page > 0 || (activeTab === 'URLs' || activeTab === 'Subdomains')) {
+      if (page > 0 || (activeTab === 'URLs' || activeTab === '子域名')) {
         // 分页逻辑：如果当前在特定分类下，只请求该分类的数据
         let category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains' | null = null;
-        if (activeTab === 'Employees') category = 'employees';
-        else if (activeTab === 'Customers') category = 'customers';
-        else if (activeTab === 'Third-Parties') category = 'third_parties';
+        if (activeTab === '员工') category = 'employees';
+        else if (activeTab === '客户') category = 'customers';
+        else if (activeTab === '第三方') category = 'third_parties';
         else if (activeTab === 'URLs') category = 'urls';
-        else if (activeTab === 'Subdomains') category = 'subdomains';
+        else if (activeTab === '子域名') category = 'subdomains';
 
         if (category) {
           setIsLoadingCategory(true);
@@ -379,8 +379,8 @@ const Dashboard = () => {
     
     const currentCategory = categoryMap[activeTab];
     
-    // 对于URLs和Subdomains标签页，只能从categoryCredentials获取数据
-    if (activeTab === 'URLs' || activeTab === 'Subdomains') {
+    // 对于URLs和子域名标签页，只能从categoryCredentials获取数据
+    if (activeTab === 'URLs' || activeTab === '子域名') {
       // 如果没有缓存数据，返回空数组
       if (currentCategory && categoryCredentials[currentCategory]) {
         list = [...categoryCredentials[currentCategory]];
@@ -393,13 +393,13 @@ const Dashboard = () => {
       list = [...results.credentials];
       
       // Tab filtering
-      if (activeTab === 'Report') {
-        // Report标签页显示所有数据，不需要过滤
-      } else if (activeTab === 'Employees') {
+      if (activeTab === '报告') {
+        // 报告标签页显示所有数据，不需要过滤
+      } else if (activeTab === '员工') {
         list = list.filter(c => c.type === 'Employee');
-      } else if (activeTab === 'Third-Parties') {
+      } else if (activeTab === '第三方') {
         list = list.filter(c => c.type === 'Third-Party');
-      } else if (activeTab === 'Customers') {
+      } else if (activeTab === '客户') {
         list = list.filter(c => c.type === 'Customer');
       }
     }
@@ -423,8 +423,8 @@ const Dashboard = () => {
 
     // Sorting
     list.sort((a, b) => {
-      // If we are in URLs/Subdomains tab, we might want to sort by count
-      if ((activeTab === 'URLs' || activeTab === 'Subdomains') && (sortField as string) === 'count') {
+      // If we are in URLs/子域名 tab, we might want to sort by count
+    if ((activeTab === 'URLs' || activeTab === '子域名') && (sortField as string) === 'count') {
         return sortOrder === 'asc' ? (a.count || 0) - (b.count || 0) : (b.count || 0) - (a.count || 0);
       }
 
@@ -463,12 +463,12 @@ const Dashboard = () => {
   };
 
   const tabs = [
-    { name: 'Report', icon: LayoutGrid, count: results?.summary.total ?? 0 },
-    { name: 'Employees', icon: User, count: results?.summary.employees.count ?? 0 },
-    { name: 'Third-Parties', icon: Briefcase, count: results?.summary.third_parties.count ?? 0 },
-    { name: 'Customers', icon: Users, count: results?.summary.customers.count ?? 0 },
+    { name: '报告', icon: LayoutGrid, count: results?.summary.total ?? 0 },
+    { name: '员工', icon: User, count: results?.summary.employees.count ?? 0 },
+    { name: '第三方', icon: Briefcase, count: results?.summary.third_parties.count ?? 0 },
+    { name: '客户', icon: Users, count: results?.summary.customers.count ?? 0 },
     { name: 'URLs', icon: LinkIcon, count: results?.summary.urls_count ?? 0 },
-    { name: 'Subdomains', icon: Globe, count: results?.summary.subdomains_count ?? 0 },
+    { name: '子域名', icon: Globe, count: results?.summary.subdomains_count ?? 0 },
   ];
 
   const StrengthBar = ({ strength }: { strength: any }) => {
@@ -738,7 +738,7 @@ const Dashboard = () => {
       let category: 'employees' | 'customers' | 'third_parties' | 'all' = 'employees';
       if (activeTab === 'Customers') category = 'customers';
       else if (activeTab === 'Third-Parties') category = 'third_parties';
-      else if (activeTab === 'Report') category = 'all';
+      else if (activeTab === '报告') category = 'all';
 
       const notification = document.createElement('div');
       notification.className = "fixed bottom-8 right-8 bg-accent text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-bounce flex items-center gap-2";
@@ -1164,10 +1164,10 @@ const Dashboard = () => {
                     <thead>
                       <tr className="bg-[#25252e] border-b border-white/5">
                         <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">URL</th>
-                        {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
+                    {(activeTab === 'URLs' || activeTab === '子域名') && (
                           <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">出现次数</th>
                         )}
-                        {activeTab !== 'URLs' && activeTab !== 'Subdomains' && (
+                        {activeTab !== 'URLs' && activeTab !== '子域名' && (
                           <>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</th>
                             <th className="px-6 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email / Username</th>
