@@ -370,11 +370,11 @@ const Dashboard = () => {
     // 根据当前活动标签页选择数据源
     let list: LeakedCredential[];
     const categoryMap: Record<string, string> = {
-      'Employees': 'employees',
-      'Customers': 'customers',
-      'Third-Parties': 'third_parties',
+      '员工': 'employees',
+      '客户': 'customers',
+      '第三方': 'third_parties',
       'URLs': 'urls',
-      'Subdomains': 'subdomains'
+      '子域名': 'subdomains'
     };
     
     const currentCategory = categoryMap[activeTab];
@@ -1007,7 +1007,7 @@ const Dashboard = () => {
                 ) : (
                   <>
                     {/* 结果内容区域 */}
-                    {activeTab === 'Report' && results ? (
+                    {activeTab === '报告' && results ? (
               <div className="space-y-12">
                 {/* 结果标题 */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -1039,32 +1039,32 @@ const Dashboard = () => {
                 {/* 详情卡片网格 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <DetailCard 
-                    title="Employees" 
+                    title="员工" 
                     icon={UserCheck} 
                     data={results.summary.employees} 
                     colorClass="text-emerald-500"
                     onClick={() => {
-                    setActiveTab('Employees');
+                    setActiveTab('员工');
                     setCurrentPage(0);
                   }}
                   />
                   <DetailCard 
-                    title="Third Parties" 
+                    title="第三方" 
                     icon={ShieldAlert} 
                     data={results.summary.third_parties} 
                     colorClass="text-orange-500"
                     onClick={() => {
-                      setActiveTab('Third-Parties');
+                      setActiveTab('第三方');
                       setCurrentPage(0);
                     }}
                   />
                   <DetailCard 
-                    title="Customers" 
+                    title="客户" 
                     icon={UserMinus} 
                     data={results.summary.customers} 
                     colorClass="text-blue-500"
                     onClick={() => {
-                      setActiveTab('Customers');
+                      setActiveTab('客户');
                       setCurrentPage(0);
                     }}
                   />
@@ -1135,10 +1135,10 @@ const Dashboard = () => {
                       {(() => {
                         // 对于URLs和Subdomains，使用实际数据数量作为总计
                         let total = results?.summary.total || 0;
-                        if (activeTab === 'Employees') total = results?.summary.employees.count || 0;
-                        else if (activeTab === 'Customers') total = results?.summary.customers.count || 0;
-                        else if (activeTab === 'Third-Parties') total = results?.summary.third_parties.count || 0;
-                        else if (activeTab === 'URLs' || activeTab === 'Subdomains') {
+                        if (activeTab === '员工') total = results?.summary.employees.count || 0;
+                        else if (activeTab === '客户') total = results?.summary.customers.count || 0;
+                        else if (activeTab === '第三方') total = results?.summary.third_parties.count || 0;
+                        else if (activeTab === 'URLs' || activeTab === '子域名') {
                           // 使用实际数据数量作为总计，解决统计不一致问题
                           total = filteredCredentials.length;
                         }
