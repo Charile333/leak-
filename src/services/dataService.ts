@@ -127,8 +127,7 @@ export const dataService = {
       } else {
         console.log(`[Debug] 域名 ${domain} 未解锁，执行解锁流程...`);
         
-        // 简化解锁流程：只发送解锁请求，不等待解锁完成
-        // 异步解锁端点会在后台处理，我们直接获取当前可用数据
+        // 优化解锁流程：发送解锁请求并等待解锁完成
         const categories: Array<'employees' | 'customers' | 'third_parties'> = ['employees', 'customers', 'third_parties'];
         
         console.log(`[Debug] 发送解锁请求到异步端点...`);
@@ -139,8 +138,11 @@ export const dataService = {
           }))
         );
         
-        // 立即更新缓存，标记为已解锁，避免重复发送解锁请求
-        console.log(`[Debug] 解锁请求发送完成，更新缓存...`);
+        // 等待1秒，确保解锁有足够时间完成
+        console.log(`[Debug] 解锁请求发送完成，等待1秒后获取数据...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 更新缓存，标记为已解锁，避免重复发送解锁请求
         unlockCache.set(domain, { unlocked: true, timestamp: now });
       }
 
@@ -357,7 +359,11 @@ export const dataService = {
           }))
         );
         
-        // 更新解锁缓存 - 只要发送了解锁请求，就认为域名已解锁
+        // 等待1秒，确保解锁有足够时间完成
+        console.log(`[Debug] 解锁请求发送完成，等待1秒后获取数据...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 更新解锁缓存 - 解锁完成后标记为已解锁
         unlockCache.set(domain, { unlocked: true, timestamp: now });
       }
 
