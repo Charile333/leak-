@@ -693,59 +693,24 @@ const Dashboard = () => {
     if (!results?.summary.domain) return;
     try {
       setIsSearching(true);
-      
-      // 尝试直接下载报告，使用员工分类作为替代方案
+      // 尝试直接使用现有的exportDomainPDF方法
       try {
         // 配置自定义报告选项：中文语言 + 自定义标题
         const reportOptions = {
           language: 'zh-CN' as const, // 使用as const确保类型安全
           title: `安全报告: ${results.summary.domain}`,
-          logoUrl: undefined as string | undefined // 明确声明logoUrl属性
+          // 可在此添加logoUrl参数，例如：
+          // logoUrl: 'https://your-company-logo-url.com/logo.png'
         };
         
-        // 调用原始的exportDomainPDF方法，但修复实现
-        // 直接使用fetch调用API，因为当前的exportDomainPDF方法可能有问题
-        const domain = results.summary.domain;
-        const sanitizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
-        
-        // 构建请求URL
-        const url = `${window.location.origin}/api/leakradar/search/domain/${sanitizedDomain}/report`;
-        
-        // 准备请求数据，只包含实际有值的字段
-        const requestData: any = {
-          format: 'pdf',
-          language: reportOptions.language,
-          custom_title: reportOptions.title
-        };
-        
-        // 只有当logoUrl有值时才添加到请求中
-        if (reportOptions.logoUrl) {
-          requestData.logo_url = reportOptions.logoUrl;
-        }
-        
-        // 发送请求
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/pdf',
-          },
-          body: JSON.stringify(requestData),
-        });
-        
-        if (!response.ok) {
-          throw new Error(`请求失败 (${response.status})`);
-        }
-        
-        // 获取Blob数据
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
+        const blob = await leakRadarApi.exportDomainPDF(results.summary.domain, reportOptions);
+        const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = downloadUrl;
+        a.href = url;
         a.download = `安全报告_${results.summary.domain}_${new Date().toISOString().split('T')[0]}.pdf`;
         document.body.appendChild(a);
         a.click();
-        window.URL.revokeObjectURL(downloadUrl);
+        window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         setIsSearching(false);
         return;
