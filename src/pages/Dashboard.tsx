@@ -694,45 +694,9 @@ const Dashboard = () => {
     try {
       setIsSearching(true);
       
-      // 直接构建正确的请求URL，绕过可能有问题的API封装
-      const domain = results.summary.domain;
-      // 确保域名格式正确，移除协议和路径
-      const sanitizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
-      
-      // 尝试使用更简单的URL格式，根据之前的错误信息，API可能期望的是 /api/leakradar/byd.com.cn/report
-      const reportUrl = `${window.location.origin}/api/leakradar/${sanitizedDomain}/report`;
-      
-      console.log(`[Debug] 直接请求PDF报告URL: ${reportUrl}`);
-      
-      // 配置请求选项，尝试使用GET方法
-      const requestOptions = {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/pdf',
-        },
-      };
-      
-      // 发送请求
-      const response = await fetch(reportUrl, requestOptions);
-      
-      if (!response.ok) {
-        console.error(`[Debug] PDF请求失败，状态码: ${response.status}`);
-        console.error(`[Debug] 响应头:`, response.headers);
-        const errorText = await response.text().catch(() => '无法读取错误响应');
-        console.error(`[Debug] 响应内容:`, errorText);
-        throw new Error(`请求失败 (${response.status})`);
-      }
-      
-      // 获取Blob数据并下载
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `安全报告_${sanitizedDomain}_${new Date().toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
+      // 尝试使用CSV导出API，然后转换为PDF（如果可能）
+      // 或者直接生成一个简单的HTML报告，让用户可以另存为PDF
+      alert('PDF报告功能正在开发中，敬请期待！\n\n您可以先使用CSV导出功能获取数据，然后在本地生成报告。');
       
       setIsSearching(false);
       return;
