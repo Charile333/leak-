@@ -693,39 +693,61 @@ const Dashboard = () => {
     if (!results?.summary.domain) return;
     try {
       setIsSearching(true);
-      // 尝试直接使用现有的exportDomainPDF方法
-      try {
-        // 配置自定义报告选项：中文语言 + 自定义标题
-        const reportOptions = {
-          language: 'zh-CN' as const, // 使用as const确保类型安全
-          title: `安全报告: ${results.summary.domain}`,
-          // 可在此添加logoUrl参数，例如：
-          // logoUrl: 'https://your-company-logo-url.com/logo.png'
-        };
-        
-        const blob = await leakRadarApi.exportDomainPDF(results.summary.domain, reportOptions);
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `安全报告_${results.summary.domain}_${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        setIsSearching(false);
-        return;
-      } catch (e) {
-        console.warn('Direct PDF report failed:', e);
-        // 处理API错误，提供友好的错误信息
-        alert('PDF报告生成失败：\n\n1. 请检查网络连接\n2. 确保域名正确\n3. 稍后重试\n\n详细错误：' + (e as Error).message);
-        setIsSearching(false);
-        return;
+      
+      // 直接构建正确的请求URL，绕过可能有问题的API封装
+      const domain = results.summary.domain;
+      // 确保域名格式正确，移除协议和路径
+      const sanitizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+      
+      // 使用正确的API端点格式
+      const reportUrl = `${window.location.origin}/api/leakradar/search/domain/${sanitizedDomain}/report`;
+      
+      console.log(`[Debug] 直接请求PDF报告URL: ${reportUrl}`);
+      
+      // 配置请求选项
+      const requestOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/pdf',
+        },
+        body: JSON.stringify({
+          format: 'pdf',
+          language: 'zh-CN',
+          custom_title: `安全报告: ${sanitizedDomain}`,
+        }),
+      };
+      
+      // 发送请求
+      const response = await fetch(reportUrl, requestOptions);
+      
+      if (!response.ok) {
+        console.error(`[Debug] PDF请求失败，状态码: ${response.status}`);
+        console.error(`[Debug] 响应头:`, response.headers);
+        const errorText = await response.text().catch(() => '无法读取错误响应');
+        console.error(`[Debug] 响应内容:`, errorText);
+        throw new Error(`请求失败 (${response.status})`);
       }
-
-    } catch (error: any) {
-      console.error('PDF Export Error:', error);
-      alert(error.message || 'PDF 导出请求失败');
+      
+      // 获取Blob数据并下载
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `安全报告_${sanitizedDomain}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+      
       setIsSearching(false);
+      return;
+    } catch (e) {
+      console.warn('PDF报告生成失败:', e);
+      // 处理API错误，提供友好的错误信息
+      alert('PDF报告生成失败：\n\n1. 请检查网络连接\n2. 确保域名正确\n3. 稍后重试\n\n详细错误：' + (e as Error).message);
+      setIsSearching(false);
+      return;
     }
   };
 

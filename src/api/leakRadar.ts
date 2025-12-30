@@ -361,19 +361,39 @@ class LeakRadarAPI {
     title?: string;
   }): Promise<Blob> {
     const domain = this.sanitizeDomain(domainInput);
-    return this.requestBlob(`/search/domain/${domain}/report`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/pdf',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const endpoint = `/search/domain/${domain}/report`;
+    
+    // 添加调试日志，输出完整URL
+    const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const fullUrl = `${BASE_URL}${API_PREFIX}${formattedEndpoint}`;
+    console.log(`[Debug] 生成PDF请求URL: ${fullUrl}`);
+    
+    // 尝试使用request方法发送请求，获取更详细的错误信息
+    try {
+      return this.requestBlob(endpoint, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/pdf',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          format: 'pdf',
+          language: options?.language || 'zh-CN', // 默认中文
+          logo_url: options?.logoUrl,
+          custom_title: options?.title
+        }),
+      });
+    } catch (error: any) {
+      console.error(`[Debug] PDF生成失败详情:`, error);
+      console.error(`[Debug] 请求URL: ${fullUrl}`);
+      console.error(`[Debug] 请求参数:`, JSON.stringify({
         format: 'pdf',
-        language: options?.language || 'zh-CN', // 默认中文
+        language: options?.language || 'zh-CN',
         logo_url: options?.logoUrl,
         custom_title: options?.title
-      }),
-    });
+      }));
+      throw error;
+    }
   }
 
   /**
