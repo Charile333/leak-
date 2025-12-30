@@ -699,23 +699,17 @@ const Dashboard = () => {
       // 确保域名格式正确，移除协议和路径
       const sanitizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
       
-      // 使用正确的API端点格式
-      const reportUrl = `${window.location.origin}/api/leakradar/search/domain/${sanitizedDomain}/report`;
+      // 尝试使用更简单的URL格式，根据之前的错误信息，API可能期望的是 /api/leakradar/byd.com.cn/report
+      const reportUrl = `${window.location.origin}/api/leakradar/${sanitizedDomain}/report`;
       
       console.log(`[Debug] 直接请求PDF报告URL: ${reportUrl}`);
       
-      // 配置请求选项
+      // 配置请求选项，尝试使用GET方法
       const requestOptions = {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/pdf',
         },
-        body: JSON.stringify({
-          format: 'pdf',
-          language: 'zh-CN',
-          custom_title: `安全报告: ${sanitizedDomain}`,
-        }),
       };
       
       // 发送请求
