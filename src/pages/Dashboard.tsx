@@ -693,21 +693,40 @@ const Dashboard = () => {
     if (!results?.summary.domain) return;
     try {
       setIsSearching(true);
-      // 尝试直接下载（Report 接口）
+      
+      // 使用新的PDF生成流程：request + status check + download
       try {
-        // 配置自定义报告选项：中文语言 + 自定义标题
-        const reportOptions = {
-          language: 'zh-CN' as const, // 使用as const确保类型安全
-          title: `安全报告: ${results.summary.domain}`,
-          // 可在此添加logoUrl参数，例如：
-          // logoUrl: 'https://your-company-logo-url.com/logo.png'
-        };
+        // 1. 请求生成PDF报告
+        const exportRes = await leakRadarApi.requestDomainExport(results.summary.domain, 'pdf', 'all');
+        const exportId = exportRes.export_id;
+        console.log(`[Debug] PDF生成请求已提交，export_id: ${exportId}`);
         
-        const blob = await leakRadarApi.exportDomainPDF(results.summary.domain, reportOptions);
+        // 2. 轮询检查生成状态
+        let status = 'pending';
+        let downloadUrl = '';
+        let retries = 0;
+        const maxRetries = 10;
+        const pollInterval = 2000; // 2秒轮询一次
+        
+        while (status === 'pending' && retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, pollInterval));
+          const statusRes = await leakRadarApi.getExportStatus(exportId);
+          status = statusRes.status;
+          downloadUrl = statusRes.download_url || '';
+          retries++;
+          console.log(`[Debug] 检查PDF生成状态 (${retries}/${maxRetries}): ${status}`);
+        }
+        
+        if (status !== 'success' || !downloadUrl) {
+          throw new Error(`PDF生成失败，最终状态: ${status}`);
+        }
+        
+        // 3. 下载生成的PDF
+        const blob = await leakRadarApi.downloadExport(exportId);
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Security_Report_${results.summary.domain}.pdf`;
+        a.download = `安全报告_${results.summary.domain}_${new Date().toISOString().split('T')[0]}.pdf`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -715,7 +734,7 @@ const Dashboard = () => {
         setIsSearching(false);
         return;
       } catch (e) {
-        console.warn('Direct PDF report failed:', e);
+        console.warn('PDF report generation failed:', e);
         // 处理API错误，提供友好的错误信息
         alert('PDF报告生成失败：\n\n1. 请检查网络连接\n2. 确保域名正确\n3. 稍后重试\n\n详细错误：' + (e as Error).message);
         setIsSearching(false);
