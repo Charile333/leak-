@@ -694,47 +694,63 @@ const Dashboard = () => {
     try {
       setIsSearching(true);
       
-      // 使用新的PDF生成流程：request + status check + download
+      // 尝试直接下载报告，使用员工分类作为替代方案
       try {
-        // 1. 请求生成PDF报告
-        const exportRes = await leakRadarApi.requestDomainExport(results.summary.domain, 'pdf', 'all');
-        const exportId = exportRes.export_id;
-        console.log(`[Debug] PDF生成请求已提交，export_id: ${exportId}`);
+        // 配置自定义报告选项：中文语言 + 自定义标题
+        const reportOptions = {
+          language: 'zh-CN' as const, // 使用as const确保类型安全
+          title: `安全报告: ${results.summary.domain}`,
+          logoUrl: undefined as string | undefined // 明确声明logoUrl属性
+        };
         
-        // 2. 轮询检查生成状态
-        let status = 'pending';
-        let downloadUrl = '';
-        let retries = 0;
-        const maxRetries = 10;
-        const pollInterval = 2000; // 2秒轮询一次
+        // 调用原始的exportDomainPDF方法，但修复实现
+        // 直接使用fetch调用API，因为当前的exportDomainPDF方法可能有问题
+        const domain = results.summary.domain;
+        const sanitizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
         
-        while (status === 'pending' && retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, pollInterval));
-          const statusRes = await leakRadarApi.getExportStatus(exportId);
-          status = statusRes.status;
-          downloadUrl = statusRes.download_url || '';
-          retries++;
-          console.log(`[Debug] 检查PDF生成状态 (${retries}/${maxRetries}): ${status}`);
+        // 构建请求URL
+        const url = `${window.location.origin}/api/leakradar/search/domain/${sanitizedDomain}/report`;
+        
+        // 准备请求数据，只包含实际有值的字段
+        const requestData: any = {
+          format: 'pdf',
+          language: reportOptions.language,
+          custom_title: reportOptions.title
+        };
+        
+        // 只有当logoUrl有值时才添加到请求中
+        if (reportOptions.logoUrl) {
+          requestData.logo_url = reportOptions.logoUrl;
         }
         
-        if (status !== 'success' || !downloadUrl) {
-          throw new Error(`PDF生成失败，最终状态: ${status}`);
+        // 发送请求
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/pdf',
+          },
+          body: JSON.stringify(requestData),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`请求失败 (${response.status})`);
         }
         
-        // 3. 下载生成的PDF
-        const blob = await leakRadarApi.downloadExport(exportId);
-        const url = window.URL.createObjectURL(blob);
+        // 获取Blob数据
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = downloadUrl;
         a.download = `安全报告_${results.summary.domain}_${new Date().toISOString().split('T')[0]}.pdf`;
         document.body.appendChild(a);
         a.click();
-        window.URL.revokeObjectURL(url);
+        window.URL.revokeObjectURL(downloadUrl);
         document.body.removeChild(a);
         setIsSearching(false);
         return;
       } catch (e) {
-        console.warn('PDF report generation failed:', e);
+        console.warn('Direct PDF report failed:', e);
         // 处理API错误，提供友好的错误信息
         alert('PDF报告生成失败：\n\n1. 请检查网络连接\n2. 确保域名正确\n3. 稍后重试\n\n详细错误：' + (e as Error).message);
         setIsSearching(false);
@@ -1433,8 +1449,8 @@ const Dashboard = () => {
                     key={`chart-container-${weeklyGrowth.length}`}
                     width="100%" 
                     height="100%" 
-                    minWidth={100} 
-                    minHeight={100}
+                    minWidth={300} 
+                    minHeight={300}
                   >
                     <AreaChart 
                       data={weeklyGrowth} 
