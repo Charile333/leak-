@@ -8,8 +8,7 @@ import {
   Pin
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import logo from '../../assets/紫色2.png';
-import lisirLogo from '../../assets/lisir.png';
+import dieLogo from '../../assets/die.png';
 
 interface SidebarProps {
   isPinned: boolean;
@@ -77,41 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
         !effectiveCollapsed && "bg-[#0a0a0c]/95 shadow-black/50"
       )}
     >
-      <div className="relative h-20 shrink-0 flex items-center justify-center overflow-hidden">
-        <motion.div 
-          animate={{
-            x: effectiveCollapsed ? 0 : -32
-          }}
-          transition={smoothTransition}
-          className="flex items-center gap-3"
-        >
-          <AnimatePresence mode="wait">
-            {effectiveCollapsed ? (
-              <motion.img 
-                key="collapsed"
-                src={lisirLogo} 
-                alt="Lysirsec Logo" 
-                className="h-6 w-6 object-contain brightness-110" 
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={smoothTransition}
-              />
-            ) : (
-              <motion.img 
-                key="expanded"
-                src={logo} 
-                alt="Lysirsec Logo" 
-                className="h-6 w-auto object-contain brightness-110" 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={smoothTransition}
-              />
-            )}
-          </AnimatePresence>
-        </motion.div>
-        
+      <div className="relative h-32 shrink-0 flex items-center justify-center overflow-hidden">
         <AnimatePresence>
           {!effectiveCollapsed && (
             <motion.button 
@@ -121,7 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
               transition={smoothTransition}
               onClick={togglePin}
               className={cn(
-                "absolute right-6 p-2 rounded-lg transition-all duration-300",
+                "absolute right-6 top-4 p-2 rounded-lg transition-all duration-300",
                 isPinned 
                   ? "bg-accent/20 text-accent shadow-[0_0_15px_rgba(168,85,247,0.3)]" 
                   : "bg-white/5 text-gray-500 hover:text-white hover:bg-white/10"
@@ -132,6 +97,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
             </motion.button>
           )}
         </AnimatePresence>
+        
+        {/* Product Logo */}
+        <img 
+          src={dieLogo} 
+          alt="Product Logo" 
+          className="h-28 w-28 object-contain rounded-full" 
+        />
       </div>
 
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto custom-scrollbar overflow-x-hidden">

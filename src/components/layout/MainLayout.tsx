@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import logo from '../../assets/紫色2.png';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -27,6 +28,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand/10 blur-[120px] rounded-full" />
         <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[30%] bg-accent/5 blur-[100px] rounded-full" />
         <div className="absolute top-[20%] right-[10%] w-[25%] h-[25%] bg-brand/5 blur-[130px] rounded-full" />
+      </div>
+      
+      {/* Logo in top right corner */}
+      <div className="fixed top-8 right-8 z-50">
+        <img 
+          src={logo} 
+          alt="Lysirsec Logo" 
+          className="h-8 w-auto object-contain brightness-110"
+        />
       </div>
 
       <Sidebar 

@@ -689,25 +689,6 @@ const Dashboard = () => {
     );
   };
 
-  const handleDownloadPDF = async () => {
-    if (!results?.summary.domain) return;
-    try {
-      setIsSearching(true);
-      
-      // 尝试使用CSV导出API，然后转换为PDF（如果可能）
-      // 或者直接生成一个简单的HTML报告，让用户可以另存为PDF
-      alert('PDF报告功能正在开发中，敬请期待！\n\n您可以先使用CSV导出功能获取数据，然后在本地生成报告。');
-      
-      setIsSearching(false);
-      return;
-    } catch (e) {
-      console.warn('PDF报告生成失败:', e);
-      // 处理API错误，提供友好的错误信息
-      alert('PDF报告生成失败：\n\n1. 请检查网络连接\n2. 确保域名正确\n3. 稍后重试\n\n详细错误：' + (e as Error).message);
-      setIsSearching(false);
-      return;
-    }
-  };
 
   const handleExportCSV = async () => {
     if (!results?.summary.domain) return;
@@ -1000,13 +981,6 @@ const Dashboard = () => {
                       <p className="text-sm text-gray-500 font-medium">生成日期: {new Date().toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={handleDownloadPDF}
-                    className="bg-[#00c2ff] hover:bg-[#00c2ff]/80 text-white px-6 py-3 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    <Download className="w-4 h-4" />
-                    下载 PDF 报告
-                  </button>
                 </div>
 
                 {/* 总计卡片 */}
