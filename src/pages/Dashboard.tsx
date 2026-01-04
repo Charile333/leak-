@@ -85,6 +85,9 @@ const Dashboard = () => {
   const [categoryCredentials, setCategoryCredentials] = useState<Record<string, LeakedCredential[]>>({});
   // 控制骨架屏显示
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+  const [isInfiniteLoading, setIsInfiniteLoading] = useState(false);
+  const [hasMoreData, setHasMoreData] = useState(true);
+  const observerRef = React.useRef<HTMLDivElement>(null);
   
   // 当页签切换时，滚动到结果区域顶部
   useEffect(() => {
@@ -112,8 +115,44 @@ const Dashboard = () => {
       setFilterType('All');
       setInnerSearchQuery('');
       setCurrentPage(0);
+      setHasMoreData(true);
+      setIsInfiniteLoading(false);
+      // 清空分类数据，重新加载
+      setCategoryCredentials(prev => ({
+        ...prev,
+        [activeTab === '员工' ? 'employees' : 
+         activeTab === '客户' ? 'customers' : 
+         activeTab === '第三方' ? 'third_parties' : 
+         activeTab === 'URLs' ? 'urls' : 
+         activeTab === '子域名' ? 'subdomains' : '']: []
+      }));
     }
   }, [activeTab]);
+
+  // 无限滚动逻辑
+  useEffect(() => {
+    if (!showResults || !results || isInfiniteLoading || !hasMoreData) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMoreData && !isInfiniteLoading) {
+          const nextPage = currentPage + 1;
+          handleSearch(undefined, 'default', nextPage);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observer.unobserve(observerRef.current);
+      }
+    };
+  }, [showResults, results, currentPage, isInfiniteLoading, hasMoreData]);
   
   // 当标签页切换到URLs或Subdomains时，如果没有缓存数据，自动加载数据
   useEffect(() => {
@@ -319,16 +358,25 @@ const Dashboard = () => {
         else if (activeTab === '子域名') category = 'subdomains';
 
         if (category) {
-          setIsLoadingCategory(true);
+          if (page > 0) {
+            setIsInfiniteLoading(true);
+          } else {
+            setIsLoadingCategory(true);
+          }
           const newCredentials = await dataService.searchCategory(searchQuery, category, pageSize, page * pageSize);
-          // 保存当前分类的数据到 categoryCredentials，不替换原始完整数据
+          // 无限滚动：追加数据而不是替换数据
           setCategoryCredentials(prev => ({
             ...prev,
-            [category]: newCredentials
+            [category]: page > 0 
+              ? [...(prev[category] || []), ...newCredentials]
+              : newCredentials
           }));
           setIsSearching(false);
           setIsLoadingCategory(false);
+          setIsInfiniteLoading(false);
           setCurrentPage(page);
+          // 检查是否还有更多数据
+          setHasMoreData(newCredentials.length === pageSize);
           // 确保结果区域显示
           setShowResults(true);
           return;
@@ -336,10 +384,21 @@ const Dashboard = () => {
       }
 
       const data = await dataService.searchDomain(searchQuery, pageSize, page * pageSize);
-      setResults(data);
+      // 无限滚动：追加数据而不是替换数据
+      if (page > 0 && results) {
+        setResults(prev => prev ? ({
+          ...prev,
+          summary: prev.summary,
+          credentials: [...prev.credentials, ...data.credentials]
+        }) : data);
+      } else {
+        setResults(data);
+      }
       setIsSearching(false);
       setShowResults(true);
       setCurrentPage(page);
+      // 检查是否还有更多数据
+      setHasMoreData(data.credentials.length === pageSize);
       
       if (page === 0) {
         setTimeout(() => {
@@ -774,8 +833,8 @@ const Dashboard = () => {
     <div 
       onClick={onClick}
       className={cn(
-        "bg-white/[0.03] border border-white/10 rounded-3xl p-8 hover:bg-white/[0.05] transition-all group",
-        onClick && "cursor-pointer hover:border-accent/30 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)]"
+        "bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/10 rounded-3xl p-8 hover:bg-gradient-to-br from-white/[0.05] to-white/[0.02] transition-all group shadow-2xl",
+        onClick && "cursor-pointer hover:border-accent/30 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]"
       )}
     >
       <div className="flex items-start justify-between mb-6">
@@ -868,18 +927,18 @@ const Dashboard = () => {
               </p>
 
               <form onSubmit={(e) => handleSearch(e)} className="w-full max-w-3xl relative group">
-                <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
+                <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-full overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={isDnsPage ? "输入域名查询 DNS 记录 (例如: baidu.com)..." : "输入域名 (例如: chinabond.com.cn)..."}
+                    placeholder={isDnsPage ? "输入域名查询 DNS 记录 (例如: Domain.com)..." : "输入域名 (例如: Domain.com)..."}
                     className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium"
                   />
                   <button 
                     type="submit"
                     disabled={isSearching}
-                    className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-12 py-5 rounded-[22px] font-black transition-all text-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 purple-glow"
+                    className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-12 py-5 rounded-full font-black transition-all text-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 purple-glow"
                   >
                     {isSearching ? (
                       <>
@@ -984,8 +1043,8 @@ const Dashboard = () => {
                 </div>
 
                 {/* 总计卡片 */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-[40px] p-12 text-center relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-b from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/5 rounded-[40px] p-12 text-center relative overflow-hidden group shadow-2xl">
+                  <div className="absolute inset-0 bg-gradient-to-b from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-[0.3em] mb-4">泄露账户总数</p>
                   <p className="text-7xl font-black text-white tracking-tighter">{results.summary.total}</p>
                 </div>
@@ -1132,39 +1191,40 @@ const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.03]">
-                      {/* 骨架屏显示 */}
-                      {isLoadingCategory ? (
-                        // 显示10行骨架屏
+                      {/* 骨架屏显示 - 优化版本 */}
+                      {(isLoadingCategory || isSearching) && currentPage === 0 ? (
+                        // 显示10行骨架屏，使用渐变色动画
                         Array.from({ length: 10 }).map((_, index) => (
-                          <tr key={`skeleton-${index}`} className="hover:bg-white/[0.03] transition-colors group">
+                          <tr key={`skeleton-${index}`} className="group">
                             <td className="px-6 py-4 max-w-[300px]">
                               <div className="flex items-center gap-2">
-                                <div className="w-32 h-4 bg-white/5 rounded animate-pulse"></div>
+                                <div className="w-4 h-4 bg-white/5 rounded-full animate-pulse"></div>
+                                <div className="w-32 h-4 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded animate-pulse"></div>
                               </div>
                             </td>
-                            {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
+                            {(activeTab === 'URLs' || activeTab === '子域名') && (
                               <td className="px-6 py-4 text-right">
-                                <div className="inline-block w-16 h-6 bg-white/5 rounded-lg animate-pulse"></div>
+                                <div className="inline-block w-16 h-6 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded-lg animate-pulse"></div>
                               </td>
                             )}
-                            {activeTab !== 'URLs' && activeTab !== 'Subdomains' && (
+                            {activeTab !== 'URLs' && activeTab !== '子域名' && (
                               <>
                                 <td className="px-6 py-4">
-                                  <div className="w-16 h-5 bg-white/5 rounded-full animate-pulse"></div>
+                                  <div className="w-16 h-5 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded-full animate-pulse"></div>
                                 </td>
                                 <td className="px-6 py-4">
-                                  <div className="w-32 h-4 bg-white/5 rounded animate-pulse"></div>
+                                  <div className="w-32 h-4 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded animate-pulse"></div>
                                 </td>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-32 h-4 bg-white/5 rounded animate-pulse"></div>
-                                    <div className="w-5 h-5 bg-white/5 rounded animate-pulse"></div>
+                                    <div className="w-32 h-4 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded animate-pulse"></div>
+                                    <div className="w-5 h-5 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded animate-pulse"></div>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                   <div className="flex items-center justify-end gap-2">
-                                    <div className="w-5 h-5 bg-white/5 rounded animate-pulse"></div>
-                                    <div className="w-16 h-4 bg-white/5 rounded animate-pulse"></div>
+                                    <div className="w-5 h-5 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded animate-pulse"></div>
+                                    <div className="w-16 h-4 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded animate-pulse"></div>
                                   </div>
                                 </td>
                               </>
@@ -1246,9 +1306,29 @@ const Dashboard = () => {
                       <p className="text-gray-500 font-medium">在该分类下未发现相关泄露记录</p>
                     </div>
                   )}
+
+                  {/* 无限滚动加载指示器 */}
+                  {isInfiniteLoading && (
+                    <div className="py-8 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-5 h-5 text-accent animate-spin" />
+                        <span className="text-sm text-gray-400 font-medium">加载更多数据...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 观察点 - 用于触发无限滚动 */}
+                  <div 
+                    ref={observerRef} 
+                    className="h-16 w-full flex items-center justify-center"
+                  >
+                    {!isInfiniteLoading && !hasMoreData && filteredCredentials.length > 0 && (
+                      <span className="text-sm text-gray-500 font-medium">已加载全部数据</span>
+                    )}
+                  </div>
                 </div>
 
-                {/* 分页控制 */}
+                {/* 分页控制 - 保留传统分页，与无限滚动共存 */}
                 {results && (
                   (() => {
                     let totalCount = results.summary.total;
@@ -1263,22 +1343,25 @@ const Dashboard = () => {
                     if (totalCount <= pageSize) return null;
 
                     return (
-                      <div className="flex items-center justify-center gap-4 mt-8">
+                      <div className="flex items-center justify-center gap-4 mt-8 bg-white/5 p-4 rounded-2xl border border-white/10">
                         <button
                           onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 0 || isSearching}
-                          className="p-3 rounded-xl bg-white/5 border border-white/10 text-white disabled:opacity-30 hover:bg-white/10 transition-all"
+                          disabled={currentPage === 0 || isSearching || isInfiniteLoading}
+                          className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-white/5 to-white/10 border border-white/10 text-white disabled:opacity-30 hover:bg-gradient-to-br from-white/10 to-white/15 transition-all hover:border-accent/30 hover:shadow-[0_0_15px_rgba(168,85,247,0.1)]"
                         >
                           <ChevronLeft className="w-5 h-5" />
                         </button>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-white">第 {currentPage + 1} 页</span>
-                          <span className="text-sm text-gray-500">/ 共 {totalPages} 页</span>
+                        
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold text-accent">第 {currentPage + 1} 页</span>
+                          <span className="text-sm text-gray-500">/</span>
+                          <span className="text-sm font-bold text-white">共 {totalPages} 页</span>
                         </div>
+                        
                         <button
                           onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage >= totalPages - 1 || isSearching}
-                          className="p-3 rounded-xl bg-white/5 border border-white/10 text-white disabled:opacity-30 hover:bg-white/10 transition-all"
+                          disabled={currentPage >= totalPages - 1 || isSearching || isInfiniteLoading}
+                          className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-white/5 to-white/10 border border-white/10 text-white disabled:opacity-30 hover:bg-gradient-to-br from-white/10 to-white/15 transition-all hover:border-accent/30 hover:shadow-[0_0_15px_rgba(168,85,247,0.1)]"
                         >
                           <ChevronRight className="w-5 h-5" />
                         </button>

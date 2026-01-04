@@ -1,13 +1,29 @@
 import axios from 'axios';
 
-const DNS_API_BASE_URL = '/api'; 
+// 使用后端代理服务
+const DNS_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_PREFIX = '/api/proxy';
 
 const dnsAxios = axios.create({
-  baseURL: DNS_API_BASE_URL,
+  baseURL: `${DNS_API_BASE_URL}${API_PREFIX}`,
   headers: {
     'Content-Type': 'application/json'
   }
 });
+
+// 请求拦截器 - 添加JWT令牌
+dnsAxios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export const dnsApi = {
   // 子域名查询 /api/v1/domain

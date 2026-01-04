@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
   ChevronDown, 
   Activity,
-  Pin
+  Pin,
+  Settings as SettingsIcon
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, adminUtils } from '../../lib/utils';
 import dieLogo from '../../assets/die.png';
 
 interface SidebarProps {
@@ -18,9 +19,31 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [isHovered, setIsHovered] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // 侧边栏实际展示宽度由 isPinned 和 isHovered 共同决定
   const effectiveCollapsed = !isPinned && !isHovered;
+
+  // 检查当前用户是否为管理员
+  useEffect(() => {
+    const checkAdminStatus = () => {
+      const userEmail = localStorage.getItem('user_email') || '';
+      const adminStatus = adminUtils.isAdmin(userEmail);
+      setIsAdmin(adminStatus);
+    };
+
+    checkAdminStatus();
+
+    // 监听本地存储变化，实时更新管理员状态
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user_email' || e.key === 'leakradar_admins') {
+        checkAdminStatus();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleMouseEnter = () => {
     setIsHovered(true);
@@ -241,8 +264,48 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
                 </AnimatePresence>
               </NavLink>
             </motion.div>
-            <div className="h-[10px]" />
           </div>
+
+          {/* Settings Module - Only visible to admins */}
+          {isAdmin && (
+            <div className="py-2">
+              <motion.div
+                animate={{
+                  paddingLeft: effectiveCollapsed ? 16 : 12,
+                  paddingRight: effectiveCollapsed ? 16 : 12,
+                }}
+                transition={smoothTransition}
+                className="w-full"
+              >
+                <NavLink
+                  to="/settings"
+                  className={({ isActive }) => cn(
+                    "flex items-center rounded-xl text-sm font-bold transition-all duration-400 group shadow-lg overflow-hidden whitespace-nowrap w-full py-2.5",
+                    effectiveCollapsed ? "justify-center" : "px-3",
+                    isActive 
+                      ? "bg-gradient-to-r from-white/10 to-white/5 text-white shadow-lg border border-white/10 scale-[1.02]" 
+                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <SettingsIcon className="w-4 h-4 transition-transform duration-400 group-hover:scale-110 shrink-0" />
+                  <AnimatePresence mode="popLayout">
+                    {!effectiveCollapsed && (
+                      <motion.span 
+                        initial={{ opacity: 0, x: -10 }} 
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={smoothTransition}
+                        className="ml-3"
+                      >
+                        设置
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </NavLink>
+              </motion.div>
+              <div className="h-[10px]" />
+            </div>
+          )}
         </div>
       </nav>
 

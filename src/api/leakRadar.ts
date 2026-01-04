@@ -3,13 +3,12 @@
  * 
  * 架构调整：
  * 前端连接到 AWS EC2 上的后端代理服务。
- * 请在 .env 文件中设置 VITE_BACKEND_URL=http://你的EC2公网IP:3000
+ * 请在 .env 文件中设置 VITE_API_URL=http://你的EC2公网IP:3001
  */
 
-// 切换到方案 B：Vercel Serverless 后端
-// 在本地开发时，Vercel 会自动处理 /api 路由
-const BASE_URL = window.location.origin;
-const API_PREFIX = '/api/leakradar';
+// 使用后端代理服务
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_PREFIX = '/api/proxy';
 
 export interface LeakRadarProfile {
   success: boolean;
@@ -113,7 +112,9 @@ class LeakRadarAPI {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
+    // 从本地存储获取JWT令牌
+    const token = localStorage.getItem('auth_token');
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -127,8 +128,9 @@ class LeakRadarAPI {
       });
     }
 
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
+    // 添加JWT令牌到请求头
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     try {
@@ -179,7 +181,14 @@ class LeakRadarAPI {
    * Get user profile and quota information
    */
   async getProfile(): Promise<LeakRadarProfile> {
-    return this.request<LeakRadarProfile>('/profile');
+    const profile = await this.request<LeakRadarProfile>('/profile');
+    
+    // 保存用户邮箱到本地存储，用于白名单验证
+    if (profile.user?.email) {
+      localStorage.setItem('user_email', profile.user.email);
+    }
+    
+    return profile;
   }
 
   /**
