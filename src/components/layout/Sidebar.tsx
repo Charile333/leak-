@@ -8,7 +8,7 @@ import {
   Pin
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import dieLogo from '../../assets/die.png';
+import dieLogo from '../../assets/diep.png';
 
 interface SidebarProps {
   isPinned: boolean;
