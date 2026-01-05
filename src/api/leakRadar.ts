@@ -194,9 +194,11 @@ class LeakRadarAPI {
    * Search for leaks by domain (Category based)
    */
   async searchDomainCategory(domain: string, category: 'employees' | 'customers' | 'third_parties', limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
+    // 限制单次请求最多5000条
+    const safeLimit = Math.min(limit, 5000);
     const sanitized = this.sanitizeDomain(domain);
-    const page = Math.floor(offset / limit) + 1;
-    return this.request<LeakRadarSearchResult>(`/search/domain/${sanitized}/${category}?page=${page}&page_size=${limit}`);
+    const page = Math.floor(offset / safeLimit) + 1;
+    return this.request<LeakRadarSearchResult>(`/search/domain/${sanitized}/${category}?page=${page}&page_size=${safeLimit}`);
   }
 
   private async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
@@ -237,9 +239,11 @@ class LeakRadarAPI {
    * Search for leaks by general query (auto-detects domain or email)
    */
   async search(query: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
+    // 限制单次请求最多5000条
+    const safeLimit = Math.min(limit, 5000);
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query);
     if (isEmail) {
-      return this.searchByEmail(query, limit, offset);
+      return this.searchByEmail(query, safeLimit, offset);
     }
     
     // If it looks like a domain or just a keyword
@@ -247,13 +251,13 @@ class LeakRadarAPI {
     if (isDomain) {
       // For domain, we might want a summary or a specific category. 
       // Here we'll default to 'employees' as it's the most common search target
-      return this.searchDomainCategory(query, 'employees', limit, offset);
+      return this.searchDomainCategory(query, 'employees', safeLimit, offset);
     }
 
     // Default to advanced search if available, or fallback to email search (as it might be a partial email)
     return this.request<LeakRadarSearchResult>(`/search/advanced`, {
       method: 'POST',
-      body: JSON.stringify({ query, page: Math.floor(offset / limit) + 1, page_size: limit })
+      body: JSON.stringify({ query, page: Math.floor(offset / safeLimit) + 1, page_size: safeLimit })
     });
   }
 
@@ -261,10 +265,12 @@ class LeakRadarAPI {
    * Search for leaks by email
    */
   async searchByEmail(email: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
-    const page = Math.floor(offset / limit) + 1;
+    // 限制单次请求最多5000条
+    const safeLimit = Math.min(limit, 5000);
+    const page = Math.floor(offset / safeLimit) + 1;
     return this.request<LeakRadarSearchResult>(`/search/email`, {
       method: 'POST',
-      body: JSON.stringify({ email, page, page_size: limit })
+      body: JSON.stringify({ email, page, page_size: safeLimit })
     });
   }
 
@@ -272,9 +278,11 @@ class LeakRadarAPI {
    * Search for leaks by hash
    */
   async searchByHash(hash: string, limit = 100, offset = 0): Promise<LeakRadarSearchResult> {
+    // 限制单次请求最多5000条
+    const safeLimit = Math.min(limit, 5000);
     return this.request<LeakRadarSearchResult>(`/search/advanced`, {
       method: 'POST',
-      body: JSON.stringify({ hash, page: Math.floor(offset / limit) + 1, page_size: limit })
+      body: JSON.stringify({ hash, page: Math.floor(offset / safeLimit) + 1, page_size: safeLimit })
     });
   }
 
@@ -282,18 +290,22 @@ class LeakRadarAPI {
    * Search for URLs by domain
    */
   async getDomainUrls(domain: string, limit = 100, offset = 0): Promise<{ items: any[], total: number }> {
+    // 限制单次请求最多5000条
+    const safeLimit = Math.min(limit, 5000);
     const sanitized = this.sanitizeDomain(domain);
-    const page = Math.floor(offset / limit) + 1;
-    return this.request<{ items: any[], total: number }>(`/search/domain/${sanitized}/urls?page=${page}&page_size=${limit}`);
+    const page = Math.floor(offset / safeLimit) + 1;
+    return this.request<{ items: any[], total: number }>(`/search/domain/${sanitized}/urls?page=${page}&page_size=${safeLimit}`);
   }
 
   /**
    * Search for subdomains by domain
    */
   async getDomainSubdomains(domain: string, limit = 100, offset = 0): Promise<{ items: any[], total: number }> {
+    // 限制单次请求最多5000条
+    const safeLimit = Math.min(limit, 5000);
     const sanitized = this.sanitizeDomain(domain);
-    const page = Math.floor(offset / limit) + 1;
-    return this.request<{ items: any[], total: number }>(`/search/domain/${sanitized}/subdomains?page=${page}&page_size=${limit}`);
+    const page = Math.floor(offset / safeLimit) + 1;
+    return this.request<{ items: any[], total: number }>(`/search/domain/${sanitized}/subdomains?page=${page}&page_size=${safeLimit}`);
   }
 
   /**
@@ -307,8 +319,8 @@ class LeakRadarAPI {
       : `/search/domain/${sanitized}/${category}`;
     
     console.log(`[Debug] Frontend CSV Export requesting path: ${path}`);
-    // 修复 422 错误：降低 page_size。官方 API 通常限制单次请求数量（如 1000）
-    return this.request<LeakRadarSearchResult>(`${path}?page=1&page_size=1000`);
+    // 限制单次请求最多5000条
+    return this.request<LeakRadarSearchResult>(`${path}?page=1&page_size=5000`);
   }
 
   /**
