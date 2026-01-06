@@ -153,6 +153,16 @@ export const dataService = {
         leakRadarApi.getDomainSubdomains(domain, 1, 0).catch(() => ({ total: 0 })),
       ]);
       
+      // 计算总预计解锁数据量
+      const totalExpectedData = apiSummary.employees_compromised + apiSummary.customers_compromised + apiSummary.third_parties_compromised;
+      console.log(`[Debug] 预计解锁数据总量: ${totalExpectedData}条`);
+      
+      // 如果预计解锁数据量超过5000条，添加提示信息
+      if (totalExpectedData > 5000) {
+        console.log(`[Debug] 注意：本次预计解锁数据量超过5000条，可能会消耗较多积分。`);
+        // 可以在这里添加UI提示，但根据要求不显示积分相关UI
+      }
+      
       // Fetch credentials for display
       const itemsPerCat = Math.floor(limit / 3);
       let [empRes, custRes, thirdRes] = await Promise.all([

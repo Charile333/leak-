@@ -12,8 +12,9 @@ const otxAxios = axios.create({
 
 export const otxApi = {
   // 1.1 IPv4/IPv6 查询
-  getIpInfo: async (ip: string, section: string = 'general') => {
-    const response = await otxAxios.get(`/indicators/IPv4/${ip}/${section}`);
+  getIpInfo: async (ip: string, section: string = 'general', isIpv6: boolean = false) => {
+    const ipVersion = isIpv6 ? 'IPv6' : 'IPv4';
+    const response = await otxAxios.get(`/indicators/${ipVersion}/${ip}/${section}`);
     return response.data;
   },
 

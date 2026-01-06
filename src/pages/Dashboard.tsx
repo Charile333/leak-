@@ -35,7 +35,13 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  Legend
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  ResponsiveContainer
 } from 'recharts';
 import { cn } from '../lib/utils';
 import { dataService } from '../services/dataService';
@@ -65,6 +71,7 @@ const AnimatedNumber = ({ value }: { value: string }) => {
 const Dashboard = () => {
   const location = useLocation();
   const isDnsPage = location.pathname === '/dns';
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -84,6 +91,12 @@ const Dashboard = () => {
   const [categoryCredentials, setCategoryCredentials] = useState<Record<string, LeakedCredential[]>>({});
   // 控制骨架屏显示
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+  
+  // DNS数据集相关状态
+  const [activeSearchType, setActiveSearchType] = useState<'ip' | 'domain' | 'url' | 'cve'>('ip');
+  const [otxResults, setOtxResults] = useState<any>(null);
+  const [otxLoading, setOtxLoading] = useState(false);
+  const [otxError, setOtxError] = useState<string>('');
   
   // 当页签切换时，滚动到结果区域顶部
   useEffect(() => {
@@ -132,6 +145,100 @@ const Dashboard = () => {
       }
     }
   }, [activeTab, showResults, categoryCredentials, searchQuery]);
+  
+  // OTX API 查询函数
+  const handleOtxSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim() || otxLoading) return;
+    
+    setOtxLoading(true);
+    setOtxError('');
+    setOtxResults(null);
+    
+    try {
+      let result;
+      
+      // 为所有类型的查询添加多section数据获取
+      switch (activeSearchType) {
+        case 'ip':
+          // 检测是IPv4还是IPv6
+          const isIpv6 = searchQuery.includes(':');
+          // 并行获取多个section的数据
+          const [ipGeneral, ipPassiveDns, ipMalware, ipUrlList] = await Promise.all([
+            otxApi.getIpInfo(searchQuery, 'general', isIpv6),
+            otxApi.getIpInfo(searchQuery, 'passive_dns', isIpv6),
+            otxApi.getIpInfo(searchQuery, 'malware', isIpv6),
+            otxApi.getIpInfo(searchQuery, 'url_list', isIpv6)
+          ]);
+          
+          // 合并IP查询数据
+          result = {
+            ...ipGeneral,
+            passive_dns: ipPassiveDns?.passive_dns || [],
+            malware: ipMalware?.malware || [],
+            url_list: ipUrlList?.url_list || []
+          };
+          break;
+        
+        case 'domain':
+          // 并行获取多个section的数据
+          const [generalData, passiveDnsData, whoisData, malwareData] = await Promise.all([
+            otxApi.getDomainInfo(searchQuery, 'general'),
+            otxApi.getDomainInfo(searchQuery, 'passive_dns'),
+            otxApi.getDomainInfo(searchQuery, 'whois'),
+            otxApi.getDomainInfo(searchQuery, 'malware')
+          ]);
+          
+          // 合并域名查询数据
+          result = {
+            ...generalData,
+            passive_dns: passiveDnsData?.passive_dns || [],
+            whois: whoisData || {}, // 直接使用whoisData，不假设它有whois属性
+            malware: malwareData?.malware || []
+          };
+          break;
+        
+        case 'url':
+          // 并行获取URL的多个section数据
+          const [urlGeneral, urlUrlList] = await Promise.all([
+            otxApi.getUrlInfo(searchQuery, 'general'),
+            otxApi.getUrlInfo(searchQuery, 'url_list')
+          ]);
+          
+          // 合并URL查询数据
+          result = {
+            ...urlGeneral,
+            url_list: urlUrlList?.url_list || []
+          };
+          break;
+        
+        case 'cve':
+          // 并行获取CVE的多个section数据
+          const [cveGeneral, cveTopPulses] = await Promise.all([
+            otxApi.getCveInfo(searchQuery, 'general'),
+            otxApi.getCveInfo(searchQuery, 'top_n_pulses')
+          ]);
+          
+          // 合并CVE查询数据
+          result = {
+            ...cveGeneral,
+            top_n_pulses: cveTopPulses?.top_n_pulses || []
+          };
+          break;
+        
+        default:
+          throw new Error('未知的搜索类型');
+      }
+      
+      setOtxResults(result);
+      setShowResults(true);
+    } catch (error: any) {
+      console.error('OTX API 查询错误:', error);
+      setOtxError(error.message || '查询失败，请重试');
+    } finally {
+      setOtxLoading(false);
+    }
+  };
   
   // Fetch global stats
   React.useEffect(() => {
@@ -252,8 +359,6 @@ const Dashboard = () => {
   const [sortField] = useState<keyof LeakedCredential>('leaked_at');
   const [sortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const [dnsResults, setDnsResults] = useState<any>({});
-  const [dnsActiveSubTab, setDnsActiveSubTab] = useState('Subdomains');
 
   // Fix Recharts width error by ensuring container is visible and has size
   useEffect(() => {
@@ -266,82 +371,11 @@ const Dashboard = () => {
     return () => timers.forEach(t => clearTimeout(t));
   }, [results, activeTab]);
 
-  const handleSearch = async (e?: React.FormEvent, type: 'ipv4' | 'domain' | 'url' | 'cve' | 'search' | 'activity' | 'default' = 'default', page: number = 0) => {
+  const handleSearch = async (e?: React.FormEvent, _type?: any, page: number = 0) => {
     if (e) e.preventDefault();
     if (!searchQuery.trim() || isSearching) return;
 
     setIsSearching(true);
-    
-    if (isDnsPage) {
-      setShowResults(false);
-      try {
-        let data: any;
-        let otxSection = 'general';
-        
-        if (type === 'default') {
-          // 默认检测输入类型并选择合适的API
-          if (searchQuery.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-            type = 'ipv4';
-          } else if (searchQuery.startsWith('https://') || searchQuery.startsWith('http://')) {
-            type = 'url';
-          } else if (searchQuery.match(/^CVE-\d{4}-\d{4,7}$/i)) {
-            type = 'cve';
-          } else {
-            type = 'domain';
-          }
-        }
-        
-        if (type === 'ipv4') {
-          data = await otxApi.getIpInfo(searchQuery, otxSection);
-          setDnsResults((prev: any) => ({ ...prev, ipv4: data }));
-          setDnsActiveSubTab('IPv4');
-        } else if (type === 'domain') {
-          // 获取威胁评分数据 - OTX API中威胁评分通常在general部分
-          const generalData = await otxApi.getDomainInfo(searchQuery, 'general');
-          // 获取被动DNS记录
-          const passiveDnsData = await otxApi.getDomainInfo(searchQuery, 'passive_dns');
-          
-          // 合并所有数据，确保包含威胁评分
-          const mergedData = {
-            // 基础信息
-            indicator: generalData.indicator || searchQuery,
-            // 威胁评分，从general数据中提取
-            reputation: generalData.reputation || 0,
-            // 被动DNS记录
-            passive_dns: {
-              results: passiveDnsData.results || []
-            }
-          };
-          
-          setDnsResults((prev: any) => ({ ...prev, domain: mergedData }));
-          setDnsActiveSubTab('Domain');
-        } else if (type === 'url') {
-          data = await otxApi.getUrlInfo(searchQuery, otxSection);
-          setDnsResults((prev: any) => ({ ...prev, url: data }));
-          setDnsActiveSubTab('URL');
-        } else if (type === 'cve') {
-          data = await otxApi.getCveInfo(searchQuery, otxSection);
-          setDnsResults((prev: any) => ({ ...prev, cve: data }));
-          setDnsActiveSubTab('CVE');
-        } else if (type === 'search') {
-          data = await otxApi.searchPulses(searchQuery);
-          setDnsResults((prev: any) => ({ ...prev, search: data }));
-          setDnsActiveSubTab('Search');
-        } else if (type === 'activity') {
-          data = await otxApi.getActivity();
-          setDnsResults((prev: any) => ({ ...prev, activity: data }));
-          setDnsActiveSubTab('Activity');
-        }
-        
-        setShowResults(true);
-      } catch (error) {
-        console.error('OTX Search Error:', error);
-        alert('OTX 查询失败，请检查网络或 API Key 设置。');
-      } finally {
-        setIsSearching(false);
-      }
-      return;
-    }
 
     if (page === 0) {
       setShowResults(false);
@@ -530,531 +564,6 @@ const Dashboard = () => {
     );
   };
 
-  const fetchDnsSubTab = async (tab: string) => {
-    if (!searchQuery) return;
-
-    // 立即更新活动子标签，确保UI响应
-    setDnsActiveSubTab(tab);
-    setIsSearching(true);
-    try {
-      let data: any;
-      let otxSection = 'general';
-      
-      switch (tab) {
-        case 'IPv4':
-          otxSection = 'general';
-          data = await otxApi.getIpInfo(searchQuery, otxSection);
-          setDnsResults((prev: any) => ({ ...prev, ipv4: data }));
-          break;
-        case 'Domain':
-          // 获取威胁评分数据 - OTX API中威胁评分通常在general部分
-          const generalData = await otxApi.getDomainInfo(searchQuery, 'general');
-          // 获取被动DNS记录
-          const passiveDnsData = await otxApi.getDomainInfo(searchQuery, 'passive_dns');
-          
-          // 合并所有数据，确保包含威胁评分
-          const mergedData = {
-            // 基础信息
-            indicator: generalData.indicator || searchQuery,
-            // 威胁评分，从general数据中提取
-            reputation: generalData.reputation || 0,
-            // 被动DNS记录
-            passive_dns: {
-              results: passiveDnsData.results || []
-            }
-          };
-          
-          setDnsResults((prev: any) => ({ ...prev, domain: mergedData }));
-          break;
-        case 'URL':
-          otxSection = 'general';
-          data = await otxApi.getUrlInfo(searchQuery, otxSection);
-          setDnsResults((prev: any) => ({ ...prev, url: data }));
-          break;
-        case 'CVE':
-          otxSection = 'general';
-          data = await otxApi.getCveInfo(searchQuery, otxSection);
-          setDnsResults((prev: any) => ({ ...prev, cve: data }));
-          break;
-        case 'Search':
-          data = await otxApi.searchPulses(searchQuery);
-          setDnsResults((prev: any) => ({ ...prev, search: data }));
-          break;
-        case 'Activity':
-          data = await otxApi.getActivity();
-          setDnsResults((prev: any) => ({ ...prev, activity: data }));
-          break;
-      }
-    } catch (error) {
-      console.error('Fetch OTX SubTab Error:', error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // IP威胁情报展示组件
-  const renderIpThreatInfo = (data: any) => {
-    return (
-      <div className="space-y-8">
-        {/* IP基本信息卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">IP地址</h4>
-            <p className="text-2xl font-black text-white">{data?.indicator || searchQuery}</p>
-          </div>
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">地理位置</h4>
-            <p className="text-lg font-bold text-white">{data?.country_name || '未知'}</p>
-            <p className="text-sm text-gray-500 mt-1">{data?.city || '未知城市'}</p>
-          </div>
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">威胁评分</h4>
-            <div className="flex items-center gap-3">
-              <div className="text-2xl font-black text-red-500">{data?.reputation || 0}/100</div>
-              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-red-500 transition-all duration-500"
-                  style={{ width: `${data?.reputation || 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* 威胁详情卡片 */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">威胁详情</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h5 className="text-sm text-gray-400 font-bold mb-2">关联域名</h5>
-              {data?.passive_dns?.results?.slice(0, 5).map((record: any, index: number) => (
-                <div key={index} className="text-sm text-gray-300 mb-1">{record.hostname}</div>
-              )) || <div className="text-sm text-gray-500">暂无数据</div>}
-            </div>
-            <div>
-              <h5 className="text-sm text-gray-400 font-bold mb-2">恶意标签</h5>
-              {data?.pulse_info?.tags?.slice(0, 5).map((tag: string, index: number) => (
-                <span key={index} className="inline-block bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-medium mr-2 mb-2">{tag}</span>
-              )) || <div className="text-sm text-gray-500">暂无数据</div>}
-            </div>
-          </div>
-        </div>
-        
-        {/* 完整数据展示（可折叠） */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">完整数据</h4>
-          <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all max-h-60 overflow-auto">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </div>
-      </div>
-    );
-  };
-  
-  // 域名关联情报展示组件
-  const renderDomainInfo = (data: any) => {
-    // 处理API返回的数据结构，提取所需字段
-    const domainData = {
-      // 从数据中提取基本信息
-      indicator: data?.indicator || searchQuery,
-      // 威胁评分，默认值为0
-      reputation: data?.reputation || 0,
-      // 处理passive_dns数据，确保results字段存在
-      passive_dns: {
-        results: data?.passive_dns?.results || 
-                 []
-      }
-    };
-
-    return (
-      <div className="space-y-8">
-        {/* 域名基本信息卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">域名</h4>
-            <p className="text-2xl font-black text-white">{domainData.indicator}</p>
-          </div>
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">DNS记录数量</h4>
-            <p className="text-2xl font-black text-white">{domainData.passive_dns.results.length || 0}</p>
-          </div>
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">威胁评分</h4>
-            <div className="flex items-center gap-3">
-              <div className="text-2xl font-black text-orange-500">{domainData.reputation}/100</div>
-              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-orange-500 transition-all duration-500"
-                  style={{ width: `${domainData.reputation}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* DNS记录表格 */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">DNS记录</h4>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="px-4 py-3 text-sm text-gray-400 font-bold uppercase tracking-wider">记录类型</th>
-                  <th className="px-4 py-3 text-sm text-gray-400 font-bold uppercase tracking-wider">值</th>
-                  <th className="px-4 py-3 text-sm text-gray-400 font-bold uppercase tracking-wider">首次检测</th>
-                  <th className="px-4 py-3 text-sm text-gray-400 font-bold uppercase tracking-wider">最后检测</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.isArray(domainData.passive_dns.results) && domainData.passive_dns.results.length > 0 ? (
-                  domainData.passive_dns.results.slice(0, 10).map((record: any, index: number) => (
-                    <tr key={index} className="border-b border-white/5 hover:bg-white/[0.03]">
-                      <td className="px-4 py-4 text-sm font-medium text-white">{record.record_type || 'A'}</td>
-                      <td className="px-4 py-4 text-sm text-gray-300">{record.address || record.hostname || 'N/A'}</td>
-                      <td className="px-4 py-4 text-sm text-gray-500">{record.first || 'N/A'}</td>
-                      <td className="px-4 py-4 text-sm text-gray-500">{record.last || 'N/A'}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">暂无DNS记录</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        
-        {/* 完整数据展示（可折叠） */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">完整数据</h4>
-          <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all max-h-60 overflow-auto">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </div>
-      </div>
-    );
-  };
-  
-  // URL威胁检测展示组件
-  const renderUrlInfo = (data: any) => {
-    return (
-      <div className="space-y-8">
-        {/* URL基本信息卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">URL地址</h4>
-            <p className="text-lg font-bold text-white break-all">{data?.indicator || searchQuery}</p>
-          </div>
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">威胁状态</h4>
-            <div className="flex items-center gap-3">
-              <div className={`text-xl font-black ${data?.reputation > 50 ? 'text-red-500' : 'text-green-500'}`}>
-                {data?.reputation > 50 ? '危险' : '安全'}
-              </div>
-              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-500 ${data?.reputation > 50 ? 'bg-red-500' : 'bg-green-500'}`}
-                  style={{ width: `${data?.reputation || 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* URL详情卡片 */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">URL详情</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h5 className="text-sm text-gray-400 font-bold mb-3">关联域名</h5>
-              <p className="text-sm text-white">{data?.hostname || '未知'}</p>
-            </div>
-            <div>
-              <h5 className="text-sm text-gray-400 font-bold mb-3">IP地址</h5>
-              <p className="text-sm text-white">{data?.ip || '未知'}</p>
-            </div>
-            <div>
-              <h5 className="text-sm text-gray-400 font-bold mb-3">恶意标签</h5>
-              {data?.pulse_info?.tags?.slice(0, 5).map((tag: string, index: number) => (
-                <span key={index} className="inline-block bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-medium mr-2 mb-2">{tag}</span>
-              )) || <div className="text-sm text-gray-500">暂无标签</div>}
-            </div>
-          </div>
-        </div>
-        
-        {/* 完整数据展示（可折叠） */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">完整数据</h4>
-          <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all max-h-60 overflow-auto">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </div>
-      </div>
-    );
-  };
-  
-  // 漏洞相关情报展示组件
-  const renderCveInfo = (data: any) => {
-    return (
-      <div className="space-y-8">
-        {/* CVE基本信息卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">CVE编号</h4>
-            <p className="text-2xl font-black text-white">{data?.indicator || searchQuery}</p>
-          </div>
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">CVSS评分</h4>
-            <div className="flex items-center gap-3">
-              <div className="text-2xl font-black text-red-500">{data?.cvss?.base_score || 0.0}</div>
-              <div className="text-sm text-gray-500">/10.0</div>
-            </div>
-          </div>
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-            <h4 className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-3">威胁级别</h4>
-            <div className={`text-xl font-black ${data?.cvss?.base_score >= 9.0 ? 'text-red-500' : data?.cvss?.base_score >= 7.0 ? 'text-orange-500' : data?.cvss?.base_score >= 4.0 ? 'text-yellow-500' : 'text-green-500'}`}>
-              {data?.cvss?.base_score >= 9.0 ? '严重' : data?.cvss?.base_score >= 7.0 ? '高危' : data?.cvss?.base_score >= 4.0 ? '中危' : '低危'}
-            </div>
-          </div>
-        </div>
-        
-        {/* CVE详情卡片 */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">漏洞描述</h4>
-          <p className="text-gray-300 leading-relaxed">{data?.description || '暂无描述'}</p>
-        </div>
-        
-        {/* 漏洞详情表格 */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">漏洞详情</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h5 className="text-sm text-gray-400 font-bold mb-3">发布日期</h5>
-              <p className="text-white font-medium">{data?.published || '未知'}</p>
-            </div>
-            <div>
-              <h5 className="text-sm text-gray-400 font-bold mb-3">更新日期</h5>
-              <p className="text-white font-medium">{data?.modified || '未知'}</p>
-            </div>
-            <div>
-              <h5 className="text-sm text-gray-400 font-bold mb-3">影响范围</h5>
-              {data?.affected_products?.slice(0, 5).map((product: any, index: number) => (
-                <div key={index} className="text-sm text-gray-300 mb-1">{product}</div>
-              )) || <div className="text-sm text-gray-500">暂无数据</div>}
-            </div>
-          </div>
-        </div>
-        
-        {/* 完整数据展示（可折叠） */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">完整数据</h4>
-          <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all max-h-60 overflow-auto">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </div>
-      </div>
-    );
-  };
-  
-  // 情报包搜索结果展示组件
-  const renderSearchResults = (data: any) => {
-    return (
-      <div className="space-y-8">
-        {/* 搜索结果统计 */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">搜索结果</h4>
-          <p className="text-sm text-gray-500">找到 {data?.results?.length || 0} 个情报包</p>
-        </div>
-        
-        {/* 情报包列表 */}
-        <div className="space-y-4">
-          {data?.results?.slice(0, 10).map((pulse: any, index: number) => (
-            <div key={index} className="bg-white/[0.05] border border-white/10 rounded-2xl p-6 hover:bg-white/[0.08] transition-all">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h5 className="text-lg font-bold text-white">{pulse?.name}</h5>
-                  <p className="text-sm text-gray-500 mt-1">{pulse?.author_name}</p>
-                </div>
-                <div className="text-sm text-gray-400">{pulse?.modified}</div>
-              </div>
-              <p className="text-gray-300 text-sm mb-4 line-clamp-3">{pulse?.description}</p>
-              <div className="flex flex-wrap gap-2">
-                {pulse?.tags?.slice(0, 5).map((tag: string, tagIndex: number) => (
-                  <span key={tagIndex} className="bg-accent/20 text-accent px-3 py-1 rounded-full text-xs font-medium">{tag}</span>
-                ))}
-              </div>
-            </div>
-          )) || (
-            <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-8 text-center">
-              <p className="text-gray-500">暂无搜索结果</p>
-            </div>
-          )}
-        </div>
-        
-        {/* 完整数据展示（可折叠） */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">完整数据</h4>
-          <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all max-h-60 overflow-auto">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </div>
-      </div>
-    );
-  };
-  
-  // 实时威胁流展示组件
-  const renderActivityStream = (data: any) => {
-    return (
-      <div className="space-y-8">
-        {/* 威胁流统计 */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">实时威胁流</h4>
-          <p className="text-sm text-gray-500">共 {data?.results?.length || 0} 条威胁记录</p>
-        </div>
-        
-        {/* 威胁流列表 */}
-        <div className="space-y-4">
-          {data?.results?.slice(0, 10).map((activity: any, index: number) => (
-            <div key={index} className="bg-white/[0.05] border border-white/10 rounded-2xl p-6 hover:bg-white/[0.08] transition-all">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <ShieldAlert className="w-6 h-6 text-red-500" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <h5 className="text-lg font-bold text-white">{activity?.name}</h5>
-                    <span className="text-sm text-gray-500">{activity?.created}</span>
-                  </div>
-                  <p className="text-gray-300 text-sm mb-3">{activity?.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {activity?.tags?.slice(0, 5).map((tag: string, tagIndex: number) => (
-                      <span key={tagIndex} className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-medium">{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )) || (
-            <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-8 text-center">
-              <p className="text-gray-500">暂无威胁流数据</p>
-            </div>
-          )}
-        </div>
-        
-        {/* 完整数据展示（可折叠） */}
-        <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">完整数据</h4>
-          <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap break-all max-h-60 overflow-auto">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </div>
-      </div>
-    );
-  };
-  
-  const renderDnsResults = () => {
-    const currentData = dnsResults?.[dnsActiveSubTab.toLowerCase()];
-
-    return (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        {/* OTX 威胁情报子页签 - 优化摆放和响应式设计 */}
-        <div className="flex flex-wrap items-center gap-4 mb-12 justify-center">
-          {[
-            { id: 'IPv4', label: 'IP 威胁情报', icon: Globe, inputType: 'IP地址' },
-            { id: 'Domain', label: '域名关联情报', icon: LayoutGrid, inputType: '域名' },
-            { id: 'URL', label: 'URL 威胁检测', icon: LinkIcon, inputType: 'URL地址' },
-            { id: 'CVE', label: '漏洞相关情报', icon: ShieldAlert, inputType: 'CVE编号' },
-            { id: 'Search', label: '情报包搜索', icon: Search, inputType: '关键词' },
-            { id: 'Activity', label: '实时威胁流', icon: Activity, inputType: '无需输入' },
-          ].map((tab) => (
-            <div key={tab.id} className="flex flex-col items-center gap-2">
-              <button
-                onClick={() => fetchDnsSubTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-3 px-6 py-3 rounded-[24px] text-sm font-bold transition-all duration-300 ease-in-out group whitespace-nowrap",
-                  "hover:scale-105 active:scale-95",
-                  dnsActiveSubTab === tab.id
-                    ? "bg-white/10 text-accent shadow-2xl border border-white/10"
-                    : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-                )}
-                aria-pressed={dnsActiveSubTab === tab.id}
-                title={`${tab.label} - 支持${tab.inputType}`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span className="tracking-tight">{tab.label}</span>
-              </button>
-              <span className="text-xs text-gray-600">{tab.inputType}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* OTX 威胁情报结果展示区域 */}
-        <div className="bg-[#1a1a20] border border-white/5 rounded-3xl overflow-hidden shadow-2xl p-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-black text-white flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
-                <LayoutGrid className="w-5 h-5 text-accent" />
-              </div>
-              {dnsActiveSubTab === 'IPv4' && 'IP 威胁情报'}
-              {dnsActiveSubTab === 'Domain' && '域名关联情报'}
-              {dnsActiveSubTab === 'URL' && 'URL 威胁检测'}
-              {dnsActiveSubTab === 'CVE' && '漏洞相关情报'}
-              {dnsActiveSubTab === 'Search' && '情报包搜索'}
-              {dnsActiveSubTab === 'Activity' && '实时威胁流'}
-            </h3>
-            <div className="text-xs text-gray-500 font-mono">
-              API Status: <span className="text-emerald-500 font-bold">Connected</span>
-            </div>
-          </div>
-
-          {currentData ? (
-            <div className="bg-white/[0.02] rounded-2xl p-6 overflow-auto max-h-[800px]">
-              {/* 优化结果展示，添加数据类型提示 */}
-              <div className="mb-8 text-sm text-gray-500 pb-4 border-b border-white/10">
-                <span className="font-bold">查询内容:</span> {searchQuery}
-                <span className="mx-2">|</span>
-                <span className="font-bold">数据类型:</span> {dnsActiveSubTab}
-              </div>
-              
-              {/* 根据不同的数据类型渲染不同的展示组件 */}
-              {dnsActiveSubTab === 'IPv4' && renderIpThreatInfo(currentData)}
-              {dnsActiveSubTab === 'Domain' && renderDomainInfo(currentData)}
-              {dnsActiveSubTab === 'URL' && renderUrlInfo(currentData)}
-              {dnsActiveSubTab === 'CVE' && renderCveInfo(currentData)}
-              {dnsActiveSubTab === 'Search' && renderSearchResults(currentData)}
-              {dnsActiveSubTab === 'Activity' && renderActivityStream(currentData)}
-            </div>
-          ) : (
-            <div className="min-h-[300px] flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-white/5 rounded-2xl">
-              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                <Search className="w-8 h-8 opacity-20" />
-              </div>
-              <p className="font-bold">暂无查询结果</p>
-              <p className="text-xs opacity-50 mt-1">尝试更换查询关键词或稍后再试</p>
-              {/* 添加输入建议 */}
-              {dnsActiveSubTab === 'IPv4' && (
-                <p className="text-xs opacity-50 mt-2">建议输入格式: 8.8.8.8</p>
-              )}
-              {dnsActiveSubTab === 'Domain' && (
-                <p className="text-xs opacity-50 mt-2">建议输入格式: example.com</p>
-              )}
-              {dnsActiveSubTab === 'URL' && (
-                <p className="text-xs opacity-50 mt-2">建议输入格式: https://example.com</p>
-              )}
-              {dnsActiveSubTab === 'CVE' && (
-                <p className="text-xs opacity-50 mt-2">建议输入格式: CVE-2024-1234</p>
-              )}
-              {dnsActiveSubTab === 'Search' && (
-                <p className="text-xs opacity-50 mt-2">建议输入关键词: ransomware, phishing 等</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
 
   const handleExportCSV = async () => {
     if (!results?.summary.domain) return;
@@ -1216,32 +725,100 @@ const Dashboard = () => {
                 transition={{ duration: 0.5 }}
               >
                 <h1 className="text-7xl md:text-[10rem] font-black text-white tracking-tighter mb-6 leading-none select-none drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                  {isDnsPage ? 'OTX' : <AnimatedNumber value={totalLeaks} />}
+                  <AnimatedNumber value={totalLeaks} />
                 </h1>
               </motion.div>
               
               <div className="flex items-center gap-4 mb-12">
                 <div className="h-px w-12 bg-gradient-to-r from-transparent to-accent" />
                 <p className="text-xs font-black text-accent tracking-[0.5em] uppercase opacity-90">
-                  {isDnsPage ? 'OTX 威胁情报平台' : '已索引的泄露记录'}
+                  已索引的泄露记录总数
                 </p>
                 <div className="h-px w-12 bg-gradient-to-l from-transparent to-accent" />
               </div>
               
               <p className="max-w-3xl text-xl text-gray-400 mb-14 leading-relaxed font-medium">
-                {isDnsPage 
-                  ? '查询全球范围内的威胁情报，包括IP、域名、URL、CVE漏洞等。我们整合了全球安全社区的最新威胁数据。'
-                  : '几秒钟内即可检查域名下的泄露凭证。我们监控全球数千个数据泄露源。'}
+                几秒钟内即可检查域名下的泄露凭证。我们监控全球数千个数据泄露源。
               </p>
 
-              <form onSubmit={(e) => handleSearch(e)} className="w-full max-w-3xl relative group">
-                  {/* 搜索框 */}
+              <form 
+                onSubmit={(e) => isDnsPage ? handleOtxSearch(e) : handleSearch(e)} 
+                className="w-full max-w-3xl relative group"
+              >
+                {/* DNS数据集页面的搜索表单 */}
+                {isDnsPage ? (
+                  <>
+                    {/* 搜索类型选项卡 */}
+                    <div className="flex gap-2 mb-4 justify-center bg-[#1a1a2e] p-1.5 rounded-full">
+                      {[
+                        { type: 'ip', label: 'IP', placeholder: '输入IP地址' },
+                        { type: 'domain', label: '域名', placeholder: '输入域名' },
+                        { type: 'url', label: 'URL', placeholder: '输入URL' },
+                        { type: 'cve', label: 'CVE', placeholder: '输入CVE编号' }
+                      ].map(({ type, label }) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            setActiveSearchType(type as any);
+                          }}
+                          className={cn(
+                            "px-6 py-3 rounded-full text-sm font-bold transition-all duration-300",
+                            activeSearchType === type
+                              ? "bg-accent text-white shadow-lg"
+                              : "text-gray-400 hover:text-gray-300"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {/* 搜索框 */}
+                    <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={
+                          activeSearchType === 'ip' ? "输入IP地址 (例如: 8.8.8.8)..." :
+                          activeSearchType === 'domain' ? "输入域名 (例如: example.com)..." :
+                          activeSearchType === 'url' ? "输入URL (例如: https://example.com)..." :
+                          "输入CVE编号 (例如: CVE-2021-44228)..."
+                        }
+                        className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium"
+                      />
+                      <button 
+                        type="submit"
+                        disabled={otxLoading}
+                        className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-12 py-5 rounded-[22px] font-black transition-all text-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 purple-glow"
+                      >
+                        {otxLoading ? (
+                          <>
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                            检索中...
+                          </>
+                        ) : (
+                          '立即检索'
+                        )}
+                      </button>
+                    </div>
+                    
+                    {/* 错误信息 */}
+                    {otxError && (
+                      <div className="mt-4 text-center text-red-400 text-sm">
+                        {otxError}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* 原始搜索表单 */
                   <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={isDnsPage ? "输入IP、域名、URL或CVE编号 (例如: 8.8.8.8, example.com, CVE-2024-1234)..." : "输入域名 (例如: Domain.com)..."}
+                      placeholder="输入域名 (例如: Domain.com)..."
                       className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium"
                     />
                     <button 
@@ -1259,60 +836,8 @@ const Dashboard = () => {
                       )}
                     </button>
                   </div>
-
-                  {/* 输入类型提示 */}
-                  {isDnsPage && searchQuery && (
-                    <div className="mt-4 text-center text-sm text-gray-500 animate-in fade-in slide-in-from-top-4 duration-500">
-                      {(() => {
-                        if (searchQuery.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-                          return `检测到IP地址格式，将自动查询IP威胁情报`;
-                        } else if (searchQuery.startsWith('https://') || searchQuery.startsWith('http://')) {
-                          return `检测到URL格式，将自动查询URL威胁检测`;
-                        } else if (searchQuery.match(/^CVE-\d{4}-\d{4,7}$/i)) {
-                          return `检测到CVE编号格式，将自动查询漏洞情报`;
-                        } else {
-                          return `检测到域名格式，将自动查询域名关联情报`;
-                        }
-                      })()}
-                    </div>
-                  )}
-
-                  {/* OTX 威胁情报专属功能按钮 - 优化布局和提示 */}
-                  {isDnsPage && (
-                    <div className="mt-8 animate-in fade-in slide-in-from-top-4 duration-700 delay-300">
-                      <div className="text-center text-sm text-gray-500 mb-4">
-                        或者选择特定功能进行查询：
-                      </div>
-                      <div className="flex flex-wrap items-center justify-center gap-4">
-                        {
-                          [
-                            { id: 'ipv4', label: 'IP威胁情报', icon: Globe, example: '8.8.8.8' },
-                            { id: 'domain', label: '域名关联情报', icon: LayoutGrid, example: 'example.com' },
-                            { id: 'url', label: 'URL威胁检测', icon: LinkIcon, example: 'https://example.com' },
-                            { id: 'cve', label: '漏洞情报', icon: ShieldAlert, example: 'CVE-2024-1234' },
-                            { id: 'search', label: '情报包搜索', icon: Search, example: 'ransomware' },
-                            { id: 'activity', label: '实时威胁流', icon: Activity, example: '' },
-                          ].map((btn) => (
-                            <div key={btn.id} className="flex flex-col items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={(e) => handleSearch(e, btn.id as any)}
-                                className="flex items-center gap-2.5 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm font-bold text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95 group"
-                                title={`${btn.label} - 示例: ${btn.example || '无需输入'}`}
-                              >
-                                <btn.icon className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
-                                {btn.label}
-                              </button>
-                              {btn.example && (
-                                <span className="text-xs text-gray-600">{btn.example}</span>
-                              )}
-                            </div>
-                          ))
-                        }
-                      </div>
-                    </div>
-                  )}
-                </form>
+                )}
+              </form>
             </div>
           </div>
         </div>
@@ -1320,53 +845,672 @@ const Dashboard = () => {
 
       {/* 搜索结果区域 */}
       <div id="search-results" className="scroll-mt-24 min-h-[600px]">
-        {showResults && (isDnsPage ? dnsResults : results) && (
+        {/* DNS数据集页面结果 */}
+        {isDnsPage && showResults && otxResults && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-            {!isDnsPage && (
-              <div className="flex flex-wrap items-center gap-4 mb-12">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.name}
-                    onClick={() => {
-                      setActiveTab(tab.name);
-                      setCurrentPage(0);
-                    }}
-                    className={cn(
-                      "flex items-center gap-3 px-8 py-4 rounded-[24px] text-base font-black transition-all group",
-                      activeTab === tab.name
-                        ? "bg-white/10 text-accent shadow-2xl border border-white/10 scale-105"
-                        : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+
+            
+            <div className="bg-[#1a1a20] border border-white/5 rounded-xl overflow-hidden shadow-2xl">
+              <div className="p-8">
+                <h2 className="text-2xl font-black text-white mb-6">
+                  {activeSearchType === 'ip' ? 'IP查询结果' :
+                   activeSearchType === 'domain' ? '域名查询结果' :
+                   activeSearchType === 'url' ? 'URL检测结果' :
+                   'CVE漏洞情报'}
+                </h2>
+                
+                {/* IP查询结果优化展示 */}
+                {activeSearchType === 'ip' && (
+                  <div className="space-y-6">
+                    {/* 概览信息 */}
+                    <div className="bg-[#25252e] rounded-lg p-6">
+                      <h3 className="text-lg font-bold text-white mb-4">概览信息</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">IP地址</p>
+                          <p className="text-sm font-bold text-white">{otxResults.indicator || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">ASN归属</p>
+                          <p className="text-sm font-bold text-white">{otxResults.asn || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">地理位置</p>
+                          <p className="text-sm font-bold text-white">{`${otxResults.country || 'N/A'} ${otxResults.city || ''}`}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">信誉评分</p>
+                          <p className="text-sm font-bold text-white">{otxResults.reputation || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 被动DNS记录 */}
+                    {otxResults.passive_dns && otxResults.passive_dns.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6 space-y-8">
+                        <h3 className="text-lg font-bold text-white mb-4">被动DNS记录</h3>
+                        
+                        {/* 记录类型分布饼图 */}
+                        <div className="h-[300px]">
+                          <h4 className="text-sm font-bold text-white mb-4">记录类型分布</h4>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={(() => {
+                                  // 数据预处理：统计被动DNS记录类型分布
+                                  const typeCount: Record<string, number> = {};
+                                  otxResults.passive_dns.forEach((record: any) => {
+                                    const type = record.record_type || '未知类型';
+                                    typeCount[type] = (typeCount[type] || 0) + 1;
+                                  });
+                                  return Object.entries(typeCount).map(([name, value]) => ({ name, value }));
+                                })()}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {(() => {
+                                  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00C49F', '#FFBB28', '#FF8042'];
+                                  return otxResults.passive_dns.map((_: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                  ));
+                                })()}
+                              </Pie>
+                              <Tooltip formatter={(value) => [`${value} 条`, '数量']} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        
+                        {/* 时间分布柱状图 */}
+                        <div className="h-[300px]">
+                          <h4 className="text-sm font-bold text-white mb-4">时间分布</h4>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={(() => {
+                                // 数据预处理：按年份统计被动DNS记录数量
+                                const yearCount: Record<string, number> = {};
+                                otxResults.passive_dns.forEach((record: any) => {
+                                  if (record.first) {
+                                    const year = record.first.substring(0, 4);
+                                    yearCount[year] = (yearCount[year] || 0) + 1;
+                                  }
+                                });
+                                return Object.entries(yearCount)
+                                  .map(([name, value]) => ({ name, value }))
+                                  .sort((a, b) => parseInt(a.name) - parseInt(b.name));
+                              })()}
+                              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                              <XAxis dataKey="name" stroke="#cbd5e1" />
+                              <YAxis stroke="#cbd5e1" />
+                              <Tooltip formatter={(value) => [`${value} 条`, '数量']} />
+                              <Bar dataKey="value" fill="#8884d8" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        
+                        {/* 详细记录表格 */}
+                        <div>
+                          <h4 className="text-sm font-bold text-white mb-4">详细记录</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                              <thead>
+                                <tr className="border-b border-white/10">
+                                  <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">域名</th>
+                                  <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">类型</th>
+                                  <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">首次发现</th>
+                                  <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">最后发现</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {otxResults.passive_dns.slice(0, 10).map((record: any, index: number) => (
+                                  <tr key={index} className="border-b border-white/5 hover:bg-white/5">
+                                    <td className="px-4 py-3 text-sm text-white">{record.hostname || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-400">{record.record_type || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-400">{record.first || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-400">{record.last || 'N/A'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {otxResults.passive_dns.length > 10 && (
+                            <p className="mt-4 text-xs text-gray-500">显示前10条记录，共{otxResults.passive_dns.length}条</p>
+                          )}
+                        </div>
+                      </div>
                     )}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    <span className="tracking-tight">{tab.name}</span>
-                    {tab.count !== null && (
-                      <span className={cn(
-                        "px-3 py-1 rounded-full text-[12px] font-black tracking-tighter transition-colors ml-1",
-                        activeTab === tab.name 
-                          ? "bg-accent text-white" 
-                          : "bg-white/5 text-gray-400 group-hover:bg-white/10"
-                      )}>
-                        <AnimatedNumber value={tab.count.toString()} />
-                      </span>
+                    
+                    {/* 恶意样本 */}
+                    {otxResults.malware && otxResults.malware.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">关联恶意样本</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {otxResults.malware.slice(0, 6).map((malware: any, index: number) => (
+                            <div key={index} className="bg-white/5 rounded-lg p-4">
+                              <div className="flex justify-between items-start mb-2">
+                                <p className="text-sm font-bold text-white">{malware.family || '未知家族'}</p>
+                                <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded-full">恶意</span>
+                              </div>
+                              <p className="text-xs text-gray-400">MD5: {malware.md5 || 'N/A'}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {otxResults.malware.length > 6 && (
+                          <p className="mt-4 text-xs text-gray-500">显示前6条记录，共{otxResults.malware.length}条</p>
+                        )}
+                        
+                        {/* 恶意样本家族分布饼图 */}
+                        <div className="h-[300px] mt-8">
+                          <h4 className="text-sm font-bold text-white mb-4">恶意样本家族分布</h4>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={(() => {
+                                  // 数据预处理：统计恶意样本家族分布
+                                  const familyCount: Record<string, number> = {};
+                                  otxResults.malware.forEach((malware: any) => {
+                                    const family = malware.family || '未知家族';
+                                    familyCount[family] = (familyCount[family] || 0) + 1;
+                                  });
+                                  return Object.entries(familyCount).map(([name, value]) => ({ name, value }));
+                                })()}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {(() => {
+                                  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00C49F'];
+                                  return otxResults.malware.map((_: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                  ));
+                                })()}
+                              </Pie>
+                              <Tooltip formatter={(value) => [`${value} 个`, '数量']} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     )}
-                  </button>
-                ))}
+                    
+                    {/* URL列表 */}
+                    {otxResults.url_list && otxResults.url_list.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">相关URL</h3>
+                        <div className="space-y-3">
+                          {otxResults.url_list.slice(0, 5).map((urlInfo: any, index: number) => (
+                            <div key={index} className="bg-white/5 rounded-lg p-4">
+                              <p className="text-sm font-bold text-white truncate">{urlInfo.url || 'N/A'}</p>
+                              <p className="text-xs text-gray-400 mt-1">首次发现: {urlInfo.first || 'N/A'}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {otxResults.url_list.length > 5 && (
+                          <p className="mt-4 text-xs text-gray-500">显示前5条记录，共{otxResults.url_list.length}条</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* 域名查询结果优化展示 */}
+                {activeSearchType === 'domain' && (
+                  <div className="space-y-6">
+                    {/* 概览信息 */}
+                    <div className="bg-[#25252e] rounded-lg p-6">
+                      <h3 className="text-lg font-bold text-white mb-4">概览信息</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">域名</p>
+                          <p className="text-sm font-bold text-white">{otxResults.indicator || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">注册商</p>
+                          <p className="text-sm font-bold text-white">{otxResults.registrar || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">创建时间</p>
+                          <p className="text-sm font-bold text-white">{otxResults.created || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">到期时间</p>
+                          <p className="text-sm font-bold text-white">{otxResults.expires || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 被动DNS记录 */}
+                    {otxResults.passive_dns && otxResults.passive_dns.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6 space-y-8">
+                        <h3 className="text-lg font-bold text-white mb-4">被动DNS记录</h3>
+                        
+                        {/* 记录类型分布饼图 */}
+                        <div className="h-[300px]">
+                          <h4 className="text-sm font-bold text-white mb-4">记录类型分布</h4>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={(() => {
+                                  // 数据预处理：统计被动DNS记录类型分布
+                                  const typeCount: Record<string, number> = {};
+                                  otxResults.passive_dns.forEach((record: any) => {
+                                    const type = record.record_type || '未知类型';
+                                    typeCount[type] = (typeCount[type] || 0) + 1;
+                                  });
+                                  return Object.entries(typeCount).map(([name, value]) => ({ name, value }));
+                                })()}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {(() => {
+                                  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00C49F', '#FFBB28', '#FF8042'];
+                                  return otxResults.passive_dns.map((_: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                  ));
+                                })()}
+                              </Pie>
+                              <Tooltip formatter={(value) => [`${value} 条`, '数量']} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        
+                        {/* 时间分布柱状图 */}
+                        <div className="h-[300px]">
+                          <h4 className="text-sm font-bold text-white mb-4">时间分布</h4>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={(() => {
+                                // 数据预处理：按年份统计被动DNS记录数量
+                                const yearCount: Record<string, number> = {};
+                                otxResults.passive_dns.forEach((record: any) => {
+                                  if (record.first) {
+                                    const year = record.first.substring(0, 4);
+                                    yearCount[year] = (yearCount[year] || 0) + 1;
+                                  }
+                                });
+                                return Object.entries(yearCount)
+                                  .map(([name, value]) => ({ name, value }))
+                                  .sort((a, b) => parseInt(a.name) - parseInt(b.name));
+                              })()}
+                              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                              <XAxis dataKey="name" stroke="#cbd5e1" />
+                              <YAxis stroke="#cbd5e1" />
+                              <Tooltip formatter={(value) => [`${value} 条`, '数量']} />
+                              <Bar dataKey="value" fill="#8884d8" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        
+                        {/* 详细记录表格 */}
+                        <div>
+                          <h4 className="text-sm font-bold text-white mb-4">详细记录</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                              <thead>
+                                <tr className="border-b border-white/10">
+                                  <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">记录类型</th>
+                                  <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">值</th>
+                                  <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">首次发现</th>
+                                  <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">最后发现</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {otxResults.passive_dns.slice(0, 10).map((record: any, index: number) => (
+                                  <tr key={index} className="border-b border-white/5 hover:bg-white/5">
+                                    <td className="px-4 py-3 text-sm text-gray-400">{record.record_type || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-sm text-white">{record.value || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-400">{record.first || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-400">{record.last || 'N/A'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {otxResults.passive_dns.length > 10 && (
+                            <p className="mt-4 text-xs text-gray-500">显示前10条记录，共{otxResults.passive_dns.length}条</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Whois信息 */}
+                    {otxResults.whois && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">Whois信息</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* 处理不同的whois数据结构 */}
+                          {(() => {
+                            // 获取实际的whois数据，处理可能的嵌套结构
+                            const whoisData = otxResults.whois.whois || otxResults.whois;
+                            
+                            return (
+                              <>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">注册人</p>
+                                  <p className="text-sm font-bold text-white">{whoisData.name || whoisData.registrant_name || 'N/A'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">注册邮箱</p>
+                                  <p className="text-sm font-bold text-white">{whoisData.email || whoisData.registrant_email || 'N/A'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">联系电话</p>
+                                  <p className="text-sm font-bold text-white">{whoisData.phone || whoisData.registrant_phone || 'N/A'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Name Server</p>
+                                  <p className="text-sm font-bold text-white">
+                                    {Array.isArray(whoisData.name_servers) ? whoisData.name_servers.join(', ') : 
+                                     whoisData.nameservers ? whoisData.nameservers.join(', ') : 'N/A'}
+                                  </p>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* URL检测结果优化展示 */}
+                {activeSearchType === 'url' && (
+                  <div className="space-y-6">
+                    {/* 概览信息 */}
+                    <div className="bg-[#25252e] rounded-lg p-6">
+                      <h3 className="text-lg font-bold text-white mb-4">概览信息</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">URL</p>
+                          <p className="text-sm font-bold text-white truncate">{otxResults.indicator || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">安全状态</p>
+                          <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded-full">{otxResults.security_score ? '安全' : '未知'}</span>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">风险评分</p>
+                          <p className="text-sm font-bold text-white">{otxResults.security_score || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* URL类型分布饼图 */}
+                    {otxResults.url_list && otxResults.url_list.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">URL类型分布</h3>
+                        <div className="h-[300px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={(() => {
+                                  // 数据预处理：统计URL类型分布
+                                  const typeCount: Record<string, number> = {};
+                                  otxResults.url_list.forEach((urlInfo: any) => {
+                                    const type = urlInfo.type || '未知类型';
+                                    typeCount[type] = (typeCount[type] || 0) + 1;
+                                  });
+                                  return Object.entries(typeCount).map(([name, value]) => ({ name, value }));
+                                })()}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {(() => {
+                                  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00C49F', '#FFBB28', '#FF8042'];
+                                  return otxResults.url_list.map((_: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                  ));
+                                })()}
+                              </Pie>
+                              <Tooltip formatter={(value) => [`${value} 条`, '数量']} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* URL列表 */}
+                    {otxResults.url_list && otxResults.url_list.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">关联URL</h3>
+                        <div className="space-y-3">
+                          {otxResults.url_list.slice(0, 8).map((urlInfo: any, index: number) => (
+                            <div key={index} className="bg-white/5 rounded-lg p-4">
+                              <p className="text-sm font-bold text-white truncate">{urlInfo.url || 'N/A'}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full">{urlInfo.type || '未知'}</span>
+                                <p className="text-xs text-gray-400">{urlInfo.first || 'N/A'}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {otxResults.url_list.length > 8 && (
+                          <p className="mt-4 text-xs text-gray-500">显示前8条记录，共{otxResults.url_list.length}条</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* CVE漏洞情报优化展示 */}
+                {activeSearchType === 'cve' && (
+                  <div className="space-y-6">
+                    {/* 概览信息 */}
+                    <div className="bg-[#25252e] rounded-lg p-6">
+                      <h3 className="text-lg font-bold text-white mb-4">漏洞概览</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">CVE编号</p>
+                          <p className="text-sm font-bold text-white">{otxResults.indicator || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">CVSS评分</p>
+                          <p className="text-sm font-bold text-white">{otxResults.cvss_score || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">漏洞描述</p>
+                        <p className="text-sm text-gray-300 mt-1">{otxResults.description || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    {/* 漏洞评分分布饼图 */}
+                    <div className="bg-[#25252e] rounded-lg p-6">
+                      <h3 className="text-lg font-bold text-white mb-4">漏洞评分分布</h3>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={(() => {
+                                // 数据预处理：根据CVSS评分范围分组
+                                const scoreGroups = {
+                                  '低风险 (0.1-3.9)': 0,
+                                  '中风险 (4.0-6.9)': 0,
+                                  '高风险 (7.0-8.9)': 0,
+                                  '严重风险 (9.0-10.0)': 0
+                                };
+                                
+                                // 假设我们有多个CVE的评分数据，这里只使用当前CVE的评分
+                                const cvssScore = parseFloat(otxResults.cvss_score || '0');
+                                if (cvssScore > 0) {
+                                  if (cvssScore >= 9.0) {
+                                    scoreGroups['严重风险 (9.0-10.0)'] = 1;
+                                  } else if (cvssScore >= 7.0) {
+                                    scoreGroups['高风险 (7.0-8.9)'] = 1;
+                                  } else if (cvssScore >= 4.0) {
+                                    scoreGroups['中风险 (4.0-6.9)'] = 1;
+                                  } else {
+                                    scoreGroups['低风险 (0.1-3.9)'] = 1;
+                                  }
+                                }
+                                
+                                return Object.entries(scoreGroups).map(([name, value]) => ({ name, value }));
+                              })()}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {(() => {
+                                const colors = ['#82ca9d', '#ffc658', '#ff8042', '#ff4d4f'];
+                                return Object.keys({ '低风险': 0, '中风险': 0, '高风险': 0, '严重风险': 0 }).map((_, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                ));
+                              })()}
+                            </Pie>
+                            <Tooltip formatter={(value) => [`${value} 个`, '数量']} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    
+                    {/* 受影响软件 */}
+                    {otxResults.affected_software && otxResults.affected_software.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">受影响软件</h3>
+                        
+                        {/* 软件类型分布柱状图 */}
+                        <div className="h-[300px] mb-6">
+                          <h4 className="text-sm font-bold text-white mb-4">软件类型分布</h4>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={(() => {
+                                // 数据预处理：统计受影响软件类型分布
+                                const softwareCount: Record<string, number> = {};
+                                otxResults.affected_software.forEach((software: any) => {
+                                  const name = software.name || '未知软件';
+                                  softwareCount[name] = (softwareCount[name] || 0) + 1;
+                                });
+                                return Object.entries(softwareCount)
+                                  .map(([name, value]) => ({ name, value }))
+                                  .sort((a, b) => b.value - a.value)
+                                  .slice(0, 5);
+                              })()}
+                              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                              <XAxis dataKey="name" stroke="#cbd5e1" />
+                              <YAxis stroke="#cbd5e1" />
+                              <Tooltip formatter={(value) => [`${value} 个版本`, '数量']} />
+                              <Bar dataKey="value" fill="#8884d8" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        
+                        {/* 详细软件列表 */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {otxResults.affected_software.slice(0, 6).map((software: any, index: number) => (
+                            <div key={index} className="bg-white/5 rounded-lg p-4">
+                              <p className="text-sm font-bold text-white">{software.name || '未知软件'}</p>
+                              <p className="text-xs text-gray-400 mt-1">版本: {software.version || 'N/A'}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {otxResults.affected_software.length > 6 && (
+                          <p className="mt-4 text-xs text-gray-500">显示前6条记录，共{otxResults.affected_software.length}条</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* 关联情报 */}
+                    {otxResults.top_n_pulses && otxResults.top_n_pulses.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">关联情报</h3>
+                        <div className="space-y-3">
+                          {otxResults.top_n_pulses.slice(0, 5).map((pulse: any, index: number) => (
+                            <div key={index} className="bg-white/5 rounded-lg p-4">
+                              <div className="flex justify-between items-start mb-2">
+                                <p className="text-sm font-bold text-white">{pulse.name || '未知情报'}</p>
+                                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full">情报包</span>
+                              </div>
+                              <p className="text-xs text-gray-400 mb-2">{pulse.description || '无描述'}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {pulse.tags && pulse.tags.slice(0, 3).map((tag: string, tagIndex: number) => (
+                                  <span key={tagIndex} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs font-bold rounded-full">{tag}</span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {otxResults.top_n_pulses.length > 5 && (
+                          <p className="mt-4 text-xs text-gray-500">显示前5条记录，共{otxResults.top_n_pulses.length}条</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+        )}
+        
+        {/* 原始搜索结果 */}
+        {!isDnsPage && showResults && results && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+            <div className="flex flex-wrap items-center gap-4 mb-12">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.name}
+                  onClick={() => {
+                    setActiveTab(tab.name);
+                    setCurrentPage(0);
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 px-8 py-4 rounded-[24px] text-base font-black transition-all group",
+                    activeTab === tab.name
+                      ? "bg-white/10 text-accent shadow-2xl border border-white/10 scale-105"
+                      : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                  )}
+                >
+                  <tab.icon className="w-5 h-5" />
+                  <span className="tracking-tight">{tab.name}</span>
+                  {tab.count !== null && (
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-[12px] font-black tracking-tighter transition-colors ml-1",
+                      activeTab === tab.name 
+                        ? "bg-accent text-white" 
+                        : "bg-white/5 text-gray-400 group-hover:bg-white/10"
+                    )}>
+                      <AnimatedNumber value={tab.count.toString()} />
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
 
             <AnimatePresence mode="wait">
               <motion.div 
-                key={isDnsPage ? 'dns' : activeTab}
+                key={activeTab}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
               >
-                {isDnsPage ? (
-                  renderDnsResults()
-                ) : (
-                  <>
+                <>
                     {/* 结果内容区域 */}
                     {activeTab === '报告' && results ? (
               <div className="space-y-12">
@@ -1502,13 +1646,15 @@ const Dashboard = () => {
                           : `共计 ${total} 条记录 (当前页显示 ${filteredCredentials.length} 条)`;
                       })()}
                     </div>
-                    <button 
-                      onClick={handleExportCSV}
-                      className="flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded-xl text-sm font-bold text-accent transition-all hover:scale-105 active:scale-95"
-                    >
-                      <Download className="w-4 h-4" />
-                      导出数据
-                    </button>
+                    {activeTab !== 'URLs' && activeTab !== '子域名' && (
+                      <button 
+                        onClick={handleExportCSV}
+                        className="flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded-xl text-sm font-bold text-accent transition-all hover:scale-105 active:scale-95"
+                      >
+                        <Download className="w-4 h-4" />
+                        导出数据
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1689,9 +1835,8 @@ const Dashboard = () => {
               </div>
             )}
           </>
-        )}
       </motion.div>
-        </AnimatePresence>
+    </AnimatePresence>
       </div>
     )}
   </div>
@@ -1703,9 +1848,11 @@ const Dashboard = () => {
             <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-6 leading-tight">
               立即发现地下泄露中关于您的信息
             </h2>
-            <p className="text-xl text-gray-500 max-w-3xl mx-auto font-medium">
+            <p className="text-xl text-gray-500 max-w-3xl mx-auto font-medium mb-12">
               数秒内检索从恶意软件日志中收集的数十亿条明文凭证。
             </p>
+            
+
           </div>
 
           {/* Weekly Growth Chart */}
@@ -1756,7 +1903,7 @@ const Dashboard = () => {
               </div>
 
               {/* Chart Container with fixed height to prevent ResponsiveContainer width/height error */}
-              <div className="h-[300px] min-h-[300px] w-full relative min-w-[300px] bg-white/5 rounded-2xl p-4" style={{ width: '100%', height: '300px', display: 'flex', flexDirection: 'column' }}>
+              <div className="h-[300px] min-h-[300px] w-full relative min-w-[300px] bg-white/5 rounded-2xl p-4">
                 {isLoadingStats && (
                   <div className="absolute top-2 right-2 z-20 flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                     <Loader2 className="w-3 h-3 text-accent animate-spin" />
@@ -1764,13 +1911,12 @@ const Dashboard = () => {
                   </div>
                 )}
                 {weeklyGrowth && weeklyGrowth.length > 0 ? (
-                  // 移除ResponsiveContainer，直接为AreaChart添加固定尺寸
-                  <AreaChart 
-                    width={900} 
-                    height={280} 
-                    data={weeklyGrowth} 
-                    margin={{ top: 10, right: 0, left: -10, bottom: 0 }}
-                  >
+                  // 使用ResponsiveContainer确保图表自适应容器宽度
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart 
+                      data={weeklyGrowth} 
+                      margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
+                    >
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
@@ -1891,6 +2037,7 @@ const Dashboard = () => {
                       connectNulls={true}
                     />
                   </AreaChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-white/[0.02] rounded-3xl border border-white/5 border-dashed">
                     <div className="flex flex-col items-center gap-3 opacity-20">
