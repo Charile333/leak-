@@ -453,17 +453,14 @@ const Dashboard = () => {
     
     const currentCategory = categoryMap[activeTab];
     
-    // 对于URLs和子域名标签页，只能从categoryCredentials获取数据
-    if (activeTab === 'URLs' || activeTab === '子域名') {
-      // 如果没有缓存数据，返回空数组
-      if (currentCategory && categoryCredentials[currentCategory]) {
-        list = [...categoryCredentials[currentCategory]];
-      } else {
-        // 返回空数组，等待数据加载
-        list = [];
-      }
+    // 检查是否有分页数据缓存
+    const hasPagedData = currentCategory && categoryCredentials[currentCategory] && categoryCredentials[currentCategory].length > 0;
+    
+    // 如果有分页数据缓存，使用缓存数据
+    if (hasPagedData) {
+      list = [...categoryCredentials[currentCategory]];
     } else {
-      // 对于其他标签页，使用原始数据并过滤
+      // 否则使用原始数据并过滤
       list = [...results.credentials];
       
       // Tab filtering
@@ -708,6 +705,13 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col animate-in fade-in duration-700">
+      {/* 功能完善中横幅 */}
+      {isDnsPage && (
+        <div className="w-full bg-yellow-500/20 border-b border-yellow-500/40 p-4 text-center">
+          <p className="text-yellow-400 font-bold text-lg">功能完善中</p>
+        </div>
+      )}
+      
       {/* 核心展示区 */}
       <div className="relative pt-10 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -746,63 +750,58 @@ const Dashboard = () => {
                 className="w-full max-w-3xl relative group"
               >
                 {/* DNS数据集页面的搜索表单 */}
-                {isDnsPage ? (
-                  <>
-                    {/* 搜索类型选项卡 */}
-                    <div className="flex gap-2 mb-4 justify-center bg-[#1a1a2e] p-1.5 rounded-full">
-                      {[
-                        { type: 'ip', label: 'IP', placeholder: '输入IP地址' },
-                        { type: 'domain', label: '域名', placeholder: '输入域名' },
-                        { type: 'url', label: 'URL', placeholder: '输入URL' },
-                        { type: 'cve', label: 'CVE', placeholder: '输入CVE编号' }
-                      ].map(({ type, label }) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => {
-                            setActiveSearchType(type as any);
-                          }}
-                          className={cn(
-                            "px-6 py-3 rounded-full text-sm font-bold transition-all duration-300",
-                            activeSearchType === type
-                              ? "bg-accent text-white shadow-lg"
-                              : "text-gray-400 hover:text-gray-300"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    
-                    {/* 搜索框 */}
-                    <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={
-                          activeSearchType === 'ip' ? "输入IP地址 (例如: 8.8.8.8)..." :
-                          activeSearchType === 'domain' ? "输入域名 (例如: example.com)..." :
-                          activeSearchType === 'url' ? "输入URL (例如: https://example.com)..." :
-                          "输入CVE编号 (例如: CVE-2021-44228)..."
-                        }
-                        className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium"
-                      />
-                      <button 
-                        type="submit"
-                        disabled={otxLoading}
-                        className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-12 py-5 rounded-[22px] font-black transition-all text-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 purple-glow"
-                      >
-                        {otxLoading ? (
-                          <>
-                            <Loader2 className="w-6 h-6 animate-spin" />
-                            检索中...
-                          </>
-                        ) : (
-                          '立即检索'
-                        )}
-                      </button>
-                    </div>
+                    {isDnsPage ? (
+                      <>
+                        {/* 搜索类型选项卡 */}
+                        <div className="flex gap-2 mb-4 justify-center bg-[#1a1a2e] p-1.5 rounded-full">
+                          {[
+                            { type: 'ip', label: 'IP', placeholder: '输入IP地址' },
+                            { type: 'domain', label: '域名', placeholder: '输入域名' },
+                            { type: 'url', label: 'URL', placeholder: '输入URL' },
+                            { type: 'cve', label: 'CVE', placeholder: '输入CVE编号' }
+                          ].map(({ type, label }) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => {
+                                setActiveSearchType(type as any);
+                              }}
+                              disabled
+                              className={cn(
+                                "px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 cursor-not-allowed",
+                                activeSearchType === type
+                                  ? "bg-accent/50 text-white/70 shadow-lg"
+                                  : "text-gray-500"
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        
+                        {/* 搜索框 */}
+                        <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={
+                              activeSearchType === 'ip' ? "输入IP地址 (例如: 8.8.8.8)..." :
+                              activeSearchType === 'domain' ? "输入域名 (例如: example.com)..." :
+                              activeSearchType === 'url' ? "输入URL (例如: https://example.com)..." :
+                              "输入CVE编号 (例如: CVE-2021-44228)..."
+                            }
+                            disabled
+                            className="flex-1 bg-transparent border-none text-white/70 placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium cursor-not-allowed"
+                          />
+                          <button 
+                            type="submit"
+                            disabled
+                            className="bg-accent/50 text-white/70 px-12 py-5 rounded-[22px] font-black transition-all text-xl shadow-xl cursor-not-allowed"
+                          >
+                            立即检索
+                          </button>
+                        </div>
                     
                     {/* 错误信息 */}
                     {otxError && (
@@ -1688,7 +1687,7 @@ const Dashboard = () => {
                                 <div className="w-32 h-4 bg-white/5 rounded animate-pulse"></div>
                               </div>
                             </td>
-                            {(activeTab === 'URLs' || activeTab === 'Subdomains') && (
+                            {(activeTab === 'URLs' || activeTab === '子域名') && (
                               <td className="px-6 py-4 text-right">
                                 <div className="inline-block w-16 h-6 bg-white/5 rounded-lg animate-pulse"></div>
                               </td>
@@ -1798,11 +1797,11 @@ const Dashboard = () => {
                 {results && (
                   (() => {
                     let totalCount = results.summary.total;
-                    if (activeTab === 'Employees') totalCount = results.summary.employees.count;
-                    else if (activeTab === 'Customers') totalCount = results.summary.customers.count;
-                    else if (activeTab === 'Third-Parties') totalCount = results.summary.third_parties.count;
+                    if (activeTab === '员工') totalCount = results.summary.employees.count;
+                    else if (activeTab === '客户') totalCount = results.summary.customers.count;
+                    else if (activeTab === '第三方') totalCount = results.summary.third_parties.count;
                     else if (activeTab === 'URLs') totalCount = results.summary.urls_count;
-                    else if (activeTab === 'Subdomains') totalCount = results.summary.subdomains_count;
+                    else if (activeTab === '子域名') totalCount = results.summary.subdomains_count;
 
                     const totalPages = Math.ceil(totalCount / pageSize);
                     

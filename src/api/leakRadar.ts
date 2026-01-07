@@ -1,15 +1,14 @@
 /**
- * LeakRadar API 客户端
+ * Lysir谍卫 API 客户端
  * 
  * 架构调整：
  * 前端连接到 AWS EC2 上的后端代理服务。
  * 请在 .env 文件中设置 VITE_BACKEND_URL=http://你的EC2公网IP:3000
  */
 
-// 切换到方案 B：Vercel Serverless 后端
-// 在本地开发时，Vercel 会自动处理 /api 路由
-const BASE_URL = window.location.origin;
-const API_PREFIX = '/api/leakradar';
+// 使用Vite代理，通过/api前缀转发到后端
+const BASE_URL = ''; // 使用当前域名，通过Vite代理转发
+const API_PREFIX = '/api'; // Vite代理前缀
 
 export interface LeakRadarProfile {
   success: boolean;
@@ -24,6 +23,17 @@ export interface LeakRadarProfile {
       remaining: number;
       reset_at: string;
     };
+  };
+  error?: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  token?: string;
+  message?: string;
+  user?: {
+    username: string;
+    email: string;
   };
   error?: string;
 }
@@ -108,12 +118,12 @@ export interface LeakRadarStats {
 }
 
 class LeakRadarAPI {
+  
   private sanitizeDomain(domain: string): string {
     return domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -127,24 +137,27 @@ class LeakRadarAPI {
       });
     }
 
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-    }
-
     try {
       // Ensure endpoint starts with / if not already
       const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-      const response = await fetch(`${BASE_URL}${API_PREFIX}${formattedEndpoint}`, {
+      const url = `${BASE_URL}${API_PREFIX}${formattedEndpoint}`;
+      
+      console.log(`[LeakRadar API] Sending request: ${url}`);
+      
+      const response = await fetch(url, {
         ...options,
         headers,
+        credentials: 'include', // 包含凭证，解决CORS问题
       });
+
+      console.log(`[LeakRadar API] Received response: ${response.status} for ${url}`);
 
       if (!response.ok) {
         let errorMsg = `请求失败 (${response.status})`;
         let detail = '';
         try {
           const errorData = await response.json();
-          console.error(`[LeakRadar API] 401/Error Detail for ${endpoint}:`, errorData);
+          console.error(`[LeakRadar API] Error Detail for ${endpoint}:`, errorData);
           // 将错误详情转为字符串，方便在 Error 对象中查看
           detail = typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData);
         } catch (e) {
@@ -171,6 +184,12 @@ class LeakRadarAPI {
       }
       
       console.error(`[LeakRadar API] Request to ${endpoint} error:`, msg);
+      
+      // 更友好的错误信息处理
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        throw new Error('无法连接到服务器，请检查网络连接或服务器状态');
+      }
+      
       throw new Error(msg);
     }
   }
@@ -202,7 +221,8 @@ class LeakRadarAPI {
   }
 
   private async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
-    const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
+    // 优先使用实例中的API密钥，其次使用环境变量
+    const apiKey = this.apiKey || import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
     const headers: Record<string, string> = {};
 
     if (options.headers) {
@@ -222,6 +242,7 @@ class LeakRadarAPI {
       const response = await fetch(`${BASE_URL}${API_PREFIX}${formattedEndpoint}`, {
         ...options,
         headers,
+        credentials: 'include', // 包含凭证，解决CORS问题
       });
 
       if (!response.ok) {
@@ -344,6 +365,24 @@ class LeakRadarAPI {
   async getStats(): Promise<LeakRadarStats> {
     return this.request<LeakRadarStats>('/stats');
   }
+
+  /**
+   * 登录到后端服务
+   * @param email 邮箱
+   * @param password 密码
+   * @returns 登录响应，包含token和用户信息
+   */
+  async login(email: string, password: string): Promise<LoginResponse> {
+    return this.request<LoginResponse>('/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+
 
   /**
    * Export unlocked leaks for the current profile

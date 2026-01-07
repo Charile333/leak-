@@ -6,14 +6,6 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig(({ mode }) => {
   // 加载当前模式下的环境变量
   const env = loadEnv(mode, process.cwd(), ''); // 第三个参数为空字符串，加载所有环境变量 (包括不带 VITE_ 前缀的)
-  
-  const LEAKRADAR_KEY = env.VITE_LEAKRADAR_API_KEY || env.LEAKRADAR_API_KEY;
-  
-  if (!LEAKRADAR_KEY) {
-    console.warn('\x1b[33m%s\x1b[0m', '⚠️  Warning: LEAKRADAR_API_KEY (or VITE_LEAKRADAR_API_KEY) is not set in .env file.');
-  } else {
-    console.log('\x1b[32m%s\x1b[0m', '✅ LeakRadar API Key loaded from .env');
-  }
 
   if (!env.VITE_DNS_API_TOKEN) {
     console.warn('\x1b[33m%s\x1b[0m', '⚠️  Warning: VITE_DNS_API_TOKEN is not set in .env file.');
@@ -28,66 +20,36 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       proxy: {
-        '/api/leakradar': {
-          target: 'https://api.leakradar.io',
+        // 所有API请求转发到本地后端服务
+        '/api': {
+          target: env.VITE_BACKEND_URL || 'http://localhost:3001',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/leakradar/, ''),
-          // 关键：在转发请求前注入 API Key
+          secure: false,
+          timeout: 10000, // 增加超时时间到10秒
           configure: (proxy) => {
             proxy.on('proxyReq', (proxyReq, req) => {
-              const apiKey = LEAKRADAR_KEY?.trim();
-              if (apiKey) {
-                // 彻底解决认证问题：移除可能冲突的头，重新注入
-                proxyReq.removeHeader('Authorization');
-                proxyReq.removeHeader('X-API-Key');
-                
-                proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
-                proxyReq.setHeader('X-API-Key', apiKey);
-                
-                // 增加 Host 头部重写，某些 API 校验这个
-                proxyReq.setHeader('Host', 'api.leakradar.io');
-                
-                // 在终端打印代理日志（不会显示在浏览器，显示在命令行）
-                console.log(`\x1b[36m[Proxy Request]\x1b[0m ${req.method} ${req.url} -> api.leakradar.io`);
-              }
+              console.log(`[Vite Proxy] ${req.method} ${req.url} -> http://localhost:3001${req.url}`);
             });
             
-            proxy.on('proxyRes', (proxyRes, req) => {
-              if (proxyRes.statusCode === 401) {
-                console.log(`\x1b[31m[Proxy Error]\x1b[0m ${req.url} returned 401 Unauthorized`);
-              }
-            });
-
-            proxy.on('error', (err, _req) => {
-              console.error('\x1b[31m[Proxy Fatal Error]\x1b[0m', err);
-            });
-          },
-        },
-        '/api/otx': {
-          target: 'https://otx.alienvault.com/api/v1',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/otx/, ''),
-          configure: (proxy) => {
-            proxy.on('proxyReq', (proxyReq, req) => {
-              const apiKey = env.VITE_OTX_API_KEY?.trim();
-              if (apiKey) {
-                proxyReq.setHeader('X-OTX-API-KEY', apiKey);
-                console.log(`\x1b[36m[OTX Proxy Request]\x1b[0m ${req.method} ${req.url} -> otx.alienvault.com`);
-              }
+            // 添加代理错误处理
+            proxy.on('error', (err, req, res) => {
+              console.error(`[Vite Proxy Error] ${req.method} ${req.url}: ${err.message}`);
+              // 向客户端返回友好的错误信息
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                error: 'Proxy Error',
+                message: '无法连接到本地后端服务器，请确保后端服务正在运行',
+                details: err.message
+              }));
             });
             
-            proxy.on('proxyRes', (proxyRes, req) => {
-              if (proxyRes.statusCode === 401) {
-                console.log(`\x1b[31m[OTX Proxy Error]\x1b[0m ${req.url} returned 401 Unauthorized`);
-              }
-            });
-
-            proxy.on('error', (err, _req) => {
-              console.error('\x1b[31m[OTX Proxy Fatal Error]\x1b[0m', err);
+            // 添加代理响应处理
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              console.log(`[Vite Proxy Response] ${req.method} ${req.url} <- ${proxyRes.statusCode}`);
             });
           },
         },
       },
     },
-  }
-})
+  };
+});

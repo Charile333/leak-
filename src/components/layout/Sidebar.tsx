@@ -5,10 +5,13 @@ import {
   Search, 
   ChevronDown, 
   Activity,
-  Pin
+  Pin,
+  LogOut,
+  User
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import dieLogo from '../../assets/diep.png';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   isPinned: boolean;
@@ -18,6 +21,22 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [isHovered, setIsHovered] = useState(false);
+  const { logout } = useAuth();
+  
+  // 获取用户信息
+  const getUserInfo = () => {
+    const userJson = localStorage.getItem('leakradar_user');
+    if (userJson) {
+      try {
+        return JSON.parse(userJson);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+  
+  const user = getUserInfo();
 
   // 侧边栏实际展示宽度由 isPinned 和 isHovered 共同决定
   const effectiveCollapsed = !isPinned && !isHovered;
@@ -250,35 +269,58 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
         <motion.div 
           layout
           className={cn(
-            "bg-gradient-to-br from-brand/20 to-transparent rounded-xl border border-white/5 overflow-hidden whitespace-nowrap min-h-[48px] flex flex-col justify-center",
-            effectiveCollapsed ? "items-center" : "px-4"
+            "bg-gradient-to-br from-brand/20 to-transparent rounded-xl border border-white/5 overflow-hidden min-h-[48px] flex items-center",
+            effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"
           )}
         >
           <AnimatePresence mode="wait">
             {!effectiveCollapsed ? (
               <motion.div
-                key="full-status"
+                key="full-user-area"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={smoothTransition}
+                className="flex items-center gap-3 w-full justify-between"
               >
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs text-gray-300 font-medium">
-                    系统服务已就绪
-                  </span>
+                {/* User Avatar and Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center text-white">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-white">
+                      {user?.name || user?.email || '用户'}
+                    </span>
+                    <span className="text-xs text-gray-400 truncate max-w-[120px]">
+                      {user?.email || ''}
+                    </span>
+                  </div>
                 </div>
+                
+                {/* Logout Button */}
+                <button
+                  onClick={logout}
+                  className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300"
+                  title="登出"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
               </motion.div>
             ) : (
               <motion.div
-                key="collapsed-status"
+                key="collapsed-user-area"
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={smoothTransition}
-                className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
-              />
+                className="flex items-center"
+              >
+                {/* User Avatar */}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center text-white">
+                  <User className="w-4 h-4" />
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </motion.div>

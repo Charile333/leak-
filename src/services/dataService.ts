@@ -281,90 +281,42 @@ export const dataService = {
         console.log(`[Debug] ${category} 分类不需要解锁，直接获取数据...`);
         
         if (category === 'urls') {
-          // 分别获取所有分类的数据，然后合并统计URL出现次数
-          const [empRes, custRes, thirdRes] = await Promise.all([
-            leakRadarApi.searchDomainCategory(domain, 'employees', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-            leakRadarApi.searchDomainCategory(domain, 'customers', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-            leakRadarApi.searchDomainCategory(domain, 'third_parties', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-          ]);
+          // 使用专门的getDomainUrls方法获取URL数据
+          const urlsRes = await leakRadarApi.getDomainUrls(domain, limit, offset).catch(() => ({ items: [], total: 0 }));
           
-          // 合并所有结果
-          const allItems = [...empRes.items, ...custRes.items, ...thirdRes.items];
-          
-          // 统计URL出现次数
-          const urlCounts: Record<string, number> = {};
-          allItems.forEach(item => {
-            const url = item.url || item.website || '';
-            if (url) {
-              urlCounts[url] = (urlCounts[url] || 0) + 1;
-            }
-          });
-          
-          // 转换为数组并按出现次数从多到少排序
-          const sortedUrls = Object.entries(urlCounts)
-            .map(([url, count]) => ({ url, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(offset, offset + limit); // 应用分页
-          
-          return sortedUrls.map(({ url, count }) => ({
-            id: `url-${url}`,
+          return urlsRes.items.map((urlItem: any, index: number) => ({
+            id: `url-${index}-${Math.random()}`,
             email: '',
             username: '',
             password_plaintext: '',
             password_hash: '',
             hash_type: '',
-            website: url,
+            website: urlItem.url || urlItem || '',
             source: '',
             leaked_at: '',
             type: 'Employee',
             strength: 'Medium',
-            count
+            count: urlItem.count || 1
           }));
         }
 
         if (category === 'subdomains') {
-          // 分别获取所有分类的数据，然后合并统计子域名出现次数
-          const [empRes, custRes, thirdRes] = await Promise.all([
-            leakRadarApi.searchDomainCategory(domain, 'employees', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-            leakRadarApi.searchDomainCategory(domain, 'customers', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-            leakRadarApi.searchDomainCategory(domain, 'third_parties', 1000, 0).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-          ]);
+          // 使用专门的getDomainSubdomains方法获取子域名数据
+          const subdomainsRes = await leakRadarApi.getDomainSubdomains(domain, limit, offset).catch(() => ({ items: [], total: 0 }));
           
-          // 合并所有结果
-          const allItems = [...empRes.items, ...custRes.items, ...thirdRes.items];
-          
-          // 统计子域名出现次数
-          const subdomainCounts: Record<string, number> = {};
-          allItems.forEach(item => {
-            const url = item.url || item.website || '';
-            if (url) {
-              // 从URL中提取子域名
-              const subdomain = url.replace(/^(https?:\/\/)?/, '').split('/')[0];
-              if (subdomain) {
-                subdomainCounts[subdomain] = (subdomainCounts[subdomain] || 0) + 1;
-              }
-            }
-          });
-          
-          // 转换为数组并按出现次数从多到少排序
-          const sortedSubdomains = Object.entries(subdomainCounts)
-            .map(([subdomain, count]) => ({ subdomain, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(offset, offset + limit); // 应用分页
-          
-          return sortedSubdomains.map(({ subdomain, count }) => ({
-            id: `sub-${subdomain}`,
+          return subdomainsRes.items.map((subdomainItem: any, index: number) => ({
+            id: `sub-${index}-${Math.random()}`,
             email: '',
             username: '',
             password_plaintext: '',
             password_hash: '',
             hash_type: '',
-            website: subdomain,
+            website: subdomainItem.subdomain || subdomainItem || '',
             source: '',
             leaked_at: '',
             type: 'Employee',
             strength: 'Medium',
-            count
+            count: subdomainItem.count || 1
           }));
         }
       }
