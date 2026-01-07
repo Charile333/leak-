@@ -222,7 +222,7 @@ class LeakRadarAPI {
 
   private async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
     // 优先使用实例中的API密钥，其次使用环境变量
-    const apiKey = this.apiKey || import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
+    const apiKey = import.meta.env.VITE_LEAKRADAR_API_KEY || import.meta.env.LEAKRADAR_API_KEY;
     const headers: Record<string, string> = {};
 
     if (options.headers) {

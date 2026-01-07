@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState } from 'react';
+import type { ReactNode } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -17,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // 登录方法 - 调用白名单登录API
-  const loginWithCredentials = async (email: string, password?: string): Promise<{ success: boolean; message?: string }> => {
+  const loginWithCredentials = async (email: string): Promise<{ success: boolean; message?: string }> => {
     try {
       // 调用白名单登录API
       const response = await fetch('/api/auth/login', {

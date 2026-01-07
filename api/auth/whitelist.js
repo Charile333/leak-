@@ -1,5 +1,4 @@
-export default function handler(req, res) {
-  try {
+module.exports = async function handler(req, res) {  try {
     // 设置CORS头
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', '*');
