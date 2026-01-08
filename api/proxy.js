@@ -1,28 +1,26 @@
-import axios from 'axios';
-import { Buffer } from 'buffer';
-import nodemailer from 'nodemailer';
-import jwt from 'jsonwebtoken';
+// 确保使用正确的模块系统
+try {
+  const axios = require('axios');
+  const { Buffer } = require('buffer');
 
-// JWT配置
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRY = '5m'; // 5分钟过期
+  module.exports = async function handler(req, res) {
+    console.log('[Proxy Handler] Received request:', req.method, req.url);
+    
+    // 确保返回的是JSON格式
+    function sendJSONResponse(res, status, data) {
+      try {
+        res.setHeader('Content-Type', 'application/json');
+        res.status(status).send(JSON.stringify(data));
+      } catch (e) {
+        res.setHeader('Content-Type', 'application/json');
+        res.status(500).send(JSON.stringify({
+          error: 'Internal Server Error',
+          message: '无法发送响应，请稍后重试'
+        }));
+      }
+    }
 
-// 邮件配置 - 支持SendGrid
-const SMTP_CONFIG = {
-  host: process.env.SMTP_HOST || 'smtp.sendgrid.net',
-  port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-  secure: process.env.SMTP_SECURE === 'true', // 使用TLS
-  auth: {
-    user: process.env.SMTP_USER || 'apikey', // SendGrid使用apikey作为用户名
-    pass: process.env.SMTP_PASS || '' // SendGrid API密钥
-  }
-};
-
-// 创建邮件传输器
-const transporter = nodemailer.createTransport(SMTP_CONFIG);
-
-export default async function handler(req, res) {
-  try {
+    try {
     // 1. 设置跨域头
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,7 +31,7 @@ export default async function handler(req, res) {
     );
 
     if (req.method === 'OPTIONS') {
-      res.status(200).end();
+      sendJSONResponse(res, 200, { success: true, message: 'OPTIONS request handled' });
       return;
     }
 

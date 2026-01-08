@@ -22,10 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithCredentials = async (email: string): Promise<{ success: boolean; message?: string }> => {
     try {
       // 根据环境动态选择API地址
-      const isProduction = import.meta.env.PROD;
-      const BASE_URL = isProduction ? '' : 'http://localhost:3001';
-      const API_PREFIX = isProduction ? '/api' : '';
-      const loginUrl = `${BASE_URL}${API_PREFIX}/auth/login`;
+    const isProduction = import.meta.env.PROD;
+    const BASE_URL = isProduction ? '' : 'http://localhost:3001';
+    const API_PREFIX = '/api'; // 始终使用/api前缀
+    const loginUrl = `${BASE_URL}${API_PREFIX}/auth/login`;
       
       // 调用白名单登录API
       const response = await fetch(loginUrl, {
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 根据环境动态选择API地址
       const isProduction = import.meta.env.PROD;
       const BASE_URL = isProduction ? '' : 'http://localhost:3001';
-      const API_PREFIX = isProduction ? '/api' : '';
+      const API_PREFIX = '/api'; // 始终使用/api前缀
       // 修复：使用正确的API路径，我们的后端只实现了/api/auth/login，没有/api/auth/login/verify
       const verifyUrl = `${BASE_URL}${API_PREFIX}/auth/login?token=${token}`;
       
