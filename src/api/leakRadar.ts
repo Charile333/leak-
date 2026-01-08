@@ -6,9 +6,12 @@
  * 请在 .env 文件中设置 VITE_BACKEND_URL=http://你的EC2公网IP:3000
  */
 
-// 直接连接到后端服务器，绕过Vite代理问题
-const BASE_URL = 'http://localhost:3001'; // 直接使用后端服务器地址
-const API_PREFIX = ''; // 无需代理前缀
+// 根据环境动态选择API地址
+const isProduction = import.meta.env.PROD;
+// 生产环境使用当前域名的/api路径（Vercel部署的API函数）
+// 开发环境直接使用本地后端服务器地址
+const BASE_URL = isProduction ? '' : 'http://localhost:3001';
+const API_PREFIX = isProduction ? '/api' : '';
 
 export interface LeakRadarProfile {
   success: boolean;
@@ -147,7 +150,7 @@ class LeakRadarAPI {
       const response = await fetch(url, {
         ...options,
         headers,
-        credentials: 'include', // 包含凭证，解决CORS问题
+        credentials: 'same-origin', // 仅在同域请求中包含凭证，解决CORS问题
       });
 
       console.log(`[LeakRadar API] Received response: ${response.status} for ${url}`);
@@ -242,7 +245,7 @@ class LeakRadarAPI {
       const response = await fetch(`${BASE_URL}${API_PREFIX}${formattedEndpoint}`, {
         ...options,
         headers,
-        credentials: 'include', // 包含凭证，解决CORS问题
+        credentials: 'same-origin', // 仅在同域请求中包含凭证，解决CORS问题
       });
 
       if (!response.ok) {
