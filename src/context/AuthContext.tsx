@@ -46,16 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      // 登录成功，保存认证状态
-      setIsAuthenticated(true);
-      localStorage.setItem('leakradar_auth', 'true');
-      
-      // 保存用户信息
-      if (data.user) {
-        localStorage.setItem('leakradar_user', JSON.stringify(data.user));
-      }
-
-      return { success: true };
+      // 发送登录链接成功，不直接设置认证状态
+      // 只有点击登录链接后才会设置认证状态
+      return { 
+        success: true, 
+        message: data.message || '登录链接已发送，请查收邮箱'
+      };
     } catch (error: any) {
       console.error('登录错误:', error);
       return { 

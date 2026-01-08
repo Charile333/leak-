@@ -10,7 +10,7 @@
 // 开发环境强制使用本地后端服务器地址，确保API请求正确路由
 // 生产环境使用当前域名的/api路径（Vercel部署的API函数）
 const BASE_URL = 'http://localhost:3001';
-const API_PREFIX = '';
+const API_PREFIX = '/api';
 
 export interface LeakRadarProfile {
   success: boolean;
