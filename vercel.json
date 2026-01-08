@@ -1,20 +1,20 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/auth/login",
-      "destination": "/api/auth/login.js"
+      "src": "/api/auth/login",
+      "dest": "/api/auth/login.js"
     },
     {
-      "source": "/api/auth/whitelist",
-      "destination": "/api/auth/whitelist.js"
+      "src": "/api/auth/whitelist",
+      "dest": "/api/auth/whitelist.js"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api/proxy.js"
+      "src": "/api/(.*)",
+      "dest": "/api/proxy.js"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
