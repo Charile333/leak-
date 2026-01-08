@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isProduction = import.meta.env.PROD;
       const BASE_URL = isProduction ? '' : 'http://localhost:3001';
       const API_PREFIX = isProduction ? '/api' : '';
-      const verifyUrl = `${BASE_URL}${API_PREFIX}/auth/login/verify?token=${token}`;
+      const verifyUrl = `${BASE_URL}${API_PREFIX}/auth/login?token=${token}`;
       
       // 调用登录链接验证API
       const response = await fetch(verifyUrl, {
