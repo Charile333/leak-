@@ -20,13 +20,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 登录方法 - 调用白名单登录API
   const loginWithCredentials = async (email: string): Promise<{ success: boolean; message?: string }> => {
     try {
+      // 根据环境动态选择API地址
+      const isProduction = import.meta.env.PROD;
+      const BASE_URL = isProduction ? '' : 'http://localhost:3001';
+      const API_PREFIX = isProduction ? '/api' : '';
+      const loginUrl = `${BASE_URL}${API_PREFIX}/auth/login`;
+      
       // 调用白名单登录API
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email }),
+        credentials: 'same-origin', // 仅在同域请求中包含凭证
       });
 
       const data = await response.json();
