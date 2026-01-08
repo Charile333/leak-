@@ -10,6 +10,16 @@
     },
     {
       "source": "/api/(.*)",
+      "destination": "/api/[...path].js",
+      "has": [
+        {
+          "type": "query",
+          "key": "token"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
       "destination": "/api/[...path].js"
     },
     {

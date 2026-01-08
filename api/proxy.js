@@ -64,6 +64,15 @@ export default async function handler(req, res) {
       return res.status(response.status).send(response.data);
     }
 
+    // 2. 处理特定的auth路由，不代理到外部API
+    if (req.url.includes('/api/auth/login') || req.url.includes('/auth/login')) {
+      // 直接返回404，因为这些路由应该由特定的函数处理，而不是代理
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Auth routes should be handled by specific functions, not proxy'
+      });
+    }
+    
     // 2. 获取目标路径 (更健壮的解析)
     const url = new URL(req.url, `http://${req.headers.host}`);
     let targetPath = url.pathname;
