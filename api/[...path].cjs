@@ -1,6 +1,6 @@
 // 确保使用正确的模块系统
 try {
-  const proxyHandler = require('./proxy.js');
+  const proxyHandler = require('./proxy.cjs');
 
   module.exports = async function handler(req, res) {
     console.log('[Dynamic Route] Received request:', req.method, req.url);
