@@ -1,8 +1,16 @@
 {
   "rewrites": [
     {
+      "source": "/api/auth/login",
+      "destination": "/api/auth/login.js"
+    },
+    {
+      "source": "/api/auth/whitelist",
+      "destination": "/api/auth/whitelist.js"
+    },
+    {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "destination": "/api/[...path].js"
     },
     {
       "source": "/(.*)",
