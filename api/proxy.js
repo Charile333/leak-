@@ -48,12 +48,12 @@ export default async function handler(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     let targetPath = url.pathname;
     
-    // 演示模式：强制限制每次查询最多100条结果
-    // 设置固定的page_size为100
-    url.searchParams.set('page_size', '100');
+    // 演示模式：强制限制每次查询最多10条结果
+    // 设置固定的page_size为10
+    url.searchParams.set('page_size', '10');
     // 如果是解锁请求，添加限制参数
     if (targetPath.includes('/unlock')) {
-      url.searchParams.set('limit', '100');
+      url.searchParams.set('limit', '10');
     }
     
     const searchParams = url.search || '';
