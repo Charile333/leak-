@@ -72,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isProduction = import.meta.env.PROD;
       const BASE_URL = isProduction ? '' : 'http://localhost:3001';
       const API_PREFIX = isProduction ? '/api' : '';
-      const verifyUrl = `${BASE_URL}${API_PREFIX}/auth/login/verify?token=${token}`;
+      // 修复：使用正确的API路径，我们的后端只实现了/api/auth/login，没有/api/auth/login/verify
+      const verifyUrl = `${BASE_URL}${API_PREFIX}/auth/login?token=${token}`;
       
       // 调用登录链接验证API
       const response = await fetch(verifyUrl, {
