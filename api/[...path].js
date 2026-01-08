@@ -7,23 +7,20 @@ export default async function handler(req, res) {
   function sendJSONResponse(res, status, data) {
     try {
       res.setHeader('Content-Type', 'application/json');
-      res.status(status).send(JSON.stringify(data));
+      res.status(status).json(data);
     } catch (e) {
       res.setHeader('Content-Type', 'application/json');
-      res.status(500).send(JSON.stringify({
+      res.status(500).json({
         error: 'Internal Server Error',
         message: '无法发送响应，请稍后重试'
-      }));
+      });
     }
   }
 
   try {
     // 检查请求路径，如果是auth相关请求，返回404
-    // 但允许/login/verify请求通过，因为它应该被路由到auth/login.js
-    const isAuthLoginRoot = req.url === '/api/auth/login' || req.url === '/auth/login';
-    const isAuthWhitelist = req.url.includes('/api/auth/whitelist') || req.url.includes('/auth/whitelist');
-    
-    if (isAuthLoginRoot || isAuthWhitelist) {
+    // 因为auth请求应该由专门的函数处理，而不是代理
+    if (req.url.includes('/auth/')) {
       console.log('[Dynamic Route] Rejecting auth request:', req.url);
       sendJSONResponse(res, 404, {
         error: 'Not Found',
