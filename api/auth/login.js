@@ -74,18 +74,40 @@ export default async function handler(req, res) {
         });
       }
 
-      // 1. 从环境变量获取白名单
+      // 1. 从环境变量获取白名单 - 增强的错误处理
       let WHITELISTED_USERS = [];
       try {
-        WHITELISTED_USERS = process.env.WHITELISTED_USERS 
-          ? JSON.parse(process.env.WHITELISTED_USERS)
-          : [];
+        if (process.env.WHITELISTED_USERS) {
+          // 尝试直接解析JSON
+          WHITELISTED_USERS = JSON.parse(process.env.WHITELISTED_USERS);
+        } else {
+          // 环境变量未设置，使用默认白名单
+          WHITELISTED_USERS = ['konaa2651@gmail.com', 'Lysirsec@outlook.com'];
+          console.log('[Login Warning] Using default WHITELISTED_USERS:', WHITELISTED_USERS);
+        }
       } catch (error) {
         console.error('[Login Error] Failed to parse WHITELISTED_USERS:', error.message);
-        return res.status(500).json({
-          error: 'Internal Server Error',
-          message: '服务器配置错误，请联系管理员'
-        });
+        // 如果JSON解析失败，尝试用逗号分隔的格式
+        try {
+          WHITELISTED_USERS = process.env.WHITELISTED_USERS
+            .replace(/\[|\]/g, '')
+            .replace(/"/g, '')
+            .split(',')
+            .map(email => email.trim())
+            .filter(email => email.length > 0);
+          console.log('[Login Warning] Using fallback parsing for WHITELISTED_USERS:', WHITELISTED_USERS);
+        } catch (fallbackError) {
+          console.error('[Login Error] Failed to parse WHITELISTED_USERS with fallback:', fallbackError.message);
+          // 使用默认白名单作为最后一道防线
+          WHITELISTED_USERS = ['konaa2651@gmail.com', 'Lysirsec@outlook.com'];
+          console.log('[Login Warning] Using default WHITELISTED_USERS as final fallback:', WHITELISTED_USERS);
+        }
+      }
+      
+      // 确保WHITELISTED_USERS是数组
+      if (!Array.isArray(WHITELISTED_USERS)) {
+        WHITELISTED_USERS = ['konaa2651@gmail.com', 'Lysirsec@outlook.com'];
+        console.log('[Login Warning] WHITELISTED_USERS is not an array, using default:', WHITELISTED_USERS);
       }
 
       // 2. 白名单验证
