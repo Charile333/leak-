@@ -13,14 +13,14 @@ const ParticleWaves: React.FC = () => {
     if (!containerRef.current) return;
 
     const container = containerRef.current;
-    const particleCount = 5000;
+    const particleCount = 100_000; // 与原始实现相同的粒子数量
 
     // 初始化场景
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
     sceneRef.current = scene;
 
-    // 初始化相机
+    // 初始化相机 - 与原始实现相同的相机参数
     const camera = new THREE.PerspectiveCamera(
       50,
       window.innerWidth / window.innerHeight,
@@ -35,7 +35,7 @@ const ParticleWaves: React.FC = () => {
     const positions = new Float32Array(particleCount * 3);
     const sizes = new Float32Array(particleCount);
 
-    // 初始化粒子位置和大小
+    // 初始化粒子位置和大小 - 与原始实现相同的算法
     const separation = 100;
     const amount = Math.sqrt(particleCount);
     const offset = amount / 2;
@@ -45,17 +45,19 @@ const ParticleWaves: React.FC = () => {
       const x = (i % amount) - offset;
       const z = Math.floor(i / amount) - offset;
 
+      // 与原始实现相同的位置计算
       positions[i3] = x * separation;
       positions[i3 + 1] = 0;
       positions[i3 + 2] = z * separation;
 
+      // 初始大小为1.0
       sizes[i] = 1.0;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // 创建粒子材质
+    // 创建粒子材质 - 模拟原始实现的效果
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 },
@@ -72,15 +74,22 @@ const ParticleWaves: React.FC = () => {
           float x = pos.x * 0.5;
           float z = pos.z * 0.5;
           
+          // 与原始实现相同的时间计算
           float time2 = (1.0 - time) * 5.0;
           
+          // 与原始实现相同的波浪运动
           float sinX = sin(x + time2 * 0.7) * 50.0;
           float sinZ = sin(z + time2 * 0.5) * 50.0;
           
           pos.y = sinX + sinZ;
           
+          // 与原始实现相同的大小变化
+          float sinSX = sin(x + time2 * 0.7) + 1.0;
+          float sinSZ = sin(z + time2 * 0.5) + 1.0;
+          float particleSize = (sinSX + sinSZ) * 5.0;
+          
           vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z);
+          gl_PointSize = particleSize * (300.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -88,6 +97,7 @@ const ParticleWaves: React.FC = () => {
         varying float vSize;
         
         void main() {
+          // 与原始实现相同的圆形粒子
           vec2 vUv = gl_PointCoord.xy - vec2(0.5);
           float distance = length(vUv);
           
@@ -95,22 +105,39 @@ const ParticleWaves: React.FC = () => {
             discard;
           }
           
-          float alpha = 1.0 - distance * 2.0;
-          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+          // 白色粒子，与原始实现相同
+          gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
         }
       `,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      transparent: false, // 与原始实现相同
+      depthWrite: true, // 与原始实现相同
+      blending: THREE.NormalBlending, // 与原始实现相同
+      vertexColors: false, // 与原始实现相同
     });
 
     // 创建粒子系统
     const particles = new THREE.Points(geometry, material);
+    particles.frustumCulled = false; // 与原始实现相同
     scene.add(particles);
     particlesRef.current = particles;
 
-    // 初始化渲染器
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // 初始化渲染器 - 尝试使用WebGPURenderer，如果不支持则回退到WebGLRenderer
+    let renderer: THREE.WebGLRenderer | null = null;
+    try {
+      // 检查是否支持WebGPU
+      if (typeof navigator !== 'undefined' && navigator.gpu) {
+        // @ts-ignore - WebGPURenderer is not yet in the types
+        renderer = new THREE.WebGPURenderer({ antialias: true });
+      } else {
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+      }
+    } catch (error) {
+      console.error('WebGPURenderer not supported, falling back to WebGLRenderer:', error);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+    }
+
+    if (!renderer) return;
+
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
