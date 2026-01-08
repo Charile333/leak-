@@ -86,7 +86,7 @@ const Dashboard = () => {
   const [weeklyGrowth, setWeeklyGrowth] = useState<any[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(100);
+  const [pageSize] = useState(10);
   // 保存各个分类的数据，避免替换原始完整数据
   const [categoryCredentials, setCategoryCredentials] = useState<Record<string, LeakedCredential[]>>({});
   // 控制骨架屏显示
@@ -1803,9 +1803,11 @@ const Dashboard = () => {
                     else if (activeTab === 'URLs') totalCount = results.summary.urls_count;
                     else if (activeTab === '子域名') totalCount = results.summary.subdomains_count;
 
-                    const totalPages = Math.ceil(totalCount / pageSize);
+                    // 使用固定的10作为每页数量，与API代理层的限制保持一致
+                    const actualPageSize = 10;
+                    const totalPages = Math.ceil(totalCount / actualPageSize);
                     
-                    if (totalCount <= pageSize) return null;
+                    if (totalCount <= actualPageSize) return null;
 
                     return (
                       <div className="flex items-center justify-center gap-4 mt-8">

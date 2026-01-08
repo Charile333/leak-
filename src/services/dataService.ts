@@ -110,7 +110,7 @@ export const dataService = {
     return domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
   },
 
-  searchDomain: async (domainInput: string, limit = 100, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
+  searchDomain: async (domainInput: string, limit = 10, offset = 0): Promise<{ summary: DomainSearchSummary, credentials: LeakedCredential[] }> => {
     const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
     try {
       console.log(`[dataService] Starting sequential search for domain: ${domain}`);
@@ -271,7 +271,7 @@ export const dataService = {
    * Search specific category leaks with pagination
    * 直接调用API获取数据，不包含解锁步骤
    */
-  searchCategory: async (domainInput: string, category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains', limit = 100, offset = 0): Promise<LeakedCredential[]> => {
+  searchCategory: async (domainInput: string, category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains', limit = 10, offset = 0): Promise<LeakedCredential[]> => {
     try {
       // 统一处理domain，确保缓存键一致
       const domain = domainInput.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
