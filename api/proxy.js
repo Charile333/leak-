@@ -1,7 +1,7 @@
-const axios = require('axios');
-const { Buffer } = require('buffer');
+import axios from 'axios';
+import { Buffer } from 'buffer';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     // 1. 设置跨域头
     res.setHeader('Access-Control-Allow-Credentials', true);
