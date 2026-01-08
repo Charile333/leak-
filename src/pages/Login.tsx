@@ -5,6 +5,7 @@ import dieLogo from '../assets/diep.png';
 import purpleLogo from '../assets/紫色2.png';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import ParticleWaves from '../components/ParticleWaves';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -88,13 +89,8 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* 动态背景 */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#000000] to-[#0d0d1a]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(109,40,217,0.15),transparent_70%)] animate-pulse-slow"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.1),transparent_70%)] animate-pulse-slow delay-700"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_100%,rgba(59,130,246,0.1),transparent_70%)] animate-pulse-slow delay-1400"></div>
-      </div>
+      {/* 粒子波背景 */}
+      <ParticleWaves />
       
       {/* 右上角logo */}
       <div className="absolute top-4 right-4 z-10">
