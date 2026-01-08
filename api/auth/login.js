@@ -128,10 +128,19 @@ export default async function handler(req, res) {
         `
       };
       
-      // 6. 发送邮件
-      await transporter.sendMail(mailOptions);
+      // 6. 发送邮件 - 包装为Promise以支持await
+      await new Promise((resolve, reject) => {
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error('[Mail Error] Failed to send login link:', error.message);
+            reject(new Error(`发送登录链接失败: ${error.message}`));
+          } else {
+            console.log(`[Mail] Login link sent to ${email}: ${info.messageId}`);
+            resolve(info);
+          }
+        });
+      });
       
-      console.log(`[Mail] Login link sent to ${email}`);
       res.status(200).json({
         success: true,
         message: '登录链接已发送到您的邮箱，请检查并点击链接登录'
