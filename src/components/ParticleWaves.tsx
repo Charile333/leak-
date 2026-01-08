@@ -140,9 +140,10 @@ const ParticleWaves: React.FC = () => {
         return;
       }
 
-      // 更新时间 uniforms
+      // 更新时间 uniforms - 修复类型错误：添加类型断言
       const currentTime = (Date.now() - (startTimeRef.current || Date.now())) * 0.001;
-      particlesRef.current.material.uniforms.time.value = currentTime;
+      const material = particlesRef.current.material as THREE.ShaderMaterial;
+      material.uniforms.time.value = currentTime;
       
       console.log('[ParticleWaves] Time updated:', currentTime);
 
@@ -183,8 +184,19 @@ const ParticleWaves: React.FC = () => {
       }
 
       if (particlesRef.current) {
+        // 清理几何体
         particlesRef.current.geometry.dispose();
-        particlesRef.current.material.dispose();
+        
+        // 清理材质 - 修复类型错误：处理Material | Material[]类型
+        const material = particlesRef.current.material;
+        if (Array.isArray(material)) {
+          // 如果是材质数组，遍历并清理每个材质
+          material.forEach(m => m.dispose());
+        } else {
+          // 如果是单个材质，直接清理
+          material.dispose();
+        }
+        
         particlesRef.current = null;
       }
 
