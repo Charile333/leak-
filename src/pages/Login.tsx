@@ -4,7 +4,6 @@ import { ArrowRight, HelpCircle } from 'lucide-react';
 import dieLogo from '../assets/diep.png';
 import purpleLogo from '../assets/紫色2.png';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import ParticleWaves from '../components/ParticleWaves';
 
 const Login: React.FC = () => {
@@ -14,7 +13,6 @@ const Login: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [emailError, setEmailError] = useState('');
   const { loginWithCredentials } = useAuth();
-  const navigate = useNavigate();
 
   // 从localStorage加载记住的邮箱
   useEffect(() => {
@@ -77,8 +75,11 @@ const Login: React.FC = () => {
       if (!result.success) {
         setError(result.message || '登录失败');
       } else {
-        // 登录成功，跳转到首页
-        navigate('/');
+        // 登录链接发送成功，显示成功消息，不跳转到首页
+        // 用户需要点击邮箱中的登录链接才能完成登录
+        setError('');
+        // 可以在这里添加成功消息显示
+        alert('登录链接已发送到您的邮箱，请查收并点击链接完成登录');
       }
     } catch (err: any) {
       setError(err.message || '登录失败，请检查您的输入或网络连接');
