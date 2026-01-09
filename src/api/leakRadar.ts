@@ -391,9 +391,10 @@ class LeakRadarAPI {
     
     // 根据 API 错误提示，使用异步任务端点
     // 错误信息："Too many unlocks for synchronous endpoint (>10k). Use /search/domain/{domain}/{leak_type}/unlock/task."
+    // 在请求体中添加max参数，限制解锁数量为10
     return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock/task`, {
       method: 'POST',
-      body: JSON.stringify({})
+      body: JSON.stringify({ max: 10 })
     });
   }
 
