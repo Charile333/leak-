@@ -13,36 +13,36 @@ const ParticleWaves: React.FC = () => {
     if (!containerRef.current) return;
 
     const container = containerRef.current;
-    const particleCount = 100000; // 与源文件相同的粒子数量
+    const particleCount = 10000; // 减少粒子数量提高性能，同时保持视觉效果
 
     // Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
     sceneRef.current = scene;
 
-    // Camera - 与源文件相同的配置
+    // Camera
     const camera = new THREE.PerspectiveCamera(
       50,
       window.innerWidth / window.innerHeight,
       10,
-      100000
+      10000
     );
-    camera.position.set(0, 200, 500); // 与源文件相同的相机位置
+    camera.position.set(0, 200, 800); // 调整相机位置，更好地观察波浪效果
     cameraRef.current = camera;
 
-    // Geometry - 与源文件相同的粒子布局
+    // Geometry
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const sizes = new Float32Array(particleCount);
 
-    const separation = 100;
+    const separation = 50; // 减小间距，使粒子更密集
     const amount = Math.sqrt(particleCount);
     const offset = amount / 2;
 
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3;
       
-      // 与源文件相同的网格布局
+      // 网格布局
       const x = i % amount;
       const z = Math.floor(i / amount);
       
@@ -56,7 +56,7 @@ const ParticleWaves: React.FC = () => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // Shader Material - 实现与源文件相同的着色器效果，但修复动画逻辑
+    // 简化的Shader Material，提高性能
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 }
@@ -64,32 +64,29 @@ const ParticleWaves: React.FC = () => {
       vertexShader: `
         uniform float time;
         attribute float size;
-        varying float vSize;
         
         void main() {
-          vSize = size;
-          
-          // 修复时间计算，使用递增的时间值
-          float time2 = time * 5.0;
-          float x = position.x * 0.01; // 调整缩放因子以获得更明显的波浪效果
+          // 更明显的波浪动画
+          float time2 = time * 2.0;
+          float x = position.x * 0.01;
           float z = position.z * 0.01;
           
-          float sinX = sin(x + time2 * 0.7) * 50.0;
-          float sinZ = sin(z + time2 * 0.5) * 50.0;
+          // 增加波浪振幅，使动画更明显
+          float sinX = sin(x + time2 * 0.7) * 80.0;
+          float sinZ = sin(z + time2 * 0.5) * 80.0;
+          float sinXY = sin((x + z) * 0.5 + time2 * 1.0) * 40.0;
           
           vec3 newPosition = vec3(
-            position.x,
-            sinX + sinZ,
-            position.z
+            position.x + sin((z + time2 * 0.3) * 0.5) * 20.0,
+            sinX + sinZ + sinXY,
+            position.z + sin((x + time2 * 0.4) * 0.5) * 20.0
           );
           
-          // 修复大小动画逻辑
-          float sinSX = (sin(x + time2 * 0.7) + 1.0) * 5.0;
-          float sinSZ = (sin(z + time2 * 0.5) + 1.0) * 5.0;
-          float newSize = sinSX + sinSZ;
+          // 粒子大小动画
+          float particleSize = (sin(x + z + time2) + 1.0) * 5.0 + 2.0;
           
           vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
-          gl_PointSize = newSize * (300.0 / -mvPosition.z);
+          gl_PointSize = particleSize * (300.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -102,18 +99,19 @@ const ParticleWaves: React.FC = () => {
             discard;
           }
           
-          // 与源文件相同的白色效果
-          gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+          // 添加渐变效果，使粒子更美观
+          float alpha = 1.0 - distance * 2.0;
+          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
         }
       `,
-      transparent: false,
-      depthWrite: true,
-      blending: THREE.NormalBlending
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
     });
 
     // Particles
     const particles = new THREE.Points(geometry, material);
-    particles.frustumCulled = false; // 与源文件相同
+    particles.frustumCulled = false;
     scene.add(particles);
     particlesRef.current = particles;
 
@@ -124,17 +122,22 @@ const ParticleWaves: React.FC = () => {
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Animation - 与源文件相同的动画逻辑
+    // Animation
+    const startTime = Date.now();
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
 
       if (!particlesRef.current || !sceneRef.current || !cameraRef.current || !rendererRef.current) return;
 
-      // Update time uniform
-      const time = Date.now() * 0.001;
-      (particlesRef.current.material as THREE.ShaderMaterial).uniforms.time.value = time;
+      // 更新时间，使用相对时间计算
+      const elapsedTime = (Date.now() - startTime) * 0.001;
+      const shaderMaterial = particlesRef.current.material as THREE.ShaderMaterial;
+      shaderMaterial.uniforms.time.value = elapsedTime;
+      
+      // 添加粒子系统旋转，增强视觉效果
+      particlesRef.current.rotation.y = elapsedTime * 0.1;
 
-      // Render
+      // 渲染
       rendererRef.current.render(sceneRef.current, cameraRef.current);
     };
 
