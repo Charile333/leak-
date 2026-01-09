@@ -72,14 +72,22 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       // 在Vercel中，请求体已经被解析为req.body
-      const { email } = req.body || {};
+      const { email, password } = req.body || {};
       
-      // 验证邮箱是否提供
+      // 验证邮箱和密码是否提供
       if (!email || typeof email !== 'string') {
         console.error('[Login Error] Missing or invalid email:', email);
         return sendJSONResponse(400, {
           error: 'Bad Request',
           message: '请提供有效的邮箱地址'
+        });
+      }
+      
+      if (!password || typeof password !== 'string') {
+        console.error('[Login Error] Missing or invalid password');
+        return sendJSONResponse(400, {
+          error: 'Bad Request',
+          message: '请提供有效的密码'
         });
       }
 
@@ -92,12 +100,53 @@ export default async function handler(req, res) {
         });
       }
 
-      console.log(`[Whitelist] User ${email} granted access (in whitelist)`);
+      // 密码验证 - 从环境变量获取密码配置
+      // 支持两种格式：1) 单个密码（所有用户共用） 2) JSON对象（每个用户不同密码）
+      let isValidPassword = false;
+      try {
+        const PASSWORD_CONFIG = process.env.LOGIN_PASSWORD_CONFIG;
+        
+        if (PASSWORD_CONFIG) {
+          // 尝试解析为JSON对象（每个用户不同密码）
+          try {
+            const passwordObj = JSON.parse(PASSWORD_CONFIG);
+            if (typeof passwordObj === 'object' && passwordObj !== null) {
+              // 检查该用户的密码
+              isValidPassword = passwordObj[email] === password;
+            }
+          } catch (jsonError) {
+            // 如果不是JSON，视为单个密码（所有用户共用）
+            isValidPassword = PASSWORD_CONFIG === password;
+          }
+        } else {
+          // 开发环境默认密码
+          const DEFAULT_PASSWORD = 'password123';
+          isValidPassword = password === DEFAULT_PASSWORD;
+        }
+      } catch (e) {
+        console.error('[Login Error] Password validation error:', e.message);
+        isValidPassword = false;
+      }
       
-      // 简化登录逻辑，直接返回成功响应
+      if (!isValidPassword) {
+        console.log(`[Login Error] Invalid password for user ${email}`);
+        return sendJSONResponse(401, {
+          error: 'Unauthorized',
+          message: '密码错误，请重新输入'
+        });
+      }
+
+      console.log(`[Login Success] User ${email} authenticated successfully`);
+      
+      // 返回登录成功响应，包含用户信息
       return sendJSONResponse(200, {
         success: true,
-        message: '登录请求已收到',
+        message: '登录成功',
+        user: {
+          email: email,
+          username: email.split('@')[0],
+          name: email.split('@')[0]
+        },
         email: email
       });
     } else if (req.method === 'GET') {
