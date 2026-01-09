@@ -64,6 +64,7 @@ const Login: React.FC = () => {
     
     setIsLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       // 验证表单
@@ -84,15 +85,8 @@ const Login: React.FC = () => {
       const result = await loginWithCredentials(trimmedEmail, password);
       if (!result.success) {
         setError(result.message || '登录失败');
-        setSuccess('');
-      } else {
-        // 登录成功，显示成功消息
-        setError('');
-        setSuccess(result.message || '登录成功');
-        // 清空输入框
-        setEmail('');
-        setPassword('');
       }
+      // 登录成功后，PrivateRoute会自动重定向，不需要显示成功消息
     } catch (err: any) {
       setError(err.message || '登录失败，请检查您的输入或网络连接');
     } finally {
