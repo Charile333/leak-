@@ -193,7 +193,13 @@ class LeakRadarAPI {
       try {
         return JSON.parse(responseText) as T;
       } catch (jsonError) {
-        throw new Error(`JSON解析失败：${jsonError.message}。响应内容：${responseText}`);
+        // 处理unknown类型的错误
+        const errorMsg = jsonError instanceof Error 
+          ? jsonError.message 
+          : typeof jsonError === 'string' 
+            ? jsonError 
+            : '未知错误';
+        throw new Error(`JSON解析失败：${errorMsg}。响应内容：${responseText}`);
       }
     } catch (error: any) {
       // 提取错误信息
