@@ -510,17 +510,20 @@ const Dashboard = () => {
     // 检查是否有分页数据缓存
     const hasPagedData = currentCategory && categoryCredentials[currentCategory] && categoryCredentials[currentCategory].length > 0;
     
+    // 检查results是否存在且有数据
+    const hasResults = results && results.credentials && results.credentials.length > 0;
+    
     // URL和子域名标签的数据处理
     if (activeTab === 'URLs' || activeTab === '子域名') {
       if (hasPagedData) {
         list = [...categoryCredentials[currentCategory]];
-      } else if (results) {
+      } else if (hasResults) {
         // 初始化数据时，URL和子域名标签也应该有数据
         list = [...results.credentials];
       }
     } 
     // 其他标签的数据处理
-    else if (results) {
+    else if (hasResults) {
       if (hasPagedData) {
         list = [...categoryCredentials[currentCategory]];
       } else {
@@ -534,8 +537,12 @@ const Dashboard = () => {
           list = list.filter(c => c.type === 'Third-Party');
         } else if (activeTab === '客户') {
           list = list.filter(c => c.type === 'Customer');
-        }
+        } 
         // 报告标签页显示所有数据，不需要过滤
+        else if (activeTab === '报告') {
+          // 报告标签页显示所有数据
+          list = [...results.credentials];
+        }
       }
     }
 
