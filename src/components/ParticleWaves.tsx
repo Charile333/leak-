@@ -60,45 +60,14 @@ const ParticleWaves: React.FC = () => {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setAttribute('pointSize', new THREE.BufferAttribute(pointSizes, 1));
 
-    // Shader Material
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0.0 },
-        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
-      },
-      vertexShader: `
-        uniform float time;
-        attribute float pointSize;
-        attribute vec3 color;
-        varying vec3 vColor;
-
-        void main() {
-          vColor = color;
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = pointSize * (300.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        varying vec3 vColor;
-
-        void main() {
-          vec2 vUv = gl_PointCoord.xy - vec2(0.5);
-          float distance = length(vUv);
-          
-          if (distance > 0.5) {
-            discard;
-          }
-          
-          float alpha = 1.0 - distance * 2.0;
-          gl_FragColor = vec4(vColor, alpha);
-        }
-      `,
+    // Material - 使用简单的PointsMaterial，避免着色器编译错误
+    const material = new THREE.PointsMaterial({
+      color: 0x6366f1,
+      size: 2,
       transparent: true,
-      depthWrite: false,
+      opacity: 0.8,
       blending: THREE.AdditiveBlending,
-      vertexColors: true
+      depthWrite: false,
     });
 
     // Particles
