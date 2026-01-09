@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, HelpCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import dieLogo from '../assets/diep.png';
 import purpleLogo from '../assets/紫色2.png';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +17,7 @@ const Login: React.FC = () => {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const { loginWithCredentials } = useAuth();
+  const navigate = useNavigate();
 
   // 从localStorage加载记住的邮箱
   useEffect(() => {
@@ -85,8 +87,11 @@ const Login: React.FC = () => {
       const result = await loginWithCredentials(trimmedEmail, password);
       if (!result.success) {
         setError(result.message || '登录失败');
+      } else {
+        // 登录成功，手动重定向到首页
+        console.log('Login successful, navigating to /');
+        navigate('/');
       }
-      // 登录成功后，PrivateRoute会自动重定向，不需要显示成功消息
     } catch (err: any) {
       setError(err.message || '登录失败，请检查您的输入或网络连接');
     } finally {
