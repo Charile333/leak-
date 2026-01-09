@@ -389,12 +389,10 @@ class LeakRadarAPI {
   async unlockDomain(domain: string, category: 'employees' | 'customers' | 'third_parties'): Promise<{ success: boolean; message?: string }> {
     const sanitized = this.sanitizeDomain(domain);
     
-    // 根据 API 错误提示，使用异步任务端点
-    // 错误信息："Too many unlocks for synchronous endpoint (>10k). Use /search/domain/{domain}/{leak_type}/unlock/task."
-    // 在请求体中添加max参数，限制解锁数量为10
-    return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock/task`, {
-      method: 'POST',
-      body: JSON.stringify({ max: 10 })
+    // 使用同步解锁端点，因为我们只解锁10条数据，远低于10k的限制
+    // 根据API文档，同步端点支持max查询参数来限制解锁数量
+    return this.request<{ success: boolean; message?: string }>(`/search/domain/${sanitized}/${category}/unlock?max=10`, {
+      method: 'POST'
     });
   }
 
