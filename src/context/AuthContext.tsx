@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  loginWithCredentials: (email: string) => Promise<{ success: boolean; message?: string }>;
+  loginWithCredentials: (email: string, password?: string) => Promise<{ success: boolean; message?: string }>;
   verifyLoginLink: (token: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }
