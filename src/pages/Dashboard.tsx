@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
 import { 
   Search, 
-  Shield,
   User,
   Users,
   Briefcase,
@@ -19,7 +18,8 @@ import {
   ChevronLeft,
   UserCheck,
   ShieldAlert,
-  UserMinus
+  UserMinus,
+  Download
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { dataService } from '../services/dataService';
@@ -147,11 +147,90 @@ const Dashboard = () => {
   // 保存各个分类的数据，避免替换原始完整数据
   const [categoryCredentials, setCategoryCredentials] = useState<Record<string, LeakedCredential[]>>({});
   
+  // 导出功能相关状态
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string>('');
+  
+  // 防止搜索时页面跳动：当用户开始输入新查询时隐藏搜索结果
+  useEffect(() => {
+    // 当用户开始输入新的搜索查询，且不是正在搜索时，隐藏结果区域
+    if (searchQuery && !isSearching) {
+      setShowResults(false);
+    }
+  }, [searchQuery, isSearching]);
+  
   // DNS数据集相关状态
   const [activeSearchType, setActiveSearchType] = useState<'ip' | 'domain' | 'url' | 'cve'>('ip');
   const [otxResults, setOtxResults] = useState<any>(null);
   const [otxLoading, setOtxLoading] = useState(false);
   const [otxError, setOtxError] = useState<string>('');
+  
+  // 导出功能实现 - 只保留CSV导出
+  const handleExport = async () => {
+    if (!searchQuery || !results) return;
+    
+    setExportLoading(true);
+    setExportMessage('');
+    
+    try {
+      const domain = searchQuery.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+      
+      // 先获取当前分类，确保使用有效的category值
+      const categoryMap: Record<string, 'employees' | 'customers' | 'third_parties'> = {
+        '员工': 'employees',
+        '客户': 'customers',
+        '第三方': 'third_parties'
+      };
+      // 默认使用employees分类，避免使用无效的'all'分类
+      const category = categoryMap[activeTab] || 'employees';
+      
+      // 使用getLeaksFull API获取完整数据，然后手动导出为CSV
+      const fullResults = await leakRadarApi.getLeaksFull(domain, category);
+      
+      // 生成CSV内容
+      const csvHeader = 'URL,TYPE,EMAIL/USERNAME,PASSWORD,Indexed At\n';
+      const csvRows = fullResults.items.map((item: any) => {
+        const url = item.website || item.url || domain || '';
+        const type = item.email && item.email.includes('@') ? 'EMAIL' : 'USERNAME';
+        const emailUsername = item.email || item.username || '';
+        const password = item.password_plaintext || item.password || '';
+        const leakedAt = item.leaked_at || item.added_at || '';
+        
+        // CSV转义处理
+        const escapeCsv = (value: string) => {
+          if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        };
+        
+        return `${escapeCsv(url)},${escapeCsv(type)},${escapeCsv(emailUsername)},${escapeCsv(password)},${escapeCsv(leakedAt)}\n`;
+      }).join('');
+      
+      // 创建CSV blob
+      const csvContent = csvHeader + csvRows;
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${domain}-${category}-泄露数据.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      setExportMessage('CSV数据已成功导出');
+    } catch (error: any) {
+      console.error('导出失败:', error);
+      setExportMessage(`导出失败: ${error.message}`);
+    } finally {
+      setExportLoading(false);
+      // 3秒后清除消息
+      setTimeout(() => setExportMessage(''), 3000);
+    }
+  };
   
   // 当页签切换时，滚动到结果区域顶部并重置相关状态
   useEffect(() => {
@@ -759,8 +838,22 @@ const Dashboard = () => {
                     {/* 结果标题 */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
-                          <Shield className="w-6 h-6 text-accent" />
+                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
+                          {/* 使用Google的favicon服务获取域名图标 */}
+                          <img 
+                            src={`https://www.google.com/s2/favicons?domain=${results.summary.domain}&sz=128`} 
+                            alt={`${results.summary.domain} favicon`} 
+                            className="w-8 h-8 object-contain" 
+                            onError={(e) => {
+                              // 当favicon获取失败时，显示默认盾牌图标
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              // 创建并添加默认盾牌图标
+                              const shieldIcon = document.createElement('div');
+                              shieldIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-accent"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+                              target.parentElement?.appendChild(shieldIcon);
+                            }}
+                          />
                         </div>
                         <div>
                           <h2 className="text-2xl font-black text-white">安全报告: {results.summary.domain}</h2>
@@ -873,6 +966,25 @@ const Dashboard = () => {
                           />
                         </div>
                       </div>
+                      
+                      {/* 导出按钮 - 只保留CSV导出，URLs和子域名标签页不显示 */}
+                      {activeTab !== 'URLs' && activeTab !== '子域名' && (
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                          {/* 导出消息显示 */}
+                          {exportMessage && (
+                            <span className="text-sm text-green-400 font-medium">{exportMessage}</span>
+                          )}
+                          
+                          <button
+                            onClick={handleExport}
+                            disabled={exportLoading}
+                            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/80 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-all"
+                          >
+                            <Download className="w-4 h-4" />
+                            {exportLoading ? '导出中...' : '导出CSV数据'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   
                     {/* 结果展示表格 */}
