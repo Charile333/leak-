@@ -199,10 +199,15 @@ export const dataService = {
         else if (s >= 3) strength = 'Weak';
         else strength = 'Very Weak';
 
+        // 确保email字段正确赋值，优先使用item.email，其次使用item.email，最后使用空字符串
+        // 修复客户子标签中email丢失的问题
+        const emailValue = item.email || '';
+        const usernameValue = item.username || item.email || 'N/A';
+
         return {
           id: item.id || `leak-${Math.random()}`,
-          email: item.email || item.username || '',
-          username: item.username || 'N/A',
+          email: emailValue,
+          username: usernameValue,
           password_plaintext: item.password_plaintext || item.password || '********',
           password_hash: item.password_hash || '',
           hash_type: item.hash_type || 'Unknown',
@@ -284,40 +289,58 @@ export const dataService = {
           // 使用专门的getDomainUrls方法获取URL数据
           const urlsRes = await leakRadarApi.getDomainUrls(domain, limit, offset).catch(() => ({ items: [], total: 0 }));
           
-          return urlsRes.items.map((urlItem: any, index: number) => ({
-            id: `url-${index}-${Math.random()}`,
-            email: '',
-            username: '',
-            password_plaintext: '',
-            password_hash: '',
-            hash_type: '',
-            website: urlItem.url || urlItem || '',
-            source: '',
-            leaked_at: '',
-            type: 'Employee',
-            strength: 'Medium',
-            count: urlItem.count || 1
-          }));
+          // 调试日志，查看API返回的原始数据结构
+          console.log(`[Debug] URLs API Response items:`, urlsRes.items);
+          
+          return urlsRes.items.map((urlItem: any, index: number) => {
+            // 直接使用API返回的count值，不设置默认值为1，避免覆盖真实数据
+            // 如果API返回0，也应该显示0
+            const countValue = typeof urlItem.count === 'number' ? urlItem.count : 1;
+            
+            return {
+              id: `url-${index}-${Math.random()}`,
+              email: '',
+              username: '',
+              password_plaintext: '',
+              password_hash: '',
+              hash_type: '',
+              website: urlItem.url || urlItem || '',
+              source: '',
+              leaked_at: '',
+              type: 'Employee',
+              strength: 'Medium',
+              count: countValue
+            };
+          });
         }
 
         if (category === 'subdomains') {
           // 使用专门的getDomainSubdomains方法获取子域名数据
           const subdomainsRes = await leakRadarApi.getDomainSubdomains(domain, limit, offset).catch(() => ({ items: [], total: 0 }));
           
-          return subdomainsRes.items.map((subdomainItem: any, index: number) => ({
-            id: `sub-${index}-${Math.random()}`,
-            email: '',
-            username: '',
-            password_plaintext: '',
-            password_hash: '',
-            hash_type: '',
-            website: subdomainItem.subdomain || subdomainItem || '',
-            source: '',
-            leaked_at: '',
-            type: 'Employee',
-            strength: 'Medium',
-            count: subdomainItem.count || 1
-          }));
+          // 调试日志，查看API返回的原始数据结构
+          console.log(`[Debug] Subdomains API Response items:`, subdomainsRes.items);
+          
+          return subdomainsRes.items.map((subdomainItem: any, index: number) => {
+            // 直接使用API返回的count值，不设置默认值为1，避免覆盖真实数据
+            // 如果API返回0，也应该显示0
+            const countValue = typeof subdomainItem.count === 'number' ? subdomainItem.count : 1;
+            
+            return {
+              id: `sub-${index}-${Math.random()}`,
+              email: '',
+              username: '',
+              password_plaintext: '',
+              password_hash: '',
+              hash_type: '',
+              website: subdomainItem.subdomain || subdomainItem || '',
+              source: '',
+              leaked_at: '',
+              type: 'Employee',
+              strength: 'Medium',
+              count: countValue
+            };
+          });
         }
       }
       
@@ -373,10 +396,15 @@ export const dataService = {
         else if (s >= 3) strength = 'Weak';
         else strength = 'Very Weak';
 
+        // 确保email字段正确赋值，优先使用item.email，其次使用item.email，最后使用空字符串
+        // 修复客户子标签中email丢失的问题
+        const emailValue = item.email || '';
+        const usernameValue = item.username || item.email || 'N/A';
+
         return {
           id: item.id || `leak-${Math.random()}`,
-          email: item.email || item.username || '',
-          username: item.username || 'N/A',
+          email: emailValue,
+          username: usernameValue,
           password_plaintext: item.password_plaintext || item.password || '********',
           password_hash: item.password_hash || '',
           hash_type: item.hash_type || 'Unknown',

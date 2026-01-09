@@ -153,14 +153,32 @@ const Dashboard = () => {
   const [otxLoading, setOtxLoading] = useState(false);
   const [otxError, setOtxError] = useState<string>('');
   
-  // 当页签切换时，滚动到结果区域顶部
+  // 当页签切换时，滚动到结果区域顶部并重置相关状态
   useEffect(() => {
     // 只有当 showResults 为 true 且不是初始化状态时才触发
     if (showResults && activeTab) {
-      // 避免在此副作用中重置状态导致无限循环
-      // setFilterType('All'); 
-      // setInnerSearchQuery(''); 
-      // setCurrentPage(0); 
+      // 重置筛选和页码
+      setFilterType('All');
+      setInnerSearchQuery('');
+      setCurrentPage(0);
+      
+      // 清除当前分类之外的缓存数据，避免数据混淆
+      const categoryMap: Record<string, string> = {
+        '员工': 'employees',
+        '客户': 'customers',
+        '第三方': 'third_parties',
+        'URLs': 'urls',
+        '子域名': 'subdomains'
+      };
+      const currentCategory = categoryMap[activeTab];
+      
+      // 只有当前分类的数据保留在缓存中
+      if (currentCategory) {
+        setCategoryCredentials(prev => ({ [currentCategory]: prev[currentCategory] || [] }));
+      } else {
+        // 对于报告标签，清除所有分类缓存
+        setCategoryCredentials({});
+      }
 
       const resultElement = document.getElementById('search-results');
       if (resultElement) {
@@ -171,16 +189,7 @@ const Dashboard = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [activeTab, showResults]);
-
-  // 当 Tab 变化时，重置筛选和页码 (独立副作用)
-  useEffect(() => {
-    if (showResults) {
-      setFilterType('All');
-      setInnerSearchQuery('');
-      setCurrentPage(0);
-    }
-  }, [activeTab]);
+  }, [activeTab, showResults, searchQuery]);
   
   // 当标签页切换到URLs或Subdomains时，如果没有缓存数据，自动加载数据
   useEffect(() => {
@@ -351,36 +360,37 @@ const Dashboard = () => {
 
     if (page === 0) {
       setShowResults(false);
-      setCurrentPage(0);
+      // 当进行新的搜索时，清除所有分类缓存
+      setCategoryCredentials({});
     }
     
     try {
-      if (page > 0 || (activeTab === 'URLs' || activeTab === '子域名')) {
-        // 分页逻辑：如果当前在特定分类下，只请求该分类的数据
-        let category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains' | null = null;
-        if (activeTab === '员工') category = 'employees';
-        else if (activeTab === '客户') category = 'customers';
-        else if (activeTab === '第三方') category = 'third_parties';
-        else if (activeTab === 'URLs') category = 'urls';
-        else if (activeTab === '子域名') category = 'subdomains';
-
-        if (category) {
-          const newCredentials = await dataService.searchCategory(searchQuery, category, pageSize, page * pageSize);
-          // 保存当前分类的数据到 categoryCredentials，不替换原始完整数据
-          setCategoryCredentials(prev => ({
-            ...prev,
-            [category]: newCredentials
-          }));
-          setIsSearching(false);
-          setCurrentPage(page);
-          // 确保结果区域显示
-          setShowResults(true);
-          return;
-        }
+      // 总是先进行完整的域名搜索，更新results状态
+      // 这样无论在哪个标签页搜索，都会先获取完整数据
+      if (page === 0) {
+        const data = await dataService.searchDomain(searchQuery, pageSize, page * pageSize);
+        setResults(data);
       }
 
-      const data = await dataService.searchDomain(searchQuery, pageSize, page * pageSize);
-      setResults(data);
+      // 然后根据当前活动标签页获取对应分类的数据
+      let category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains' | null = null;
+      if (activeTab === '员工') category = 'employees';
+      else if (activeTab === '客户') category = 'customers';
+      else if (activeTab === '第三方') category = 'third_parties';
+      else if (activeTab === 'URLs') category = 'urls';
+      else if (activeTab === '子域名') category = 'subdomains';
+
+      if (category) {
+        // 分类数据请求逻辑
+        const newCredentials = await dataService.searchCategory(searchQuery, category, pageSize, page * pageSize);
+        
+        // 保存当前分类的数据，根据页码决定是替换还是合并
+        setCategoryCredentials(prev => ({
+          ...prev,
+          [category]: newCredentials
+        }));
+      }
+
       setIsSearching(false);
       setShowResults(true);
       setCurrentPage(page);
@@ -390,7 +400,6 @@ const Dashboard = () => {
           const resultElement = document.getElementById('search-results');
           if (resultElement) {
             const rect = resultElement.getBoundingClientRect();
-            // 如果结果区域的顶部不在视图内（被遮挡或在下方），则滚动到结果区域
             if (rect.top < 0 || rect.top > window.innerHeight * 0.8) {
               resultElement.scrollIntoView({ behavior: 'smooth' });
             }
@@ -408,10 +417,7 @@ const Dashboard = () => {
   };
 
   const filteredCredentials = useMemo(() => {
-    if (!results) return [];
-    
-    // 根据当前活动标签页选择数据源
-    let list: LeakedCredential[];
+    let list: LeakedCredential[] = [];
     const categoryMap: Record<string, string> = {
       '员工': 'employees',
       '客户': 'customers',
@@ -425,47 +431,61 @@ const Dashboard = () => {
     // 检查是否有分页数据缓存
     const hasPagedData = currentCategory && categoryCredentials[currentCategory] && categoryCredentials[currentCategory].length > 0;
     
-    // 如果有分页数据缓存，使用缓存数据
-    if (hasPagedData) {
-      list = [...categoryCredentials[currentCategory]];
-    } else {
-      // 否则使用原始数据并过滤
-      list = [...results.credentials];
-      
-      // Tab filtering
-      if (activeTab === '报告') {
+    // URL和子域名标签的数据处理
+    if (activeTab === 'URLs' || activeTab === '子域名') {
+      if (hasPagedData) {
+        list = [...categoryCredentials[currentCategory]];
+      } else if (results) {
+        // 初始化数据时，URL和子域名标签也应该有数据
+        list = [...results.credentials];
+      }
+    } 
+    // 其他标签的数据处理
+    else if (results) {
+      if (hasPagedData) {
+        list = [...categoryCredentials[currentCategory]];
+      } else {
+        // 使用原始数据并过滤
+        list = [...results.credentials];
+        
+        // Tab filtering
+        if (activeTab === '员工') {
+          list = list.filter(c => c.type === 'Employee');
+        } else if (activeTab === '第三方') {
+          list = list.filter(c => c.type === 'Third-Party');
+        } else if (activeTab === '客户') {
+          list = list.filter(c => c.type === 'Customer');
+        }
         // 报告标签页显示所有数据，不需要过滤
-      } else if (activeTab === '员工') {
-        list = list.filter(c => c.type === 'Employee');
-      } else if (activeTab === '第三方') {
-        list = list.filter(c => c.type === 'Third-Party');
-      } else if (activeTab === '客户') {
-        list = list.filter(c => c.type === 'Customer');
       }
     }
 
-    // Category filtering
-    if (filterType === 'Email') {
-      list = list.filter(c => c.email?.includes('@'));
-    } else if (filterType === 'Username') {
-      list = list.filter(c => c.email && !c.email.includes('@'));
-    }
+    // Category filtering (只适用于非URL/子域名标签)
+    if (activeTab !== 'URLs' && activeTab !== '子域名') {
+      if (filterType === 'Email') {
+        list = list.filter(c => c.email?.includes('@'));
+      } else if (filterType === 'Username') {
+        list = list.filter(c => c.email && !c.email.includes('@'));
+      }
 
-    // Inner search filtering
-    if (innerSearchQuery.trim()) {
-      const query = innerSearchQuery.toLowerCase();
-      list = list.filter(c => 
-        c.email?.toLowerCase().includes(query) || 
-        c.website?.toLowerCase().includes(query) ||
-        c.password_plaintext?.toLowerCase().includes(query)
-      );
+      // Inner search filtering
+      if (innerSearchQuery.trim()) {
+        const query = innerSearchQuery.toLowerCase();
+        list = list.filter(c => 
+          c.email?.toLowerCase().includes(query) || 
+          c.website?.toLowerCase().includes(query) ||
+          c.password_plaintext?.toLowerCase().includes(query)
+        );
+      }
     }
 
     // Sorting
     list.sort((a, b) => {
-      // If we are in URLs/子域名 tab, we might want to sort by count
-      if ((activeTab === 'URLs' || activeTab === '子域名') && (sortField as string) === 'count') {
-        return sortOrder === 'asc' ? (a.count || 0) - (b.count || 0) : (b.count || 0) - (a.count || 0);
+      // URLs/子域名标签按count排序
+      if (activeTab === 'URLs' || activeTab === '子域名') {
+        const countA = a.count || 0;
+        const countB = b.count || 0;
+        return sortOrder === 'asc' ? countA - countB : countB - countA;
       }
 
       const valA = a[sortField] || '';
@@ -484,8 +504,7 @@ const Dashboard = () => {
       return 0;
     });
 
-    // 演示模式：只显示前10条结果
-    return list.slice(0, 10);
+    return list;
   }, [results, activeTab, sortField, sortOrder, filterType, innerSearchQuery, categoryCredentials]);
 
   // 格式化日期为 YYYY/MM/DD
@@ -861,77 +880,115 @@ const Dashboard = () => {
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-white/10">
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                              邮箱 / 用户名
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                              密码
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                              来源
-                            </th>
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                              泄露时间
-                            </th>
+                            {/* URL和子域名标签页只显示URL和次数 */}
+                            {activeTab === 'URLs' || activeTab === '子域名' ? (
+                              [
+                                <th key="url" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                  {activeTab === 'URLs' ? 'URL' : 'SUBDOMAIN'}
+                                </th>,
+                                <th key="count" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                  次数
+                                </th>
+                              ]
+                            ) : (
+                              // 其他标签页显示完整列
+                              [
+                                <th key="url" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                  URL
+                                </th>,
+                                <th key="type" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                  TYPE
+                                </th>,
+                                <th key="email" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                  EMAIL/USERNAME
+                                </th>,
+                                <th key="password" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                  PASSWORD
+                                </th>,
+                                <th key="indexed" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                  Indexed At
+                                </th>
+                              ]
+                            )}
                           </tr>
                         </thead>
                         <tbody>
                           {filteredCredentials.map((credential, index) => (
                             <tr key={credential.id || index} className="border-b border-white/5 hover:bg-white/5">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-white font-medium">{credential.email || credential.username || 'N/A'}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center gap-2">
-                                  {autoUnlock ? (
-                                    <div className="text-sm font-medium">
-                                      {credential.password_plaintext ? (
-                                        <span className="text-white">{credential.password_plaintext}</span>
-                                      ) : credential.password_hash ? (
-                                        <span className="text-gray-400">{credential.password_hash}</span>
-                                      ) : (
-                                        <span className="text-gray-500">N/A</span>
-                                      )}
+                              {/* URL和子域名标签页只显示URL和次数 */}
+                              {activeTab === 'URLs' || activeTab === '子域名' ? (
+                                [
+                                  <td key="url" className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-white font-medium">{credential.website || credential.source || 'N/A'}</div>
+                                  </td>,
+                                  <td key="count" className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-white font-medium">{credential.count || 1}</div>
+                                  </td>
+                                ]
+                              ) : (
+                                // 其他标签页显示完整数据
+                                [
+                                  <td key="url" className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-white font-medium">{credential.website || credential.source || 'N/A'}</div>
+                                  </td>,
+                                  <td key="type" className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-white font-medium">
+                                      {credential.email && credential.email.includes('@') ? 'EMAIL' : 'USERNAME'}
                                     </div>
-                                  ) : (
-                                    <div>
-                                      {showPasswords[credential.id || index] ? (
-                                        <div>
+                                  </td>,
+                                  <td key="email" className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-white font-medium">{credential.email || credential.username || 'N/A'}</div>
+                                  </td>,
+                                  <td key="password" className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                      {autoUnlock ? (
+                                        <div className="text-sm font-medium">
                                           {credential.password_plaintext ? (
-                                            <span className="text-white text-sm font-medium">{credential.password_plaintext}</span>
+                                            <span className="text-white">{credential.password_plaintext}</span>
                                           ) : credential.password_hash ? (
-                                            <span className="text-gray-400 text-sm font-medium">{credential.password_hash}</span>
+                                            <span className="text-gray-400">{credential.password_hash}</span>
                                           ) : (
-                                            <span className="text-gray-500 text-sm font-medium">N/A</span>
+                                            <span className="text-gray-500">N/A</span>
                                           )}
-                                          <button
-                                            onClick={() => togglePassword(credential.id || index)}
-                                            className="text-gray-400 hover:text-white transition-colors"
-                                          >
-                                            <EyeOff className="w-4 h-4" />
-                                          </button>
                                         </div>
                                       ) : (
                                         <div>
-                                          <span className="text-gray-500 text-sm font-medium">••••••••</span>
-                                          <button
-                                            onClick={() => togglePassword(credential.id || index)}
-                                            className="text-gray-400 hover:text-white transition-colors"
-                                          >
-                                            <Eye className="w-4 h-4" />
-                                          </button>
+                                          {showPasswords[credential.id || index] ? (
+                                            <div>
+                                              {credential.password_plaintext ? (
+                                                <span className="text-white text-sm font-medium">{credential.password_plaintext}</span>
+                                              ) : credential.password_hash ? (
+                                                <span className="text-gray-400 text-sm font-medium">{credential.password_hash}</span>
+                                              ) : (
+                                                <span className="text-gray-500 text-sm font-medium">N/A</span>
+                                              )}
+                                              <button
+                                                onClick={() => togglePassword(credential.id || index)}
+                                                className="text-gray-400 hover:text-white transition-colors"
+                                              >
+                                                <EyeOff className="w-4 h-4" />
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <div>
+                                              <span className="text-gray-500 text-sm font-medium">••••••••</span>
+                                              <button
+                                                onClick={() => togglePassword(credential.id || index)}
+                                                className="text-gray-400 hover:text-white transition-colors"
+                                              >
+                                                <Eye className="w-4 h-4" />
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                     </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-400">{credential.source || 'N/A'}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-400">{formatDate(credential.leaked_at || '')}</div>
-                              </td>
+                                  </td>,
+                                  <td key="indexed" className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-400">{formatDate(credential.leaked_at || '')}</div>
+                                  </td>
+                                ]
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -939,25 +996,25 @@ const Dashboard = () => {
                     </div>
                   
                     {/* 分页控件 */}
-                    <div className="flex justify-center mt-8">
+                    <div className="flex justify-center mt-8 space-x-2">
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 0}
-                        className="px-4 py-2 mx-1 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition-all"
+                        className="flex items-center justify-center px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-all duration-200"
                       >
-                        <ChevronLeft className="w-4 h-4 inline mr-1" />
+                        <ChevronLeft className="w-4 h-4 mr-1" />
                         上一页
                       </button>
-                      <span className="px-4 py-2 mx-1 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-white">
+                      <span className="flex items-center justify-center px-4 py-2 bg-accent/20 border border-accent/40 rounded-lg text-sm font-medium text-white shadow-sm">
                         第 {currentPage + 1} 页
                       </span>
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={filteredCredentials.length < pageSize}
-                        className="px-4 py-2 mx-1 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition-all"
+                        className="flex items-center justify-center px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-all duration-200"
                       >
                         下一页
-                        <ChevronRight className="w-4 h-4 inline ml-1" />
+                        <ChevronRight className="w-4 h-4 ml-1" />
                       </button>
                     </div>
                   </div>

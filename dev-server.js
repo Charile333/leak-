@@ -231,7 +231,13 @@ async function handleApiRequest(req, res) {
       // 演示模式：强制限制每次查询最多10条结果
       // 将targetUrl转换为URL对象，方便操作查询参数
       const urlObj = new URL(leakradarTargetUrl);
-      urlObj.searchParams.set('page_size', '10');
+      
+      // 对于非URL和非子域名的请求，限制page_size为10
+      // 对于URL和子域名请求，不修改page_size，确保获取正确的计数
+      if (!url.includes('/urls') && !url.includes('/subdomains')) {
+        urlObj.searchParams.set('page_size', '10');
+      }
+      
       // 如果是解锁请求，添加限制参数
       // 根据API文档，解锁操作应该使用max参数，而不是limit参数
       if (leakradarTargetUrl.includes('/unlock')) {
