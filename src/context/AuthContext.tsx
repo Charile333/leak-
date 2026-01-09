@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Password mismatch, expected: password123, got:', password);
         return { 
           success: false, 
-          message: '密码错误，请使用默认密码 password123' 
+          message: '密码错误' 
         };
       }
     } catch (error: any) {
