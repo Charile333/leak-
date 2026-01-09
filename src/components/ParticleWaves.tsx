@@ -13,7 +13,7 @@ const ParticleWaves: React.FC = () => {
     if (!containerRef.current) return;
 
     const container = containerRef.current;
-    const particleCount = 50000; // 适中的粒子数量，平衡性能和视觉效果
+    const particleCount = 100000; // 与源文件相同的粒子数量
 
     // Scene
     const scene = new THREE.Scene();
@@ -66,12 +66,12 @@ const ParticleWaves: React.FC = () => {
         attribute float size;
         
         void main() {
-          // 修复时间计算，使用递增的时间值
-          float time2 = time * 2.0;
+          // 复制源文件的时间计算
+          float time2 = (1.0 - time) * 5.0;
           float x = float(gl_VertexID % int(${Math.sqrt(particleCount)})) * 0.5;
           float z = float(gl_VertexID / int(${Math.sqrt(particleCount)})) * 0.5;
           
-          // 波浪动画
+          // 波浪动画 - 与源文件相同的逻辑
           float sinX = sin(x + time2 * 0.7) * 50.0;
           float sinZ = sin(z + time2 * 0.5) * 50.0;
           
@@ -81,7 +81,7 @@ const ParticleWaves: React.FC = () => {
             position.z
           );
           
-          // 粒子大小动画
+          // 粒子大小动画 - 与源文件相同的逻辑
           float sinSX = (sin(x + time2 * 0.7) + 1.0) * 5.0;
           float sinSZ = (sin(z + time2 * 0.5) + 1.0) * 5.0;
           float newSize = sinSX + sinSZ;
@@ -100,13 +100,15 @@ const ParticleWaves: React.FC = () => {
             discard;
           }
           
-          // 粒子颜色改为紫色
+          // 粒子颜色改为紫色，与源文件效果一致
           gl_FragColor = vec4(0.6, 0.1, 1.0, 1.0);
         }
       `,
       transparent: false,
       depthWrite: true,
-      blending: THREE.NormalBlending
+      blending: THREE.NormalBlending,
+      // 启用alpha测试，提高性能
+      alphaTest: 0.5
     });
 
     // Particles
@@ -122,7 +124,7 @@ const ParticleWaves: React.FC = () => {
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Animation - 仅更新时间，无交互
+    // Animation - 与源文件相同的动画循环
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
 
@@ -142,9 +144,9 @@ const ParticleWaves: React.FC = () => {
     const handleResize = () => {
       if (!cameraRef.current || !rendererRef.current || !containerRef.current) return;
 
-      cameraRef.current.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+      cameraRef.current.aspect = window.innerWidth / window.innerHeight;
       cameraRef.current.updateProjectionMatrix();
-      rendererRef.current.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+      rendererRef.current.setSize(window.innerWidth, window.innerHeight);
     };
 
     window.addEventListener('resize', handleResize);

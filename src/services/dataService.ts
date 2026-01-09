@@ -199,15 +199,14 @@ export const dataService = {
         else if (s >= 3) strength = 'Weak';
         else strength = 'Very Weak';
 
-        // 确保email字段正确赋值，优先使用item.email，其次使用item.email，最后使用空字符串
-        // 修复客户子标签中email丢失的问题
-        const emailValue = item.email || '';
-        const usernameValue = item.username || item.email || 'N/A';
+        // 官方API使用is_email字段来标识是否为邮箱
+        const isEmail = item.is_email === true;
+        const credentialValue = item.email || item.username || item.user || item.account || '';
 
         return {
           id: item.id || `leak-${Math.random()}`,
-          email: emailValue,
-          username: usernameValue,
+          email: isEmail ? credentialValue : '',
+          username: isEmail ? (item.username || 'N/A') : credentialValue,
           password_plaintext: item.password_plaintext || item.password || '********',
           password_hash: item.password_hash || '',
           hash_type: item.hash_type || 'Unknown',
@@ -396,15 +395,14 @@ export const dataService = {
         else if (s >= 3) strength = 'Weak';
         else strength = 'Very Weak';
 
-        // 确保email字段正确赋值，优先使用item.email，其次使用item.email，最后使用空字符串
-        // 修复客户子标签中email丢失的问题
-        const emailValue = item.email || '';
-        const usernameValue = item.username || item.email || 'N/A';
+        // 官方API使用is_email字段来标识是否为邮箱
+        const isEmail = item.is_email === true;
+        const credentialValue = item.email || item.username || item.user || item.account || '';
 
         return {
           id: item.id || `leak-${Math.random()}`,
-          email: emailValue,
-          username: usernameValue,
+          email: isEmail ? credentialValue : '',
+          username: isEmail ? (item.username || 'N/A') : credentialValue,
           password_plaintext: item.password_plaintext || item.password || '********',
           password_hash: item.password_hash || '',
           hash_type: item.hash_type || 'Unknown',
