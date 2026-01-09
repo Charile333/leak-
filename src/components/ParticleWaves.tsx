@@ -34,7 +34,7 @@ const ParticleWaves: React.FC = () => {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const colors = new Float32Array(particleCount * 3);
-    const sizes = new Float32Array(particleCount);
+    const pointSizes = new Float32Array(particleCount);
 
     const color = new THREE.Color();
 
@@ -53,31 +53,29 @@ const ParticleWaves: React.FC = () => {
       colors[i3 + 2] = color.b;
 
       // Size
-      sizes[i] = Math.random() * 10 + 1;
+      pointSizes[i] = Math.random() * 10 + 1;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    geometry.setAttribute('pointSize', new THREE.BufferAttribute(pointSizes, 1));
 
     // Shader Material
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 },
-        size: { value: 2.0 },
         resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
       },
       vertexShader: `
         uniform float time;
-        uniform float size;
-        attribute float size;
+        attribute float pointSize;
         attribute vec3 color;
         varying vec3 vColor;
 
         void main() {
           vColor = color;
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z);
+          gl_PointSize = pointSize * (300.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
