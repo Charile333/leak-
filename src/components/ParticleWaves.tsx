@@ -13,65 +13,107 @@ const ParticleWaves: React.FC = () => {
     if (!containerRef.current) return;
 
     const container = containerRef.current;
-    const particleCount = 10000;
+    const particleCount = 100000; // 与源文件相同的粒子数量
 
     // Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
     sceneRef.current = scene;
 
-    // Camera
+    // Camera - 与源文件相同的配置
     const camera = new THREE.PerspectiveCamera(
-      75,
+      50,
       window.innerWidth / window.innerHeight,
-      1,
-      10000
+      10,
+      100000
     );
-    camera.position.z = 500;
+    camera.position.set(0, 200, 500); // 与源文件相同的相机位置
     cameraRef.current = camera;
 
-    // Geometry
+    // Geometry - 与源文件相同的粒子布局
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    const pointSizes = new Float32Array(particleCount);
+    const sizes = new Float32Array(particleCount);
 
-    const color = new THREE.Color();
+    const separation = 100;
+    const amount = Math.sqrt(particleCount);
+    const offset = amount / 2;
 
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3;
-
-      // Position
-      positions[i3] = Math.random() * 2000 - 1000;
-      positions[i3 + 1] = Math.random() * 2000 - 1000;
-      positions[i3 + 2] = Math.random() * 2000 - 1000;
-
-      // Color
-      color.setHSL(i / particleCount, 0.5, 0.5);
-      colors[i3] = color.r;
-      colors[i3 + 1] = color.g;
-      colors[i3 + 2] = color.b;
-
-      // Size
-      pointSizes[i] = Math.random() * 10 + 1;
+      
+      // 与源文件相同的网格布局
+      const x = i % amount;
+      const z = Math.floor(i / amount);
+      
+      positions[i3] = (offset - x) * separation;
+      positions[i3 + 1] = 0;
+      positions[i3 + 2] = (offset - z) * separation;
+      
+      sizes[i] = 1.0;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.setAttribute('pointSize', new THREE.BufferAttribute(pointSizes, 1));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // Material - 使用简单的PointsMaterial，避免着色器编译错误
-    const material = new THREE.PointsMaterial({
-      color: 0x6366f1,
-      size: 2,
-      transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
+    // Shader Material - 实现与源文件相同的着色器效果
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0.0 }
+      },
+      vertexShader: `
+        uniform float time;
+        attribute float size;
+        varying float vSize;
+        
+        void main() {
+          vSize = size;
+          
+          // 与源文件相同的波浪动画逻辑
+          float time2 = (1.0 - time) * 5.0;
+          float x = position.x * 0.005; // 缩放因子调整
+          float z = position.z * 0.005;
+          
+          float sinX = sin(x + time2 * 0.7) * 50.0;
+          float sinZ = sin(z + time2 * 0.5) * 50.0;
+          
+          vec3 newPosition = vec3(
+            position.x,
+            sinX + sinZ,
+            position.z
+          );
+          
+          // 与源文件相同的大小动画逻辑
+          float sinSX = (sin(x + time2 * 0.7) + 1.0) * 5.0;
+          float sinSZ = (sin(z + time2 * 0.5) + 1.0) * 5.0;
+          float newSize = sinSX + sinSZ;
+          
+          vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
+          gl_PointSize = newSize * (300.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        void main() {
+          vec2 vUv = gl_PointCoord.xy - vec2(0.5);
+          float distance = length(vUv);
+          
+          if (distance > 0.5) {
+            discard;
+          }
+          
+          // 与源文件相同的白色效果
+          gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+        }
+      `,
+      transparent: false,
+      depthWrite: true,
+      blending: THREE.NormalBlending
     });
 
     // Particles
     const particles = new THREE.Points(geometry, material);
+    particles.frustumCulled = false; // 与源文件相同
     scene.add(particles);
     particlesRef.current = particles;
 
@@ -82,25 +124,15 @@ const ParticleWaves: React.FC = () => {
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Animation
+    // Animation - 与源文件相同的动画逻辑
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
 
       if (!particlesRef.current || !sceneRef.current || !cameraRef.current || !rendererRef.current) return;
 
-      // Update particles
+      // Update time uniform
       const time = Date.now() * 0.001;
-      const positions = particlesRef.current.geometry.attributes.position.array;
-      
-      for (let i = 0; i < positions.length; i += 3) {
-        // Wave animation
-        positions[i + 1] = Math.sin(i * 0.01 + time) * 50 + Math.sin(i * 0.02 + time * 1.5) * 30;
-      }
-      
-      particlesRef.current.geometry.attributes.position.needsUpdate = true;
-      
-      // Rotate particles
-      particlesRef.current.rotation.y = time * 0.1;
+      (particlesRef.current.material as THREE.ShaderMaterial).uniforms.time.value = time;
 
       // Render
       rendererRef.current.render(sceneRef.current, cameraRef.current);
