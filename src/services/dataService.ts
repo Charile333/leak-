@@ -163,12 +163,12 @@ export const dataService = {
         // 可以在这里添加UI提示，但根据要求不显示积分相关UI
       }
       
-      // Fetch credentials for display
-      const itemsPerCat = Math.floor(limit / 3);
+      // Fetch credentials for display - 为每个分类获取完整的limit条数据
+      // 这样每个分类在初始搜索时都能显示足够的数据
       let [empRes, custRes, thirdRes] = await Promise.all([
-        leakRadarApi.searchDomainCategory(domain, 'employees', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-        leakRadarApi.searchDomainCategory(domain, 'customers', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-        leakRadarApi.searchDomainCategory(domain, 'third_parties', limit - (2 * itemsPerCat), offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'employees', limit, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'customers', limit, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+        leakRadarApi.searchDomainCategory(domain, 'third_parties', limit, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
       ]);
 
       // 检查获取的数据是否已解锁，如果未解锁，尝试再次获取
@@ -182,9 +182,9 @@ export const dataService = {
         
         // 再次获取数据
         [empRes, custRes, thirdRes] = await Promise.all([
-          leakRadarApi.searchDomainCategory(domain, 'employees', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-          leakRadarApi.searchDomainCategory(domain, 'customers', itemsPerCat, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
-          leakRadarApi.searchDomainCategory(domain, 'third_parties', limit - (2 * itemsPerCat), offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+          leakRadarApi.searchDomainCategory(domain, 'employees', limit, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+          leakRadarApi.searchDomainCategory(domain, 'customers', limit, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
+          leakRadarApi.searchDomainCategory(domain, 'third_parties', limit, offset).catch(() => ({ items: [], total: 0, success: false } as LeakRadarSearchResult)),
         ]);
         
         console.log(`[Debug] 数据重试获取完成`);
