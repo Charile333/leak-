@@ -100,8 +100,8 @@ const ParticleWaves: React.FC = () => {
             discard;
           }
           
-          // 与源文件相同的白色效果
-          gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+          // 粒子颜色改为紫色
+          gl_FragColor = vec4(0.6, 0.1, 1.0, 1.0);
         }
       `,
       transparent: false,
