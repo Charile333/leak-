@@ -56,7 +56,7 @@ const ParticleWaves: React.FC = () => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // Shader Material - 基于tsl-particle-waves的动画逻辑优化
+    // Shader Material - 修复动画逻辑，确保背景动画正常显示
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 }
@@ -66,14 +66,14 @@ const ParticleWaves: React.FC = () => {
         attribute float size;
         
         void main() {
-          float time2 = (1.0 - time * 0.001) * 5.0;
+          float time2 = time * 0.001;
           float instanceIndex = float(gl_VertexID);
           float amount = ${Math.sqrt(particleCount)};
           
           float x = mod(instanceIndex, amount) * 0.5;
           float z = floor(instanceIndex / amount) * 0.5;
           
-          // 基于tsl-particle-waves的波浪动画逻辑
+          // 修复波浪动画逻辑，确保粒子上下移动
           float sinX = sin(x + time2 * 0.7) * 50.0;
           float sinZ = sin(z + time2 * 0.5) * 50.0;
           
@@ -83,9 +83,9 @@ const ParticleWaves: React.FC = () => {
             position.z
           );
           
-          // 基于tsl-particle-waves的粒子大小动画
-          float sinSX = (sin(x + time2 * 0.7) + 1.0) * 5.0;
-          float sinSZ = (sin(z + time2 * 0.5) + 1.0) * 5.0;
+          // 修复粒子大小动画，确保粒子大小变化明显
+          float sinSX = (sin(x + time2 * 0.7) + 1.0) * 2.0;
+          float sinSZ = (sin(z + time2 * 0.5) + 1.0) * 2.0;
           float newSize = sinSX + sinSZ;
           
           vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
@@ -102,15 +102,15 @@ const ParticleWaves: React.FC = () => {
             discard;
           }
           
-          // 优化的粒子颜色，使用更柔和的紫色渐变
-          float alpha = 1.0 - distance * 2.0;
-          gl_FragColor = vec4(0.6, 0.1, 1.0, alpha);
+          // 提高粒子亮度和透明度，确保动画可见
+          float alpha = 0.8 - distance * 1.6;
+          gl_FragColor = vec4(0.8, 0.3, 1.0, alpha);
         }
       `,
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      alphaTest: 0.5
+      alphaTest: 0.1
     });
 
     // Particles
