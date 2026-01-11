@@ -103,14 +103,9 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       {/* 粒子波背景 */}
       <ParticleWaves />
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative z-10"
-      >
+      <div className="flex flex-col items-center justify-center w-full max-w-md relative z-10">
         {/* Logo */}
-        <div className="text-center mb-4 mt-8">
+        <div className="text-center mb-2">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -120,14 +115,14 @@ const Login: React.FC = () => {
             <img 
               src={dieLogo} 
               alt="Product Logo" 
-              className="h-72 w-72 object-contain" 
+              className="h-64 w-64 object-contain" 
             />
           </motion.div>
         </div>
 
         {/* Login Form */}
         <motion.div
-          className="glass-card p-8 border border-white/10 rounded-2xl shadow-xl"
+          className="glass-card p-8 border border-white/10 rounded-2xl shadow-xl mx-auto"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
@@ -249,29 +244,27 @@ const Login: React.FC = () => {
 
             {/* Login Button */}
             <motion.button
-          whileHover={{ scale: 1.02, boxShadow: "0 10px 25px -5px rgba(109, 40, 217, 0.3)" }}
-          whileTap={{ scale: 0.98 }}
-          type="submit"
-          disabled={isLoading}
-          className="w-full bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-white font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed disabled:scale-100"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9, duration: 0.4 }}
-        >
-          {isLoading ? (
-            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-                登录
-                <ArrowRight className="w-4 h-4" />
-              </>
-          )}
-        </motion.button>
+              whileHover={{ scale: 1.02, boxShadow: "0 10px 25px -5px rgba(109, 40, 217, 0.3)" }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-white font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed disabled:scale-100"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9, duration: 0.4 }}
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  登录
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </motion.button>
           </form>
         </motion.div>
-
-
-      </motion.div>
+      </div>
     </div>
   );
 };
