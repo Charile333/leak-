@@ -105,7 +105,7 @@ const Login: React.FC = () => {
       <ParticleWaves />
       <div className="flex flex-col items-center justify-center w-full max-w-lg relative z-10">
         {/* Logo */}
-        <div className="text-center mb-1">
+        <div className="text-center mb-0">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -122,7 +122,7 @@ const Login: React.FC = () => {
 
         {/* Login Form */}
         <motion.div
-          className="glass-card p-8 border border-white/10 rounded-2xl shadow-xl mx-auto w-full max-w-md"
+          className="glass-card p-8 border border-white/10 rounded-2xl shadow-xl mx-auto w-full max-w-md mt-[-1rem]"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
