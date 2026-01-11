@@ -15,7 +15,7 @@ const DomainMonitor = () => {
     { id: 498, type: 'Telegram', value: '8464921285:AAEu4W...D2vab8z-wmESRw.OJYPKwew7cq1Y', secondValue: '-5032536833', createdAt: '3 days ago' }
   ]);
 
-  const [monitoredTargets] = useState([
+  const [monitoredTargets, setMonitoredTargets] = useState([
     { 
       id: 3461, 
       active: true, 
@@ -41,6 +41,12 @@ const DomainMonitor = () => {
       status: 'OK' 
     }
   ]);
+
+  const toggleTargetStatus = (id: number) => {
+    setMonitoredTargets(prev => prev.map(target => 
+      target.id === id ? { ...target, active: !target.active } : target
+    ));
+  };
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-700">
@@ -87,9 +93,19 @@ const DomainMonitor = () => {
                   <td className="px-6 py-4 text-gray-500 font-mono">{method.secondValue}</td>
                   <td className="px-6 py-4 text-gray-500 text-xs">{method.createdAt}</td>
                   <td className="px-6 py-4">
-                    <div className="flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 text-gray-500 hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
-                      <button className="p-2 text-rose-500/50 hover:text-rose-500 transition-colors"><Trash className="w-4 h-4" /></button>
+                    <div className="flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button 
+                        className="p-2 rounded-lg text-gray-500 hover:bg-white/10 hover:text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-gray-900"
+                        aria-label="编辑通知方式"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        className="p-2 rounded-lg text-rose-500/50 hover:bg-rose-500/10 hover:text-rose-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:ring-offset-2 focus:ring-offset-gray-900"
+                        aria-label="删除通知方式"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -138,15 +154,19 @@ const DomainMonitor = () => {
                 <tr key={target.id} className="text-sm hover:bg-white/[0.02] transition-colors group">
                   <td className="px-6 py-4 text-gray-500 font-mono">{target.id}</td>
                   <td className="px-6 py-4">
-                    <div className={cn(
-                      "w-10 h-5 rounded-full relative transition-colors cursor-pointer",
-                      target.active ? "bg-indigo-600" : "bg-gray-700"
-                    )}>
+                    <button
+                      onClick={() => toggleTargetStatus(target.id)}
+                      className={cn(
+                        "w-10 h-5 rounded-full relative transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900",
+                        target.active ? "bg-indigo-600 hover:bg-indigo-700" : "bg-gray-700 hover:bg-gray-600"
+                      )}
+                      aria-label={target.active ? "禁用监控" : "启用监控"}
+                    >
                       <div className={cn(
-                        "absolute top-1 w-3 h-3 rounded-full bg-white transition-all",
+                        "absolute top-1 w-3 h-3 rounded-full bg-white transition-all duration-300 shadow-md",
                         target.active ? "right-1" : "left-1"
                       )} />
-                    </div>
+                    </button>
                   </td>
                   <td className="px-6 py-4">
                     <span className="bg-[#4f46e5]/20 text-[#a855f7] px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-[#4f46e5]/30">
@@ -171,8 +191,18 @@ const DomainMonitor = () => {
                   <td className="px-6 py-4 text-gray-500 text-xs">{target.createdAt}</td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center gap-3">
-                      <button className="p-2 text-gray-500 hover:text-white transition-colors"><ShieldCheck className="w-4 h-4" /></button>
-                      <button className="p-2 text-rose-500/50 hover:text-rose-500 transition-colors"><Trash className="w-4 h-4" /></button>
+                      <button 
+                        className="p-2 rounded-lg text-gray-500 hover:bg-white/10 hover:text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-gray-900"
+                        aria-label="查看监控详情"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                      </button>
+                      <button 
+                        className="p-2 rounded-lg text-rose-500/50 hover:bg-rose-500/10 hover:text-rose-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:ring-offset-2 focus:ring-offset-gray-900"
+                        aria-label="删除监控目标"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -228,7 +258,10 @@ const DomainMonitor = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-gray-600 hover:text-white transition-colors">
+                    <button 
+                      className="p-2 rounded-lg text-gray-600 hover:bg-white/10 hover:text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-gray-900"
+                      aria-label="查看更多操作"
+                    >
                       <MoreVertical className="w-4 h-4" />
                     </button>
                   </td>

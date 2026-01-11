@@ -1053,27 +1053,36 @@ const Dashboard = () => {
                               return (
                                 <tr 
                                   key={credential.id || globalIndex} 
-                                  className="transition-all duration-200 hover:bg-white/10 hover:shadow-[inset_0_0_0_1px_rgba(168,85,247,0.2)] group"
+                                  className="transition-all duration-200 hover:bg-white/10 hover:shadow-[inset_0_0_0_1px_rgba(168,85,247,0.2)]"
                                 >
                                   {/* URL和子域名标签页只显示URL和次数 */}
                                   {activeTab === 'URLs' || activeTab === '子域名' ? (
                                     [
                                       <td key="url" className="px-8 py-5 whitespace-nowrap">
-                                        <div className={`flex items-center gap-2 ${globalIndex >= 10 ? 'relative overflow-hidden' : ''}`}>
-                                          <Globe className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
-                                          <div className={`text-sm text-white font-medium group-hover:text-accent transition-colors ${globalIndex >= 10 ? 'blur-sm opacity-50 relative z-10' : ''}`}>
-                                            {credential.website || credential.source || 'N/A'}
+                                        <div className="flex items-center gap-2">
+                                          <Globe className="w-4 h-4 text-accent hover:scale-110 transition-transform" />
+                                          <div className="relative">
+                                            <span className={`text-sm text-white font-medium hover:text-accent transition-colors ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
+                                              {credential.website || credential.source || 'N/A'}
+                                            </span>
+                                            {globalIndex >= 10 && (
+                                              <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 hover:opacity-100 transition-opacity z-10">
+                                                已隐藏
+                                              </div>
+                                            )}
                                           </div>
-                                          {globalIndex >= 10 && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                              已隐藏
-                                            </div>
-                                          )}
                                         </div>
                                       </td>,
                                       <td key="count" className="px-8 py-5 whitespace-nowrap">
-                                        <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full bg-accent/20 text-accent text-sm font-semibold ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
-                                          {credential.count || 1}
+                                        <div className="relative">
+                                          <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full bg-accent/20 text-accent text-sm font-semibold ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
+                                            {credential.count || 1}
+                                          </span>
+                                          {globalIndex >= 10 && (
+                                            <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 hover:opacity-100 transition-opacity z-10">
+                                              已隐藏
+                                            </div>
+                                          )}
                                         </div>
                                       </td>
                                     ]
@@ -1081,64 +1090,91 @@ const Dashboard = () => {
                                     // 其他标签页显示完整数据
                                     [
                                       <td key="url" className="px-8 py-5 whitespace-nowrap">
-                                        <div className={`flex items-center gap-2 ${globalIndex >= 10 ? 'relative overflow-hidden' : ''}`}>
+                                        <div className="flex items-center gap-2">
                                           <Globe className="w-4 h-4 text-blue-400" />
-                                          <div className={`text-sm text-white font-medium ${globalIndex >= 10 ? 'blur-sm opacity-50 relative z-10' : ''}`}>
-                                            {credential.website || credential.source || 'N/A'}
+                                          <div className="relative">
+                                            <span className={`text-sm text-white font-medium ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
+                                              {credential.website || credential.source || 'N/A'}
+                                            </span>
+                                            {globalIndex >= 10 && (
+                                              <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 hover:opacity-100 transition-opacity z-10">
+                                                已隐藏
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </td>,
+                                      <td key="type" className="px-8 py-5 whitespace-nowrap">
+                                        <div className="relative">
+                                          <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
+                                            {credential.email && credential.email.includes('@') ? (
+                                              <span className="bg-blue-500/20 text-blue-400">EMAIL</span>
+                                            ) : (
+                                              <span className="bg-green-500/20 text-green-400">USERNAME</span>
+                                            )}
                                           </div>
                                           {globalIndex >= 10 && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                            <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                               已隐藏
                                             </div>
                                           )}
                                         </div>
                                       </td>,
-                                      <td key="type" className="px-8 py-5 whitespace-nowrap">
-                                        <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
-                                          {credential.email && credential.email.includes('@') ? (
-                                            <span className="bg-blue-500/20 text-blue-400">EMAIL</span>
-                                          ) : (
-                                            <span className="bg-green-500/20 text-green-400">USERNAME</span>
+                                      <td key="email" className="px-8 py-5 whitespace-nowrap">
+                                        <div className="relative">
+                                          <span className={`text-sm text-white font-medium truncate max-w-[250px] ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
+                                            {credential.email || credential.username || 'N/A'}
+                                          </span>
+                                          {globalIndex >= 10 && (
+                                            <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                              已隐藏
+                                            </div>
                                           )}
                                         </div>
                                       </td>,
-                                      <td key="email" className="px-8 py-5 whitespace-nowrap">
-                                        <div className={`text-sm text-white font-medium truncate max-w-[250px] ${globalIndex >= 10 ? 'blur-sm opacity-50 relative z-10' : ''}`}>
-                                          {credential.email || credential.username || 'N/A'}
-                                        </div>
-                                        {globalIndex >= 10 && (
-                                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                            已隐藏
-                                          </div>
-                                        )}
-                                      </td>,
                                       <td key="password" className="px-8 py-5 whitespace-nowrap">
-                                        <div className={`flex items-center gap-3 ${globalIndex >= 10 ? 'relative overflow-hidden' : ''}`}>
+                                        <div className="flex items-center gap-3">
                                           {autoUnlock ? (
-                                            <div className="text-sm font-medium">
-                                              {credential.password_plaintext ? (
-                                                <span className={`text-white font-mono bg-white/5 px-2 py-1 rounded ${globalIndex >= 10 ? 'blur-sm opacity-50 relative z-10' : ''}`}>
-                                                  {credential.password_plaintext}
-                                                </span>
-                                              ) : credential.password_hash ? (
-                                                <span className={`text-gray-400 font-mono ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>{credential.password_hash.slice(0, 15)}...</span>
-                                              ) : (
-                                                <span className={`text-gray-500 italic ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>N/A</span>
+                                            <div className="relative">
+                                              <span className={`text-sm font-medium ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
+                                                {credential.password_plaintext ? (
+                                                  <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">
+                                                    {credential.password_plaintext}
+                                                  </span>
+                                                ) : credential.password_hash ? (
+                                                  <span className="text-gray-400 font-mono">{credential.password_hash.slice(0, 15)}...</span>
+                                                ) : (
+                                                  <span className="text-gray-500 italic">N/A</span>
+                                                )}
+                                              </span>
+                                              {globalIndex >= 10 && (
+                                                <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 hover:opacity-100 transition-opacity z-10">
+                                                  已隐藏
+                                                </div>
                                               )}
                                             </div>
                                           ) : (
                                             <div>
                                               {showPasswords[credential.id || globalIndex] ? (
                                                 <div className="flex items-center gap-2">
-                                                  {credential.password_plaintext ? (
-                                                    <span className={`text-white font-mono bg-white/5 px-2 py-1 rounded ${globalIndex >= 10 ? 'blur-sm opacity-50 relative z-10' : ''}`}>
-                                                      {credential.password_plaintext}
+                                                  <div className="relative">
+                                                    <span className={`${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
+                                                      {credential.password_plaintext ? (
+                                                        <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">
+                                                          {credential.password_plaintext}
+                                                        </span>
+                                                      ) : credential.password_hash ? (
+                                                        <span className="text-gray-400 font-mono">{credential.password_hash.slice(0, 15)}...</span>
+                                                      ) : (
+                                                        <span className="text-gray-500 italic">N/A</span>
+                                                      )}
                                                     </span>
-                                                  ) : credential.password_hash ? (
-                                                    <span className={`text-gray-400 font-mono ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>{credential.password_hash.slice(0, 15)}...</span>
-                                                  ) : (
-                                                    <span className={`text-gray-500 italic ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>N/A</span>
-                                                  )}
+                                                    {globalIndex >= 10 && (
+                                                      <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 hover:opacity-100 transition-opacity z-10">
+                                                        已隐藏
+                                                      </div>
+                                                    )}
+                                                  </div>
                                                   <button
                                                     onClick={() => togglePassword(credential.id || globalIndex)}
                                                     className={`p-1 bg-white/10 rounded-full text-gray-400 hover:text-white hover:bg-white/20 transition-colors ${globalIndex >= 10 ? 'opacity-50' : ''}`}
@@ -1148,7 +1184,14 @@ const Dashboard = () => {
                                                 </div>
                                               ) : (
                                                 <div className="flex items-center gap-2">
-                                                  <span className={`text-gray-400 font-mono ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>••••••••</span>
+                                                  <div className="relative">
+                                                    <span className={`text-gray-400 font-mono ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>••••••••</span>
+                                                    {globalIndex >= 10 && (
+                                                      <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 hover:opacity-100 transition-opacity z-10">
+                                                        已隐藏
+                                                      </div>
+                                                    )}
+                                                  </div>
                                                   <button
                                                     onClick={() => togglePassword(credential.id || globalIndex)}
                                                     className={`p-1 bg-white/10 rounded-full text-gray-400 hover:text-white hover:bg-white/20 transition-colors ${globalIndex >= 10 ? 'opacity-50' : ''}`}
@@ -1159,16 +1202,18 @@ const Dashboard = () => {
                                               )}
                                             </div>
                                           )}
-                                          {globalIndex >= 10 && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                              已隐藏
-                                            </div>
-                                          )}
                                         </div>
                                       </td>,
                                       <td key="indexed" className="px-8 py-5 whitespace-nowrap">
-                                        <div className={`text-sm text-gray-400 font-medium ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
-                                          {formatDate(credential.leaked_at || '')}
+                                        <div className="relative">
+                                          <div className={`text-sm text-gray-400 font-medium ${globalIndex >= 10 ? 'blur-sm opacity-50' : ''}`}>
+                                            {formatDate(credential.leaked_at || '')}
+                                          </div>
+                                          {globalIndex >= 10 && (
+                                            <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-black/30 text-white font-bold text-sm opacity-0 hover:opacity-100 transition-opacity z-10">
+                                              已隐藏
+                                            </div>
+                                          )}
                                         </div>
                                       </td>
                                     ]
