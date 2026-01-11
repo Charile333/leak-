@@ -96,9 +96,9 @@ const ParticleWaves: React.FC = () => {
           // 更新位置
           vec3 newPosition = vec3(position.x, y, position.z);
           
-          // 计算粒子大小 - 峰值体积增加100%
-          float sinSX = (sin(xFactor + time2 * uSpeed * 5.0 * 0.7) + 1.0) * 10.0;
-          float sinSZ = (sin(zFactor + time2 * uSpeed * 5.0 * 0.5) + 1.0) * 10.0;
+          // 计算粒子大小 - 峰值体积增加10倍
+          float sinSX = (sin(xFactor + time2 * uSpeed * 5.0 * 0.7) + 1.0) * 50.0;
+          float sinSZ = (sin(zFactor + time2 * uSpeed * 5.0 * 0.5) + 1.0) * 50.0;
           // 源文件中size是vec3，所以我们使用sum作为粒子大小
           float particleSize = sinSX + sinSZ;
           
