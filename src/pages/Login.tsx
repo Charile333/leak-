@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 // 使用public目录下的logo
-const dieLogo = '/diewei2.png';
+const dieLogo = '/diewei.png';
 import purpleLogo from '../assets/紫色2.png';
 import { useAuth } from '../context/AuthContext';
 import ParticleWaves from '../components/ParticleWaves';
