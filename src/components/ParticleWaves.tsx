@@ -56,7 +56,7 @@ const ParticleWaves: React.FC = () => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // Shader Material - 完全复刻源文件的动画逻辑
+    // Shader Material - 基于tsl-particle-waves的动画逻辑优化
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0.0 }
@@ -66,14 +66,14 @@ const ParticleWaves: React.FC = () => {
         attribute float size;
         
         void main() {
-          float time2 = time * 0.001;
+          float time2 = (1.0 - time * 0.001) * 5.0;
           float instanceIndex = float(gl_VertexID);
           float amount = ${Math.sqrt(particleCount)};
           
           float x = mod(instanceIndex, amount) * 0.5;
           float z = floor(instanceIndex / amount) * 0.5;
           
-          // 复刻源文件的波浪动画逻辑
+          // 基于tsl-particle-waves的波浪动画逻辑
           float sinX = sin(x + time2 * 0.7) * 50.0;
           float sinZ = sin(z + time2 * 0.5) * 50.0;
           
@@ -83,7 +83,7 @@ const ParticleWaves: React.FC = () => {
             position.z
           );
           
-          // 复刻源文件的粒子大小动画
+          // 基于tsl-particle-waves的粒子大小动画
           float sinSX = (sin(x + time2 * 0.7) + 1.0) * 5.0;
           float sinSZ = (sin(z + time2 * 0.5) + 1.0) * 5.0;
           float newSize = sinSX + sinSZ;
@@ -102,12 +102,13 @@ const ParticleWaves: React.FC = () => {
             discard;
           }
           
-          // 紫色粒子效果
-          gl_FragColor = vec4(0.6, 0.1, 1.0, 1.0);
+          // 优化的粒子颜色，使用更柔和的紫色渐变
+          float alpha = 1.0 - distance * 2.0;
+          gl_FragColor = vec4(0.6, 0.1, 1.0, alpha);
         }
       `,
-      transparent: false,
-      depthWrite: true,
+      transparent: true,
+      depthWrite: false,
       blending: THREE.AdditiveBlending,
       alphaTest: 0.5
     });
