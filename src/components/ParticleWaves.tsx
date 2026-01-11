@@ -36,8 +36,8 @@ const ParticleWaves: React.FC = () => {
     const positions = new Float32Array(particleCount * 3);
     const sizes = new Float32Array(particleCount);
     
-    // 粒子布局 - 网格排列
-    const separation = 50;
+    // 粒子布局 - 网格排列，使用与原始代码相同的分离距离
+    const separation = 100;
     const amount = Math.sqrt(particleCount);
     const offset = amount / 2;
 
@@ -57,13 +57,13 @@ const ParticleWaves: React.FC = () => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // Shader Material - 修复动画逻辑，确保背景动画明显可见
+    // Shader Material - 还原原始粒子大小和动画效果
     const material = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0.0 },
-        uAmplitude: { value: 80.0 },
+        uAmplitude: { value: 50.0 },
         uSpeed: { value: 0.5 },
-        uParticleSize: { value: 3.0 }
+        uParticleSize: { value: 1.0 }
       },
       vertexShader: `
         uniform float uTime;
@@ -80,16 +80,21 @@ const ParticleWaves: React.FC = () => {
           float x = mod(instanceIndex, gridSize) - gridSize / 2.0;
           float z = floor(instanceIndex / gridSize) - gridSize / 2.0;
           
-          // 计算波浪动画 - 明显的上下移动
-          float wave1 = sin(x * 0.1 + uTime * uSpeed) * uAmplitude;
-          float wave2 = cos(z * 0.1 + uTime * uSpeed * 0.7) * uAmplitude;
-          float y = wave1 + wave2;
+          // 使用原始代码的时间计算方式
+          float time2 = 1.0 - uTime * 5.0;
+          
+          // 计算波浪动画 - 与原始代码匹配
+          float sinX = sin(x * 0.5 + time2 * uSpeed * 5.0) * uAmplitude;
+          float sinZ = sin(z * 0.5 + time2 * uSpeed * 5.0 * 0.7) * uAmplitude;
+          float y = sinX + sinZ;
           
           // 更新位置
           vec3 newPosition = vec3(position.x, y, position.z);
           
-          // 计算粒子大小
-          float particleSize = uParticleSize + sin(x * 0.1 + uTime) * 2.0;
+          // 计算粒子大小 - 还原原始代码的大小变化
+          float sinSX = (sin(x * 0.5 + time2 * uSpeed * 5.0) + 1.0) * 5.0;
+          float sinSZ = (sin(z * 0.5 + time2 * uSpeed * 5.0 * 0.7) + 1.0) * 5.0;
+          float particleSize = sinSX + sinSZ;
           
           // 转换到裁剪空间
           vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
@@ -108,7 +113,7 @@ const ParticleWaves: React.FC = () => {
           
           // 圆形粒子，带有平滑的透明度渐变
           float alpha = 1.0 - distance * 2.0;
-          gl_FragColor = vec4(0.9, 0.4, 1.0, alpha);
+          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
         }
       `,
       transparent: true,

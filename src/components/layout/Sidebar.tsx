@@ -122,7 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
         <img 
           src={dieLogo} 
           alt="Product Logo" 
-          className="h-28 w-28 object-contain border-8 border-white/20 shadow-[0_0_30px_rgba(168,85,247,0.1)]" 
+          className="h-28 w-28 object-contain shadow-[0_0_30px_rgba(168,85,247,0.1)]" 
         />
       </div>
 
