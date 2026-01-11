@@ -8,6 +8,7 @@ const ParticleWaves: React.FC = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const particlesRef = useRef<THREE.Points | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -35,8 +36,8 @@ const ParticleWaves: React.FC = () => {
     const positions = new Float32Array(particleCount * 3);
     const sizes = new Float32Array(particleCount);
     
-    // 与源文件相同的粒子布局
-    const separation = 100;
+    // 粒子布局 - 网格排列
+    const separation = 50;
     const amount = Math.sqrt(particleCount);
     const offset = amount / 2;
 
@@ -56,40 +57,43 @@ const ParticleWaves: React.FC = () => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // Shader Material - 修复动画逻辑，确保背景动画正常显示
+    // Shader Material - 修复动画逻辑，确保背景动画明显可见
     const material = new THREE.ShaderMaterial({
       uniforms: {
-        time: { value: 0.0 }
+        uTime: { value: 0.0 },
+        uAmplitude: { value: 80.0 },
+        uSpeed: { value: 0.5 },
+        uParticleSize: { value: 3.0 }
       },
       vertexShader: `
-        uniform float time;
+        uniform float uTime;
+        uniform float uAmplitude;
+        uniform float uSpeed;
+        uniform float uParticleSize;
         attribute float size;
         
         void main() {
-          float time2 = time * 0.001;
+          // 直接使用实例索引计算x和z位置
           float instanceIndex = float(gl_VertexID);
-          float amount = ${Math.sqrt(particleCount)};
+          float gridSize = ${Math.sqrt(particleCount)};
           
-          float x = mod(instanceIndex, amount) * 0.5;
-          float z = floor(instanceIndex / amount) * 0.5;
+          float x = mod(instanceIndex, gridSize) - gridSize / 2.0;
+          float z = floor(instanceIndex / gridSize) - gridSize / 2.0;
           
-          // 修复波浪动画逻辑，确保粒子上下移动
-          float sinX = sin(x + time2 * 0.7) * 50.0;
-          float sinZ = sin(z + time2 * 0.5) * 50.0;
+          // 计算波浪动画 - 明显的上下移动
+          float wave1 = sin(x * 0.1 + uTime * uSpeed) * uAmplitude;
+          float wave2 = cos(z * 0.1 + uTime * uSpeed * 0.7) * uAmplitude;
+          float y = wave1 + wave2;
           
-          vec3 newPosition = vec3(
-            position.x,
-            sinX + sinZ,
-            position.z
-          );
+          // 更新位置
+          vec3 newPosition = vec3(position.x, y, position.z);
           
-          // 修复粒子大小动画，确保粒子大小变化明显
-          float sinSX = (sin(x + time2 * 0.7) + 1.0) * 2.0;
-          float sinSZ = (sin(z + time2 * 0.5) + 1.0) * 2.0;
-          float newSize = sinSX + sinSZ;
+          // 计算粒子大小
+          float particleSize = uParticleSize + sin(x * 0.1 + uTime) * 2.0;
           
+          // 转换到裁剪空间
           vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
-          gl_PointSize = newSize * (300.0 / -mvPosition.z);
+          gl_PointSize = particleSize * (300.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -102,15 +106,15 @@ const ParticleWaves: React.FC = () => {
             discard;
           }
           
-          // 提高粒子亮度和透明度，确保动画可见
-          float alpha = 0.8 - distance * 1.6;
-          gl_FragColor = vec4(0.8, 0.3, 1.0, alpha);
+          // 圆形粒子，带有平滑的透明度渐变
+          float alpha = 1.0 - distance * 2.0;
+          gl_FragColor = vec4(0.9, 0.4, 1.0, alpha);
         }
       `,
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      alphaTest: 0.1
+      alphaTest: 0.05
     });
 
     // Particles
@@ -125,16 +129,24 @@ const ParticleWaves: React.FC = () => {
     renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
+    
+    // 记录开始时间
+    startTimeRef.current = Date.now();
 
-    // Animation Loop - 与源文件相同的动画驱动方式
+    // Animation Loop - 确保动画持续运行
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
 
       if (!particlesRef.current || !sceneRef.current || !cameraRef.current || !rendererRef.current) return;
 
-      // 使用与源文件相同的时间计算方式
-      (particlesRef.current.material as THREE.ShaderMaterial).uniforms.time.value = Date.now();
+      // 计算经过的时间（秒）
+      const elapsedTime = (Date.now() - startTimeRef.current) * 0.001;
+      
+      // 更新着色器的时间变量
+      const material = particlesRef.current.material as THREE.ShaderMaterial;
+      material.uniforms.uTime.value = elapsedTime;
 
+      // 渲染场景
       rendererRef.current.render(sceneRef.current, cameraRef.current);
     };
 
