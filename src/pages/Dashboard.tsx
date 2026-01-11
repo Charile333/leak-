@@ -191,14 +191,11 @@ const Dashboard = () => {
       // 使用getLeaksFull API获取完整数据，然后手动导出为CSV
       const fullResults = await leakRadarApi.getLeaksFull(domain, category);
       
-      // 筛选出已解锁的数据
-      const unlockedItems = fullResults.items.filter((item: any) => item.unlocked || item.password_plaintext);
-      
       // 生成CSV内容
       const csvHeader = 'URL,TYPE,EMAIL/USERNAME,PASSWORD,Indexed At\n';
       
       // 生成CSV行
-      const csvRows = unlockedItems.map((item: any, index: number) => {
+      const csvRows = fullResults.items.map((item: any, index: number) => {
         const url = item.website || item.url || domain || '';
         
         // CSV转义处理函数
@@ -209,7 +206,7 @@ const Dashboard = () => {
           return value;
         };
         
-        // 只导出前10条完整数据，剩下的已解锁数据只显示URL
+        // 只导出前10条完整数据，剩下的数据只显示URL
         if (index < 10) {
           // 前10条完整数据，包含所有字段
           const type = item.email && item.email.includes('@') ? 'EMAIL' : 'USERNAME';
@@ -219,7 +216,7 @@ const Dashboard = () => {
           
           return `${escapeCsv(url)},${escapeCsv(type)},${escapeCsv(emailUsername)},${escapeCsv(password)},${escapeCsv(leakedAt)}\n`;
         } else {
-          // 第11条及以后的已解锁数据，只显示URL，其他字段留空
+          // 第11条及以后的数据，只显示URL，其他字段留空
           return `${escapeCsv(url)},,,\n`;
         }
       }).join('');
