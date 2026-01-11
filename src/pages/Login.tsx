@@ -4,7 +4,6 @@ import { ArrowRight, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 // 使用public目录下的logo
 const dieLogo = '/diewei.png';
-import purpleLogo from '../assets/紫色2.png';
 import { useAuth } from '../context/AuthContext';
 import ParticleWaves from '../components/ParticleWaves';
 
@@ -104,18 +103,6 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       {/* 粒子波背景 */}
       <ParticleWaves />
-      
-      {/* 右上角logo */}
-      <div className="absolute top-4 right-4 z-10">
-        <motion.img
-          src={purpleLogo}
-          alt="Purple Logo"
-          className="h-16 w-auto object-contain opacity-60"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 0.6, scale: 1 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        />
-      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
