@@ -122,7 +122,7 @@ const Login: React.FC = () => {
 
         {/* Login Form */}
         <motion.div
-          className="glass-card p-8 border border-white/10 rounded-2xl shadow-xl mx-auto w-full max-w-md mt-[-1rem]"
+          className="glass-card p-8 border border-white/10 rounded-2xl shadow-xl mx-auto w-full max-w-md mt-[-2rem]"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
