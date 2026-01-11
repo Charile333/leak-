@@ -57,12 +57,12 @@ const ParticleWaves: React.FC = () => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // Shader Material - 优化动画效果，接近源文件
+    // Shader Material - 更接近源文件的效果
     const material = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0.0 },
         uAmplitude: { value: 50.0 },
-        uSpeed: { value: 0.1 }, // 保持较慢的动画速度
+        uSpeed: { value: 0.5 }, // 调整速度接近源文件
         uParticleSize: { value: 1.0 }
       },
       vertexShader: `
@@ -73,35 +73,34 @@ const ParticleWaves: React.FC = () => {
         attribute float size;
         
         void main() {
-          // 使用实例索引计算每个粒子的独立位置
+          // 直接使用实例索引计算x和z位置，与源文件匹配
           float instanceIndex = float(gl_VertexID);
           float gridSize = ${Math.sqrt(particleCount)};
           
+          // 源文件的位置计算方式
           float x = mod(instanceIndex, gridSize) - gridSize / 2.0;
           float z = floor(instanceIndex / gridSize) - gridSize / 2.0;
           
-          // 使用直接的时间变量
-          float time = uTime * 1.5;
+          // 使用源文件的时间计算方式
+          float time2 = 1.0 - uTime * 5.0;
           
-          // 为每个粒子添加独立的随机相位偏移，避免同步运动
-          float randomOffset = fract(sin(instanceIndex * 12.9898 + instanceIndex * 78.233) * 43758.5453);
+          // 与源文件匹配的波浪动画计算
+          float xFactor = x * 0.5;
+          float zFactor = z * 0.5;
           
-          // 计算波浪动画 - 使用不同的频率和相位，创造异步运动
-          float wave1 = sin(x * 0.05 + time * uSpeed * 3.0 + randomOffset * 2.0) * uAmplitude;
-          float wave2 = cos(z * 0.05 + time * uSpeed * 2.0 + randomOffset * 3.0) * uAmplitude;
-          float y = wave1 + wave2;
+          // 计算波浪动画，与源文件公式匹配
+          float sinX = sin(xFactor + time2 * uSpeed * 5.0 * 0.7) * uAmplitude;
+          float sinZ = sin(zFactor + time2 * uSpeed * 5.0 * 0.5) * uAmplitude;
+          float y = sinX + sinZ;
           
           // 更新位置
           vec3 newPosition = vec3(position.x, y, position.z);
           
-          // 计算粒子大小 - 显著的大小变化效果
-          float baseSize = 8.0;
-          // 使用不同的频率和随机偏移，创造每个粒子独立的大小变化
-          float sizeWave1 = sin(x * 0.1 + time * 1.0 + randomOffset * 4.0) * 12.0;
-          float sizeWave2 = cos(z * 0.1 + time * 1.5 + randomOffset * 5.0) * 12.0;
-          float sizeWave3 = sin(x * 0.05 + z * 0.05 + time * 2.0 + randomOffset * 6.0) * 8.0;
-          // 总粒子大小，包含显著的动态变化
-          float particleSize = baseSize + sizeWave1 + sizeWave2 + sizeWave3;
+          // 计算粒子大小 - 完全匹配源文件的大小变化公式
+          float sinSX = (sin(xFactor + time2 * uSpeed * 5.0 * 0.7) + 1.0) * 5.0;
+          float sinSZ = (sin(zFactor + time2 * uSpeed * 5.0 * 0.5) + 1.0) * 5.0;
+          // 源文件中size是vec3，所以我们使用sum作为粒子大小
+          float particleSize = sinSX + sinSZ;
           
           // 转换到裁剪空间
           vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
@@ -120,7 +119,7 @@ const ParticleWaves: React.FC = () => {
           
           // 圆形粒子，带有平滑的透明度渐变
           float alpha = 1.0 - distance * 2.0;
-          // 粒子颜色改为紫色
+          // 粒子颜色改为紫色，接近源文件的视觉效果
           gl_FragColor = vec4(0.9, 0.4, 1.0, alpha);
         }
       `,
