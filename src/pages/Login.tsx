@@ -105,7 +105,7 @@ const Login: React.FC = () => {
       <div className="flex flex-col items-center justify-center w-full max-w-lg relative z-10">
         {/* Logo */}
         <img 
-          src="/diewei-red.png" 
+          src="/diewei-w.png" 
           alt="Product Logo" 
           className="h-64 w-64 object-contain" 
           style={{ position: 'relative', zIndex: 1000 }} 
