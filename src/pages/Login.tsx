@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-// 使用public目录下的logo
-const dieLogo = '/diewei-red.png';
+
 import { useAuth } from '../context/AuthContext';
 import ParticleWaves from '../components/ParticleWaves';
 
@@ -105,20 +104,12 @@ const Login: React.FC = () => {
       <ParticleWaves />
       <div className="flex flex-col items-center justify-center w-full max-w-lg relative z-10">
         {/* Logo */}
-        <div className="text-center mb-0">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5, type: "spring", stiffness: 100 }}
-            className="flex items-center justify-center"
-          >
-            <img 
-              src={dieLogo} 
-              alt="Product Logo" 
-              className="h-64 w-64 object-contain relative z-50" 
-            />
-          </motion.div>
-        </div>
+        <img 
+          src="/diewei-red.png" 
+          alt="Product Logo" 
+          className="h-64 w-64 object-contain" 
+          style={{ position: 'relative', zIndex: 1000 }} 
+        />
 
         {/* Login Form */}
         <motion.div
