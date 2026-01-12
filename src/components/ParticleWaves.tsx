@@ -118,16 +118,16 @@ const ParticleWaves: React.FC = () => {
             discard;
           }
           
-          // 移除光效，使用固定透明度
-          float alpha = 1.0;
+          // 恢复透明渐变光效
+          float alpha = 1.0 - distance * 2.0;
           // 粒子颜色恢复为最开始的亮紫色
           gl_FragColor = vec4(0.9, 0.4, 1.0, alpha);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.NormalBlending,
-      alphaTest: 0.5
+      blending: THREE.AdditiveBlending,
+      alphaTest: 0.05
     });
 
     // Particles
