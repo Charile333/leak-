@@ -288,11 +288,8 @@ const Dashboard = () => {
       
       // 对于URLs和Subdomains标签页，总是重新加载最新数据
       if (currentCategory && (currentCategory === 'urls' || currentCategory === 'subdomains')) {
-        // 清除旧的缓存数据，确保加载最新数据
-        setCategoryCredentials(prev => ({
-          ...prev,
-          [currentCategory]: []
-        }));
+        // 直接调用handleSearch，不清除缓存，避免请求失败时显示错误
+        // 缓存清除逻辑移到handleSearch中，确保isSearching状态正确设置
         handleSearch(undefined, 'default', 0);
       }
     }
@@ -450,15 +447,30 @@ const Dashboard = () => {
 
   const handleSearch = async (e?: React.FormEvent, _type?: any, page: number = 0) => {
     if (e) e.preventDefault();
-    if (!searchQuery.trim() || isSearching) return;
+    if (!searchQuery.trim()) return;
 
     // 立即更新currentPage，实现流畅的分页切换
     setCurrentPage(page);
     setIsSearching(true);
 
     if (page === 0) {
-      // 当进行新的搜索时，清除所有分类缓存
-      setCategoryCredentials({});
+      // 当进行新的搜索时，只清除当前分类的缓存，保留其他分类的数据
+      const categoryMap: Record<string, string> = {
+        '员工': 'employees',
+        '客户': 'customers',
+        '第三方': 'third_parties',
+        'URLs': 'urls',
+        '子域名': 'subdomains'
+      };
+      const currentCategory = categoryMap[activeTab];
+      
+      if (currentCategory) {
+        // 只清除当前分类的缓存，避免影响其他分类
+        setCategoryCredentials(prev => ({
+          ...prev,
+          [currentCategory]: []
+        }));
+      }
     }
     
     try {
