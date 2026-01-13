@@ -119,8 +119,12 @@ export const dataService = {
       const isUnlocked = cached?.unlocked === true;
       
       if (!isUnlocked) {
-        // 简化解锁流程：只解锁employees分类，其他分类共享解锁状态
-        await leakRadarApi.unlockDomain(domain, 'employees').catch(() => {
+        // 并行解锁三个分类，提高解锁效率
+        await Promise.all([
+          leakRadarApi.unlockDomain(domain, 'employees'),
+          leakRadarApi.unlockDomain(domain, 'customers'),
+          leakRadarApi.unlockDomain(domain, 'third_parties')
+        ]).catch(() => {
           // 忽略解锁失败，继续执行
         });
         
@@ -336,8 +340,12 @@ export const dataService = {
       const isUnlocked = cached?.unlocked === true;
       
       if (!isUnlocked) {
-        // 简化解锁流程：只解锁employees分类，其他分类共享解锁状态
-        await leakRadarApi.unlockDomain(domain, 'employees').catch(() => {
+        // 并行解锁三个分类，提高解锁效率
+        await Promise.all([
+          leakRadarApi.unlockDomain(domain, 'employees'),
+          leakRadarApi.unlockDomain(domain, 'customers'),
+          leakRadarApi.unlockDomain(domain, 'third_parties')
+        ]).catch(() => {
           // 忽略解锁失败，继续执行
         });
         
