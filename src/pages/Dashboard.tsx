@@ -452,6 +452,8 @@ const Dashboard = () => {
     if (e) e.preventDefault();
     if (!searchQuery.trim() || isSearching) return;
 
+    // 立即更新currentPage，实现流畅的分页切换
+    setCurrentPage(page);
     setIsSearching(true);
 
     if (page === 0) {
@@ -493,7 +495,6 @@ const Dashboard = () => {
       setActiveTab('报告');
     }
     setShowResults(true);
-    setCurrentPage(page);
       
       if (page === 0) {
         setTimeout(() => {
