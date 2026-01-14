@@ -110,24 +110,21 @@ const Home: React.FC = () => {
                 icon: <Globe className="w-12 h-12" />,
                 title: "全球数据监测",
                 description: "实时监测全球数千个数据泄露源，第一时间发现您的信息泄露风险",
-                gradient: "from-purple-500/20 to-indigo-500/20",
-                border: "border-purple-500/20",
+                border: "border-white/10",
                 textColor: "text-purple-400"
               },
               {
                 icon: <Users className="w-12 h-12" />,
                 title: "用户数据保护",
                 description: "保护员工和客户数据安全，防止敏感信息泄露和滥用",
-                gradient: "from-blue-500/20 to-cyan-500/20",
-                border: "border-blue-500/20",
+                border: "border-white/10",
                 textColor: "text-blue-400"
               },
               {
                 icon: <Database className="w-12 h-12" />,
                 title: "深度数据分析",
                 description: "利用AI技术深度分析泄露数据，提供详细的风险评估和解决方案",
-                gradient: "from-emerald-500/20 to-teal-500/20",
-                border: "border-emerald-500/20",
+                border: "border-white/10",
                 textColor: "text-emerald-400"
               }
             ].map((feature, index) => (
@@ -141,13 +138,10 @@ const Home: React.FC = () => {
                   boxShadow: `0 20px 40px -10px ${index === 0 ? 'rgba(139, 92, 246, 0.3)' : index === 1 ? 'rgba(59, 130, 246, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
                   scale: 1.02
                 }}
-                className={`bg-gradient-to-br ${feature.gradient} backdrop-blur-xl ${feature.border} rounded-2xl p-8 hover:shadow-xl transition-all duration-300 relative overflow-hidden group`}
+                className={`bg-black/30 backdrop-blur-xl ${feature.border} rounded-2xl p-8 hover:shadow-xl transition-all duration-300 relative overflow-hidden group`}
               >
-                {/* 装饰元素 */}
-                <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full ${feature.gradient} blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
-                
                 {/* 图标 */}
-                <div className={`mb-6 rounded-xl ${feature.gradient} w-20 h-20 flex items-center justify-center backdrop-blur-sm`}>
+                <div className={`mb-6 rounded-xl bg-white/5 w-20 h-20 flex items-center justify-center backdrop-blur-sm`}>
                   <motion.div
                     whileHover={{ rotate: 5, scale: 1.1 }}
                     transition={{ duration: 0.3 }}
@@ -163,8 +157,8 @@ const Home: React.FC = () => {
                 {/* 描述 */}
                 <p className="text-white/80 leading-relaxed relative z-10">{feature.description}</p>
                 
-                {/* 悬停效果 - 底部渐变线 */}
-                <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${feature.gradient} scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500`}></div>
+                {/* 悬停效果 - 底部线条 */}
+                <div className={`absolute bottom-0 left-0 right-0 h-1 bg-white/20 scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-500`}></div>
               </motion.div>
             ))}
           </div>
