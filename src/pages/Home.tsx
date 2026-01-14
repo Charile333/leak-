@@ -18,8 +18,11 @@ const Home: React.FC = () => {
         {/* 导航栏 */}
         <nav className="container mx-auto px-4 py-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="w-8 h-8 text-accent" />
-            <span className="text-xl font-bold text-white">DieWei</span>
+            <img 
+              src="/diewei-w.png" 
+              alt="Product Logo" 
+              className="h-10 w-auto object-contain" 
+            />
           </div>
           <div className="flex items-center gap-6">
             <motion.button
