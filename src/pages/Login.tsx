@@ -102,6 +102,25 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       {/* 粒子波背景 */}
       <ParticleWaves />
+      
+      {/* 返回按钮 */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+        className="absolute top-8 left-8 md:top-16 md:left-16 z-20"
+      >
+        <button
+          onClick={() => window.history.back()}
+          className="flex items-center gap-2 bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-full px-6 py-3 text-sm font-medium text-white hover:bg-white/[0.1] hover:border-white/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-purple-500/10"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          返回
+        </button>
+      </motion.div>
+      
       <div className="flex flex-col items-center justify-center w-full max-w-lg relative z-10">
         {/* Logo */}
         <img 

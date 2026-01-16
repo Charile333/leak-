@@ -13,7 +13,7 @@ import {
   AreaChart
 } from 'recharts';
 
-import ParticleWaves from '../components/ParticleWaves';
+import LiquidGradientBackground from '../components/LiquidGradientBackground';
 import { leakRadarApi } from '../api/leakRadar';
 
 // 统计数据显示组件
@@ -581,22 +581,13 @@ const Home: React.FC = () => {
   return (
     <div id="top" className="min-h-screen bg-[#050505] text-white selection:bg-accent selection:text-white font-sans relative overflow-x-hidden">
       <BottomAnchorNav />
-      {/* 全局背景装饰 - 为页面提供深邃的质感 */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        {/* 顶部主光晕 - 紫色 */}
-        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[80%] h-[600px] bg-accent/10 rounded-[100%] blur-[120px]" />
-        
-        {/* 底部副光晕 - 蓝色，增加冷暖对比 */}
-        <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-blue-500/5 rounded-full blur-[120px]" />
-        
-        {/* 左侧装饰光 - 弱光 */}
-        <div className="absolute top-[40%] left-[-200px] w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-[100px]" />
-      </div>
+      {/* 左侧装饰光 - 弱光 */}
+      <div className="fixed top-[40%] left-[-200px] w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
       <div className="relative z-10">
         {/* 头部区域（包含导航栏和英雄区域） - 动态背景仅在此区域显示 */}
         <div className="relative w-full min-h-screen flex flex-col overflow-hidden">
-          <ParticleWaves />
+          <LiquidGradientBackground />
           
           {/* Hero Overlay - Darkens the hero section slightly for better readability */}
           <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />
@@ -649,6 +640,7 @@ const Home: React.FC = () => {
 
           {/* 英雄区域 */}
           <section className="container mx-auto px-4 py-20 flex flex-col items-center text-center relative z-10 flex-grow justify-center">
+            
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -719,104 +711,135 @@ const Home: React.FC = () => {
           </section>
         </div>
 
-        {/* 三维防御体的AI元博弈 - 两栏布局 */}
-        <section id="features" className="container mx-auto px-4 py-20 relative overflow-hidden bg-[#070509]">
+        {/* 三维防御体的AI元博弈 - 重新设计 */}
+        <section id="features" className="container mx-auto px-4 py-24 relative overflow-hidden bg-[#070509]">
           {/* 背景效果 - 网格纹理 */}
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 mix-blend-overlay pointer-events-none" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.1),transparent_70%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.1),transparent_70%)]" />
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-24"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">三维防御体的AI元博弈</h2>
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-4">三维防御体的AI元博弈</h2>
             <p className="text-white/80 max-w-2xl mx-auto">
               构建全方位的情报监测与风险防御体系，为您的数字资产保驾护航
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* 左侧：三张卡片 */}
-            <div className="grid grid-cols-1 gap-4">
+          {/* 顶部模块：核心能力横向卡片布局 */}
+          <div className="mb-32">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {[
                 {
-                  icon: <Globe className="w-5 h-5" />,
+                  icon: <Globe className="w-6 h-6" />,
                   title: "全源情报捕获",
-                  details: [
-                    "覆盖暗网Tor/I2P网络、35+主流代码平台",
-                    "监控黑产Telegram/Discord社群及钓鱼插件",
-                    "建立包含数据特征指纹的多维情报仓库",
-                    "生成交易模式画像与攻击者身份图谱"
+                  value: "覆盖全球暗网与公开网络的情报监测",
+                  features: [
+                    "23个国际暗网市场",
+                    "35+主流代码平台",
+                    "146个黑产聚集平台"
                   ],
-                  color: "from-purple-500/20 to-blue-500/5",
-                  iconColor: "text-purple-400"
+                  iconColor: "text-purple-400",
+                  highlight: "368个威胁情报节点"
                 },
                 {
-                  icon: <Brain className="w-5 h-5" />,
+                  icon: <Brain className="w-6 h-6" />,
                   title: "智能风险决策",
-                  details: [
-                    "建立3200万节点企业数字资产关系网",
-                    "实现0.5%数据碎片→完整业务系统追溯",
-                    "构建完整的APT组织画像链式追溯体系",
-                    "自研NLP框架解析47类黑市变体暗语"
+                  value: "基于AI的实时威胁分析与决策支持",
+                  features: [
+                    "3200万节点资产关系网",
+                    "0.5%数据碎片追溯",
+                    "47类黑市暗语解析"
                   ],
-                  color: "from-blue-500/20 to-cyan-500/5",
-                  iconColor: "text-blue-400"
+                  iconColor: "text-blue-400",
+                  highlight: "12种AI模型协同"
                 },
                 {
-                  icon: <Shield className="w-5 h-5" />,
+                  icon: <Shield className="w-6 h-6" />,
                   title: "闭环处置支撑",
-                  details: [
-                    "提供专业的月度报告以及年度总结报告",
-                    "7*24小时线上咨询与专家驻场服务",
-                    "给予全流程事件闭环支撑与应急响应",
-                    "有效减缓外泄行为带来的负面影响"
+                  value: "从监测到处置的全流程安全服务",
+                  features: [
+                    "7×24小时专家值守",
+                    "48小时事件闭环",
+                    "月度/年度安全报告"
                   ],
-                  color: "from-emerald-500/20 to-teal-500/5",
-                  iconColor: "text-emerald-400"
+                  iconColor: "text-emerald-400",
+                  highlight: "线上+线下安服支撑"
                 }
               ].map((feature, index) => (
                 <motion.div
                   key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
-                  whileHover={{ y: -5 }}
-                  className="group relative"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  whileHover={{ 
+                    y: -12, 
+                    boxShadow: "0 25px 50px -15px rgba(139, 92, 246, 0.4)",
+                    scale: 1.02
+                  }}
+                  className="group relative bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-xl p-8 transition-all duration-400 hover:border-purple-500/40 hover:bg-white/[0.06]"
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg blur-lg`} />
-                  <div className="relative bg-white/5 backdrop-blur-md border border-white/10 hover:border-white/20 rounded-lg p-4 transition-colors duration-300 flex flex-col">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className={`p-1.5 rounded-md bg-white/5 border border-white/10 ${feature.iconColor} group-hover:scale-110 transition-transform duration-300`}>
-                        {feature.icon}
-                      </div>
-                      <h3 className="text-base font-bold text-white">{feature.title}</h3>
-                    </div>
-
-                    {/* List */}
-                    <ul className="space-y-1.5">
-                      {feature.details.map((detail, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5 text-white/70 text-xs leading-relaxed group-hover:text-white/90 transition-colors">
-                          <span className={`mt-1 w-1.5 h-1.5 rounded-full ${feature.iconColor.replace('text-', 'bg-')} flex-shrink-0`} />
-                          <span>{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Number Watermark */}
-                    <div className="absolute top-2 right-2 text-3xl font-bold text-white/5 select-none pointer-events-none">
-                      0{index + 1}
-                    </div>
+                  {/* 卡片背景光效 */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.1),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                  
+                  {/* 图标 */}
+                  <div className={`w-14 h-14 rounded-lg bg-gradient-to-br from-purple-500/20 to-transparent flex items-center justify-center ${feature.iconColor} mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                    {feature.icon}
+                  </div>
+                  
+                  {/* 标题 */}
+                  <h3 className="text-2xl font-bold text-white mb-3">{feature.title}</h3>
+                  
+                  {/* 价值点 */}
+                  <p className="text-white/70 mb-6 text-sm leading-relaxed">{feature.value}</p>
+                  
+                  {/* 关键特性 */}
+                  <ul className="space-y-3 mb-6">
+                    {feature.features.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-3 text-sm">
+                        <span className={`mt-1.5 w-1.5 h-1.5 rounded-full ${feature.iconColor.replace('text-', 'bg-')} flex-shrink-0`} />
+                        <span className="text-white/60">{item.split(' ').map((word, i) => 
+                          word.match(/(\d+|\d+\.\d+|\d+\+)/) ? 
+                          <span key={i} className="text-purple-400 font-medium">{word} </span> : 
+                          <span key={i}>{word} </span>
+                        )}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  {/* 高亮数据 */}
+                  <div className="mt-auto pt-6 border-t border-white/5">
+                    <span className="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">{feature.highlight}</span>
                   </div>
                 </motion.div>
               ))}
             </div>
+          </div>
 
-            {/* 右侧：1-4的服务流程 */}
+          {/* 下方模块：流程引导时间轴设计 */}
+          <div className="relative max-w-4xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-16"
+            >
+              <h3 className="text-2xl font-bold text-white mb-3">服务执行流程</h3>
+              <p className="text-white/70">从监测到处置的完整安全闭环</p>
+            </motion.div>
+            
+            {/* 时间轴容器 */}
             <div className="relative">
+              {/* 紫色渐变时间轴线 - 左侧对齐 */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500 via-blue-500 to-purple-500 opacity-60 rounded-full" />
+              
               {[
                 {
                   id: 1,
@@ -830,40 +853,37 @@ const Home: React.FC = () => {
                 },
                 {
                   id: 3,
-                  title: "线上咨询以及支撑",
-                  description: "安全专家团队驻场护航，提供合规解读、攻防策略优化及事件溯源服务，确保48小时内闭环处置"
+                  title: "线上咨询支撑",
+                  description: "安全专家团队在线值守，提供漏洞解读、处置策略优化等实时指导，建立快速响应通道"
                 },
                 {
                   id: 4,
-                  title: "月度报告以及年度报告",
-                  description: "可视化呈现风险趋势、处置效能及合规水位，附带攻击面收敛方案与防护体系迭代路线图，风险暴露面降低30%+"
+                  title: "月度/年度报告",
+                  description: "可视化呈现风险趋势、处置效能及合规水位，附带攻击面收敛方案与防护体系迭代路线图"
                 }
-              ].map((step, index, array) => (
-                <motion.div 
-                  key={index} 
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
-                  className="flex gap-8 relative mb-16"
+              ].map((step, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -30, scale: 0.95 }}
+                  whileInView={{ opacity: 1, x: 0, scale: 1 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.7, delay: index * 0.15, ease: "easeOut" }}
+                  className="relative mb-20 group pl-16"
                 >
-                  {/* 连接线 */}
-                  {index !== array.length - 1 && (
-                    <div className="absolute left-[2rem] top-20 bottom-[-2rem] w-0.5 bg-gradient-to-b from-accent to-transparent opacity-50" />
-                  )}
-                  
-                  {/* 数字圆圈 */}
-                  <div className="flex-shrink-0">
-                    <div className="w-16 h-16 rounded-full border-4 border-accent flex items-center justify-center bg-black/40 backdrop-blur-sm shadow-[0_0_20px_rgba(139,92,246,0.3)] z-10 relative group-hover:scale-110 transition-transform duration-300">
-                      <span className="text-2xl font-bold text-white">{step.id}</span>
-                    </div>
+                  {/* 数字节点 - 精确居中在线条上 */}
+                  <div className="absolute left-[-20px] top-0 w-11 h-11 rounded-full border-2 border-purple-500 bg-[#070509] flex items-center justify-center z-10 transition-all duration-400 group-hover:bg-purple-500 group-hover:border-purple-400 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]">
+                    <span className="text-sm font-bold text-white">{step.id}</span>
                   </div>
                   
                   {/* 内容 */}
-                  <div className="pb-16 pt-1">
-                    <h3 className="text-2xl font-bold text-white mb-4">{step.title}</h3>
-                    <p className="text-lg text-white/70 leading-relaxed">
-                      {step.description}
+                  <div className="bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-xl p-8 hover:border-purple-500/40 hover:bg-white/[0.05] transition-all duration-400">
+                    <h4 className="text-2xl font-bold text-white mb-4">{step.title}</h4>
+                    <p className="text-white/70 text-sm leading-relaxed max-w-2xl">
+                      {step.description.split(' ').map((word, i) => 
+                        word.match(/(\d+|\d+×\d+|\d+小时)/) ? 
+                        <span key={i} className="text-purple-400 font-medium">{word} </span> : 
+                        <span key={i}>{word} </span>
+                      )}
                     </p>
                   </div>
                 </motion.div>
