@@ -579,14 +579,14 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div id="top" className="min-h-screen bg-[#050505] text-white selection:bg-accent selection:text-white font-sans relative overflow-x-hidden">
+    <div id="top" className="min-h-screen text-white selection:bg-accent selection:text-white font-sans relative overflow-x-hidden">
       <BottomAnchorNav />
       {/* 左侧装饰光 - 弱光 */}
       <div className="fixed top-[40%] left-[-200px] w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
       <div className="relative z-10">
         {/* 头部区域（包含导航栏和英雄区域） - 动态背景仅在此区域显示 */}
-        <div className="relative w-full min-h-screen flex flex-col overflow-hidden">
+        <div className="relative w-full min-h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'transparent' }}>
           <LiquidGradientBackground />
           
           {/* Hero Overlay - Darkens the hero section slightly for better readability */}
