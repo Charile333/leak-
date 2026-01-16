@@ -17,7 +17,21 @@ export const HalfCircleBackground: React.FC = () => {
 
       {/* 环2 (中间粒子环) - gap 70 - w-[860px] */}
       <div className="absolute bottom-0 w-[860px] h-[430px] overflow-hidden">
-        <div className="w-[860px] h-[860px] rounded-full border-[4px] border-dotted border-accent/80 animate-[spin_30s_linear_infinite]" />
+        {/* 使用 SVG 来实现更大间隔的虚线圆环 */}
+        <div className="absolute inset-0 w-full h-[200%] flex items-center justify-center animate-[spin_30s_linear_infinite]">
+          <svg width="860" height="860" viewBox="0 0 860 860" className="w-full h-full">
+            <circle 
+              cx="430" 
+              cy="430" 
+              r="426" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="6" 
+              strokeDasharray="4 30" 
+              className="text-accent/80"
+            />
+          </svg>
+        </div>
       </div>
 
       {/* 环1 (内层实线) - gap 60 - w-[720px] */}
