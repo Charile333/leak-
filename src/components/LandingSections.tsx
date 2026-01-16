@@ -11,14 +11,12 @@ import {
   Shield,
   Zap,
   Activity,
-  Map,
-  Share2,
-  Lock,
+  Map as MapIcon,
   Search,
   AlertTriangle,
   ArrowRight
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { HalfCircleBackground } from './HalfCircleBackground';
 
 // 核心服务数据
 const coreServices = [
@@ -85,7 +83,7 @@ const techAdvantages = [
     keyData: "覆盖 87 国 / 368 个威胁节点",
     subData: "支持 12 种语言",
     desc: "暗网、代码库、黑产渠道全链路覆盖，无死角捕获威胁情报",
-    icon: Map,
+    icon: MapIcon,
     visual: "世界地图标注节点分布",
     details: [
       "需覆盖暗网Tor/12P网络、35+主流代码平台、黑产Telegram/Discord社群，钓鱼插件等立体监测面建立包含数据特征指纹、交易模式画像、攻击者身份图谱的多维情报仓库，",
@@ -204,8 +202,6 @@ export const CoreServicesSection: React.FC = () => (
     </div>
   </section>
 );
-
-import { HalfCircleBackground } from './HalfCircleBackground';
 
 export const TechAdvantagesSection: React.FC = () => {
   const [activeTechIndex, setActiveTechIndex] = useState<number | null>(null);
