@@ -586,7 +586,7 @@ const Home: React.FC = () => {
 
       <div className="relative z-10">
         {/* 头部区域（包含导航栏和英雄区域） - 动态背景仅在此区域显示 */}
-        <div className="relative w-full min-h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'transparent' }}>
+        <div className="relative w-full min-h-screen flex flex-col overflow-hidden">
           <LiquidGradientBackground />
           
           {/* Hero Overlay - Darkens the hero section slightly for better readability */}
