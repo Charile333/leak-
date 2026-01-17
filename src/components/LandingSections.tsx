@@ -204,7 +204,6 @@ export const CoreServicesSection: React.FC = () => (
 );
 
 import { FlipCardStack } from './FlipCardStack';
-import { FlipCardOriginal } from './FlipCardOriginal';
 
 export const TechAdvantagesSection: React.FC = () => {
   return (
