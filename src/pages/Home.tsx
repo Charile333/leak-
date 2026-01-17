@@ -17,8 +17,6 @@ import LiquidGradientBackground from '../components/LiquidGradientBackground';
 import FullPageScroll from '../components/FullPageScroll';
 import CoreServiceMatrix from '../components/CoreServiceMatrix';
 import { 
-  CoreServicesSection, 
-  TechAdvantagesSection, 
   ServiceProcessSection, 
   PartnersSection,
   FlipCardDemoSection
