@@ -19,7 +19,6 @@ import CoreServiceMatrix from '../components/CoreServiceMatrix';
 import { 
   ServiceProcessSection, 
   PartnersSection,
-  FlipCardDemoSection,
   FlipCardReplicaSection
 } from '../components/LandingSections';
 import { leakRadarApi } from '../api/leakRadar';

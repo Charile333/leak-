@@ -51,7 +51,6 @@ const services = [
 
 const CoreServiceMatrix: React.FC = () => {
   const sphereTransitionDuration = 1.0;
-  const sphereDelay = 0;
   const sideContentDelay = sphereTransitionDuration * 0.6; // Start slightly before sphere finishes
 
   // Ensure unique ID for animation key to force re-render if needed, 

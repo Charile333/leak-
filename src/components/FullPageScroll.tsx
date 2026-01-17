@@ -185,21 +185,7 @@ const FullPageScroll: React.FC<FullPageScrollProps> = ({
           ? `animate-fade-in duration-${duration}` 
           : `animate-fade-out duration-${duration}`;
         break;
-      case 'slide':
-        // slide-up-in: 下一页从下往上进来 (向下滚动)
-        // slide-down-out: 当前页从上往下出去 (向上滚动 - 实际上应该是当前页往下移出)
-        // 修正逻辑：
-        // 向下滚动 (scrollDirection === 'down'): 当前页上移出 (slide-up-out)，下一页上移入 (slide-up-in)
-        // 向上滚动 (scrollDirection === 'up'): 当前页下移出 (slide-down-out)，下一页下移入 (slide-down-in)
-        
-        if (scrollDirection === 'down') {
-             if (isCurrent) animationClass = `animate-slide-up-out duration-${duration}`;
-             if (isNext) animationClass = `animate-slide-up-in duration-${duration}`;
-        } else {
-             if (isCurrent) animationClass = `animate-slide-down-out duration-${duration}`;
-             if (isNext) animationClass = `animate-slide-down-in duration-${duration}`;
-        }
-        break;
+      // case 'slide': block removed to use mixed mode in default/slide below
       case 'scale':
         animationClass = isNext 
           ? `animate-scale-in duration-${duration}` 
