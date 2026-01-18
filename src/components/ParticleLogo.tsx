@@ -7,7 +7,7 @@ interface ParticleLogoProps {
 
 export const ParticleLogo: React.FC<ParticleLogoProps> = ({ className, activeLogo }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number | null>(null);
   const particlesRef = useRef<any[]>([]);
   const mouseRef = useRef({ x: -9999, y: -9999 });
   const activeLogoRef = useRef(activeLogo);
@@ -48,8 +48,8 @@ export const ParticleLogo: React.FC<ParticleLogoProps> = ({ className, activeLog
         color: string;
 
         constructor(x: number, y: number, color: string) {
-            this.x = Math.random() * canvas.width;
-            this.y = Math.random() * canvas.height;
+            this.x = Math.random() * canvas!.width;
+            this.y = Math.random() * canvas!.height;
             this.dest = { x, y };
             // Increase radius: 2 to 4.5
             this.r = Math.random() * 2.5 + 2; 

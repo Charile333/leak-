@@ -75,25 +75,6 @@ const DataDashboard: React.FC = () => {
     fetchData();
   }, []);
 
-  // ... (保留辅助函数 generateMockChartData, formatYAxis, formatNumber)
-  const generateMockChartData = () => {
-    const data = [];
-    const startDate = new Date('2025-04-14');
-    let count = 1000000000;
-    for (let i = 0; i < 40; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i * 7);
-      count *= 1.15;
-      data.push({
-        date: date.toISOString().split('T')[0],
-        total: count,
-        'url:user:pass': count * 0.8,
-        'raw_lines': count * 1.2
-      });
-    }
-    return data;
-  };
-
   const formatNumber = (num: number) => num.toLocaleString();
   
   const formatYAxis = (value: number) => {

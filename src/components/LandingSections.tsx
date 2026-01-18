@@ -11,8 +11,7 @@ import {
   Zap,
   Activity,
   Search,
-  AlertTriangle,
-  ArrowRight
+  AlertTriangle
 } from 'lucide-react';
 
 // 核心服务数据
