@@ -78,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
         { name: '暗网及黑产泄露情报监测', path: '/darkweb' },
         { name: '敏感代码泄露情报', path: '/code-leak' },
         { name: '敏感文件泄露情报', path: '/file-leak' },
-        { name: '资产失陷监测', path: '/asset-compromise' },
+        { name: '资产账密失陷监测', path: '/asset-compromise' },
       ]
     },
     {
