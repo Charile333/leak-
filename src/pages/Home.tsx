@@ -16,9 +16,8 @@ import {
 import LiquidGradientBackground from '../components/LiquidGradientBackground';
 import FullPageScroll from '../components/FullPageScroll';
 import CoreServiceMatrix from '../components/CoreServiceMatrix';
-import { 
+import {
   ServiceProcessSection, 
-  PartnersSection,
   FlipCardReplicaSection
 } from '../components/LandingSections';
 import { leakRadarApi } from '../api/leakRadar';
