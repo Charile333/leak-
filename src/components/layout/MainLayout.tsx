@@ -33,9 +33,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Logo in top right corner */}
       <div className="fixed top-8 right-8 z-50">
         <img 
-          src={logo} 
+          src="/Lysir.png" 
           alt="Lysirsec Logo" 
-          className="h-8 w-auto object-contain brightness-110"
+          className="h-12 w-auto object-contain brightness-110"
         />
       </div>
 

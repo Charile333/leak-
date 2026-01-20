@@ -8,7 +8,9 @@ import {
   Pin,
   LogOut,
   User,
-  LayoutGrid
+  LayoutGrid,
+  Bot,
+  Database
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 // 使用public目录下的logo
@@ -73,13 +75,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
       icon: Search,
       items: [
         { name: '情报检索中心', path: '/dashboard' },
-        { name: 'DNS数据集', path: '/dns' },
+        { name: '暗网及黑产泄露情报监测', path: '/darkweb' },
+        { name: '敏感代码泄露情报', path: '/code-leak' },
+        { name: '敏感文件泄露情报', path: '/file-leak' },
+        { name: '资产失陷监测', path: '/asset-compromise' },
       ]
     },
     {
-      name: '威胁流',
-      icon: LayoutGrid,
+      name: '舆情',
+      icon: Bot,
       items: [
+        { name: '互联网舆情AI分析', path: '/opinion' },
+      ]
+    },
+    {
+      name: 'IOC',
+      icon: Database,
+      items: [
+        { name: 'IOC数据集', path: '/dns' },
         { name: '实时威胁流', path: '/activity' },
       ]
     }
@@ -232,6 +245,45 @@ const Sidebar: React.FC<SidebarProps> = ({ isPinned, setIsPinned }) => {
               </React.Fragment>
             );
           })}
+
+          {/* AI Opinion Analysis - Independent from any group */}
+          <div className="py-2">
+            <motion.div
+              animate={{
+                paddingLeft: effectiveCollapsed ? 16 : 12,
+                paddingRight: effectiveCollapsed ? 16 : 12,
+              }}
+              transition={smoothTransition}
+              className="w-full"
+            >
+              <NavLink
+                to="/opinion"
+                className={({ isActive }) => cn(
+                  "flex items-center rounded-xl text-sm font-bold transition-all duration-400 group shadow-lg overflow-hidden whitespace-nowrap w-full py-2.5",
+                  effectiveCollapsed ? "justify-center" : "px-3",
+                  isActive 
+                    ? "bg-gradient-to-r from-accent to-accent/80 text-white shadow-accent/20 scale-[1.02]" 
+                    : "text-gray-400 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <Bot className="w-4 h-4 transition-transform duration-400 group-hover:scale-110 shrink-0" />
+                <AnimatePresence mode="popLayout">
+                  {!effectiveCollapsed && (
+                    <motion.span 
+                      initial={{ opacity: 0, x: -10 }} 
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={smoothTransition}
+                      className="ml-3"
+                    >
+                      互联网舆情AI分析
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </NavLink>
+            </motion.div>
+            <div className="h-[10px]" />
+          </div>
 
           {/* Asset Monitoring Module - Always visible after search group */}
           <div className="py-2">

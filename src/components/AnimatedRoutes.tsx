@@ -8,6 +8,7 @@ import DomainMonitor from '../pages/DomainMonitor';
 import Login from '../pages/Login';
 import LoginVerify from '../pages/LoginVerify';
 import Activity from '../pages/Activity';
+import OpinionAnalysis from '../pages/OpinionAnalysis';
 import { useAuth } from '../context/AuthContext';
 
 // 私有路由组件 - 只有登录后才能访问
@@ -196,6 +197,101 @@ const AnimatedRoutes = () => {
                   className="w-full h-full"
                 >
                   <Dashboard />
+                </motion.div>
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/opinion"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <motion.div
+                  initial="initial"
+                  animate="in"
+                  exit="out"
+                  variants={pageVariants}
+                  transition={pageTransition}
+                  className="w-full h-full"
+                >
+                  <OpinionAnalysis />
+                </motion.div>
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/darkweb"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <motion.div
+                  initial="initial"
+                  animate="in"
+                  exit="out"
+                  variants={pageVariants}
+                  transition={pageTransition}
+                  className="w-full h-full"
+                >
+                  <div className="p-8 text-center text-gray-500">暗网及黑产泄露情报监测模块正在开发中...</div>
+                </motion.div>
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/code-leak"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <motion.div
+                  initial="initial"
+                  animate="in"
+                  exit="out"
+                  variants={pageVariants}
+                  transition={pageTransition}
+                  className="w-full h-full"
+                >
+                  <div className="p-8 text-center text-gray-500">敏感代码泄露情报模块正在开发中...</div>
+                </motion.div>
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/file-leak"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <motion.div
+                  initial="initial"
+                  animate="in"
+                  exit="out"
+                  variants={pageVariants}
+                  transition={pageTransition}
+                  className="w-full h-full"
+                >
+                  <div className="p-8 text-center text-gray-500">敏感文件泄露情报模块正在开发中...</div>
+                </motion.div>
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/asset-compromise"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <motion.div
+                  initial="initial"
+                  animate="in"
+                  exit="out"
+                  variants={pageVariants}
+                  transition={pageTransition}
+                  className="w-full h-full"
+                >
+                  <div className="p-8 text-center text-gray-500">资产失陷监测模块正在开发中...</div>
                 </motion.div>
               </MainLayout>
             </PrivateRoute>

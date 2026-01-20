@@ -22,6 +22,7 @@ app.use(express.json());
 // 获取API密钥（从环境变量）
 let LEAKRADAR_API_KEY = process.env.LEAKRADAR_API_KEY;
 let OTX_API_KEY = process.env.OTX_API_KEY;
+let TRENDRADAR_API_URL = process.env.TRENDRADAR_API_URL; // TrendRadar API 地址
 
 // 从.env文件加载密钥
 if (!LEAKRADAR_API_KEY) {
@@ -36,6 +37,7 @@ console.log('🔍 环境变量检查：');
 console.log('   LEAKRADAR_API_KEY:', LEAKRADAR_API_KEY ? '已找到' : '未找到');
 console.log('   VITE_LEAKRADAR_API_KEY:', process.env.VITE_LEAKRADAR_API_KEY ? '已找到' : '未找到');
 console.log('   OTX_API_KEY:', OTX_API_KEY ? '已找到' : '未找到');
+console.log('   TRENDRADAR_API_URL:', TRENDRADAR_API_URL ? '已找到' : '未配置 (舆情分析功能将不可用)');
 
 if (!LEAKRADAR_API_KEY) {
   console.error('❌ 错误：LEAKRADAR_API_KEY 或 VITE_LEAKRADAR_API_KEY 未在环境变量中设置');
@@ -110,6 +112,47 @@ async function handleApiRequest(req, res) {
       return;
     }
     
+    // 处理 TrendRadar API 请求 (舆情分析)
+    if (url.startsWith('/api/opinion')) {
+      if (!TRENDRADAR_API_URL) {
+        throw new Error('TrendRadar API URL not configured');
+      }
+
+      // 移除 /api/opinion 前缀，保留后续路径
+      // 例如：/api/opinion/search -> /search
+      // 假设 TrendRadar API 也是直接暴露在根路径或 /api 下，这里需要根据实际部署调整
+      // 如果 TrendRadar 的 API 是 /api/v1/search，则需要调整 targetUrl 拼接方式
+      const upstreamUrl = TRENDRADAR_API_URL.replace(/\/$/, ''); // 移除末尾斜杠
+      const targetUrl = `${upstreamUrl}${url.replace(/^\/api\/opinion/, '')}`;
+      
+      console.log(`[Backend Proxy] -> ${targetUrl}`);
+      
+      const headers = {
+        ...req.headers,
+        host: new URL(upstreamUrl).host,
+        // TrendRadar 可能需要的鉴权头，如果有的话可以在这里添加
+        // 'Authorization': `Bearer ${process.env.TRENDRADAR_API_KEY}`,
+        'content-length': undefined,
+        'transfer-encoding': undefined
+      };
+      
+      const response = await axios({
+        method: req.method,
+        url: targetUrl,
+        headers,
+        data: req.body,
+        responseType: 'stream'
+      });
+      
+      response.headers.forEach((value, key) => {
+        res.setHeader(key, value);
+      });
+      
+      res.status(response.status);
+      response.data.pipe(res);
+      return;
+    }
+
     // 处理LeakRadar API请求
     const upstreamUrl = 'https://api.leakradar.io';
     let targetUrl = `${upstreamUrl}${url.replace(/^\/api/, '')}`;

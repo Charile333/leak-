@@ -440,9 +440,7 @@ const Home: React.FC = () => {
                   </ul>
                 </div>
               </div>
-              <div className="text-center text-white/40 text-xs">
-                <p>© 2026 DieWei. 保留所有权利。</p>
-              </div>
+              
             </div>
           </footer>
         </div>

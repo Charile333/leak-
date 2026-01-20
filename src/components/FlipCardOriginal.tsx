@@ -3,9 +3,33 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Original images from the demo (now local)
 const baseData = [
-  { id: '1', src: "/card/card-1.png", title: "全源情报捕获" },
-  { id: '2', src: "/card/card-2.png", title: "智能风险决策" },
-  { id: '3', src: "/card/card-3.png", title: "闭环处理支撑" },
+  { 
+    id: '1', 
+    src: "/card/card-1.png", 
+    title: "全源情报捕获",
+    desc: [
+      "需覆盖暗网Tor/I2P网络、35+主流代码平台、黑产Telegram/Discord社群，钓鱼插件等立体监测面",
+      "建立包含数据特征指纹、交易模式画像、攻击者身份图谱的多维情报仓库"
+    ]
+  },
+  { 
+    id: '2', 
+    src: "/card/card-2.png", 
+    title: "智能风险决策",
+    desc: [
+      "建立3200万节点企业数字资产关系网，实现「0.5%数据碎片→完整业务系统→APT组织画像」的链式追溯",
+      "自研NLP框架可解析黑市暗语47类变体（如用「蔬菜包」指代用户信息、「钢板价」隐喻商业秘密交易）"
+    ]
+  },
+  { 
+    id: '3', 
+    src: "/card/card-3.png", 
+    title: "闭环处置支撑",
+    desc: [
+      "提供月度报告以及年度报告，线上咨询，给予事件闭环支撑",
+      "减缓外泄行为带来的负面影响，弥补安全能力的短板"
+    ]
+  },
 ];
 
 // Construct a 5-card array for stacking effect, cycling through baseData
@@ -238,6 +262,14 @@ export const FlipCardOriginal: React.FC = () => {
               {topCard.title}
             </h2>
             <div className="w-24 h-2 bg-accent mt-6 ml-auto rounded-full" />
+            
+            <div className="mt-8 space-y-4 max-w-xl ml-auto">
+              {(topCard as any).desc?.map((text: string, i: number) => (
+                <p key={i} className="text-lg text-white/60 font-light leading-relaxed">
+                  {text}
+                </p>
+              ))}
+            </div>
           </motion.div>
         </AnimatePresence>
       </div>

@@ -59,6 +59,7 @@ try {
 }
 
 const OTX_API_KEY = process.env.OTX_API_KEY || process.env.VITE_OTX_API_KEY;
+const TRENDRADAR_API_URL = process.env.TRENDRADAR_API_URL; // TrendRadar API 地址
 
 // 白名单用户密码配置（开发环境使用）
 const USER_PASSWORDS = {
@@ -70,6 +71,7 @@ console.log('🔍 环境变量检查：');
 console.log('   LEAKRADAR_API_KEY:', LEAKRADAR_API_KEY ? '已找到' : '未找到');
 console.log('   WHITELISTED_USERS:', WHITELISTED_USERS.length > 0 ? `已找到 ${WHITELISTED_USERS.length} 个用户` : '未找到');
 console.log('   OTX_API_KEY:', OTX_API_KEY ? '已找到' : '未找到');
+console.log('   TRENDRADAR_API_URL:', TRENDRADAR_API_URL ? '已找到' : '未配置 (舆情分析功能将不可用)');
 
 if (!LEAKRADAR_API_KEY) {
   console.error('❌ 错误：LEAKRADAR_API_KEY 或 VITE_LEAKRADAR_API_KEY 未在环境变量中设置');
@@ -251,6 +253,18 @@ async function handleApiRequest(req, res) {
       upstreamUrl = 'https://otx.alienvault.com/api/v1';
       targetUrl = `${upstreamUrl}${url.replace(/^\/api\/otx/, '')}`;
       headers['X-OTX-API-KEY'] = OTX_API_KEY;
+    } else if (url.startsWith('/api/opinion')) {
+      // 处理 TrendRadar API 请求 (舆情分析)
+      if (!TRENDRADAR_API_URL) {
+        throw new Error('TrendRadar API URL not configured');
+      }
+      
+      // 移除 /api/opinion 前缀，保留后续路径
+      upstreamUrl = TRENDRADAR_API_URL.replace(/\/$/, '');
+      targetUrl = `${upstreamUrl}${url.replace(/^\/api\/opinion/, '')}`;
+      
+      // TrendRadar 可能需要的鉴权头
+      // headers['Authorization'] = `Bearer ${process.env.TRENDRADAR_API_KEY}`;
     } else {
       // 处理LeakRadar API请求
       upstreamUrl = 'https://api.leakradar.io';

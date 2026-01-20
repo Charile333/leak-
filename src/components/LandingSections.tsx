@@ -202,11 +202,34 @@ export const FlipCardDemoSection: React.FC = () => (
 
 export const FlipCardReplicaSection: React.FC = () => (
   <section className="h-full flex flex-col items-center justify-center bg-black relative overflow-hidden">
+    {/* 背景光效 */}
+    <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+      {/* 顶部柔和的紫色顶光 */}
+      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80%] h-[50%] bg-purple-900/20 blur-[120px] rounded-full mix-blend-screen" />
+      
+      {/* 底部蓝紫色底光 */}
+      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-900/10 blur-[100px] rounded-full mix-blend-screen" />
+      
+      {/* 动态呼吸光斑 */}
+      <motion.div 
+        className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-accent/5 blur-[80px] rounded-full"
+        animate={{ 
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3] 
+        }}
+        transition={{ 
+          duration: 8, 
+          repeat: Infinity, 
+          ease: "easeInOut" 
+        }}
+      />
+    </div>
+
     <motion.div
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
-      className="text-center mb-16"
+      className="text-center mb-16 relative z-10"
     >
       <h2 className="text-3xl md:text-5xl font-bold mb-4 text-white">核心技术壁垒</h2>
       <div className="w-20 h-1 bg-accent mx-auto rounded-full" />
