@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3001;
 
 // 配置CORS
 app.use(cors({
-  origin: ['http://localhost:5174', 'http://localhost:3000'],
+  origin: ['http://localhost:5174', 'http://localhost:3000', 'http://13.236.132.48'],
   credentials: true
 }));
 

@@ -297,7 +297,7 @@ import { ParticleLogo } from './ParticleLogo';
 
 export const PartnersSection: React.FC = () => {
   const allLogos = [
-    'miit.png', 'ccdc.png', 'bmw.png', 'byd.png', 'gac.png',
+    'bmw.png', 'byd.png',
     'gwm.png', 'changan.png', 'nio.png', 'seres.png', 'xpeng.png'
   ];
   
@@ -347,7 +347,6 @@ export const PartnersSection: React.FC = () => {
 const LogoGrid = ({ logos, activeLogo, setActiveLogo }: { logos: string[], activeLogo: string | null, setActiveLogo: (logo: string) => void }) => (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-12 gap-y-24 w-full">
       {logos.map((item, i) => {
-        const isEnlarged = ['ccdc.png', 'miit.png'].includes(item);
         const isSlightlyEnlarged = ['byd.png'].includes(item);
         const isMediumEnlarged = ['changan.png'].includes(item);
         const logoPath = `/partners/patyicle/${item}`;
@@ -368,7 +367,6 @@ const LogoGrid = ({ logos, activeLogo, setActiveLogo }: { logos: string[], activ
               className={`max-w-full max-h-full object-contain filter brightness-0 invert transition-all duration-300 ${
                 activeLogo === logoPath ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'opacity-80 hover:opacity-100'
               } ${
-                isEnlarged ? 'scale-[1.5]' : 
                 isMediumEnlarged ? 'scale-125' : 
                 isSlightlyEnlarged ? 'scale-110' : ''
               }`}
@@ -376,6 +374,18 @@ const LogoGrid = ({ logos, activeLogo, setActiveLogo }: { logos: string[], activ
           </motion.div>
         );
       })}
+      {/* 省略号元素，表示还有更多合作案例 */}
+      <motion.div 
+        whileHover={{ scale: 1.1 }}
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ delay: logos.length * 0.05 }}
+        className={`w-full aspect-[3/2] flex items-center justify-center transition-all duration-300 p-4`}
+      >
+        <div className="text-6xl font-bold text-white/80 opacity-80 hover:opacity-100 transition-opacity duration-300">
+          ···
+        </div>
+      </motion.div>
     </div>
 );
 

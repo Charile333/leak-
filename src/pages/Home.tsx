@@ -18,7 +18,8 @@ import FullPageScroll from '../components/FullPageScroll';
 import CoreServiceMatrix from '../components/CoreServiceMatrix';
 import {
   ServiceProcessSection, 
-  FlipCardReplicaSection
+  FlipCardReplicaSection,
+  PartnersSection
 } from '../components/LandingSections';
 import { leakRadarApi } from '../api/leakRadar';
 
@@ -332,14 +333,12 @@ const Home: React.FC = () => {
         {/* 第二屏：核心服务矩阵 */}
         <CoreServiceMatrix />
 
-        {/* 第三屏：合作案例 (原在页脚上方，现移至第二屏后) - 暂时隐藏 */}
-        {/* 
-        <div className="h-full relative z-10 flex items-center justify-center bg-black">
+        {/* 第三屏：合作案例展示区 */}
+        <div className="h-full relative z-10 flex items-center justify-center bg-gray-900">
           <div className="relative z-10 w-full">
             <PartnersSection />
           </div>
         </div>
-        */}
 
         {/* 核心功能壁垒展示 - 已移除 */}
         
