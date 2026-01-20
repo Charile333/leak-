@@ -348,7 +348,7 @@ const LogoGrid = ({ logos, activeLogo, setActiveLogo }: { logos: string[], activ
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-12 gap-y-24 w-full">
       {logos.map((item, i) => {
         const isSlightlyEnlarged = ['byd.png'].includes(item);
-        const isMediumEnlarged = ['changan.png'].includes(item);
+        const isMediumEnlarged = ['changan.png', 'gwm.png'].includes(item);
         const logoPath = `/partners/patyicle/${item}`;
         
         return (
