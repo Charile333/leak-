@@ -348,7 +348,9 @@ const LogoGrid = ({ logos, activeLogo, setActiveLogo }: { logos: string[], activ
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-12 gap-y-24 w-full">
       {logos.map((item, i) => {
         const isSlightlyEnlarged = ['byd.png'].includes(item);
-        const isMediumEnlarged = ['changan.png', 'gwm.png'].includes(item);
+        const isMediumEnlarged = ['gwm.png'].includes(item);
+        const isLargeEnlarged = ['changan.png'].includes(item);
+        const isSmallEnlarged = ['bmw.png'].includes(item);
         const logoPath = `/partners/patyicle/${item}`;
         
         return (
@@ -367,8 +369,10 @@ const LogoGrid = ({ logos, activeLogo, setActiveLogo }: { logos: string[], activ
               className={`max-w-full max-h-full object-contain filter brightness-0 invert transition-all duration-300 ${
                 activeLogo === logoPath ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'opacity-80 hover:opacity-100'
               } ${
+                isLargeEnlarged ? 'scale-160' : 
                 isMediumEnlarged ? 'scale-125' : 
-                isSlightlyEnlarged ? 'scale-110' : ''
+                isSlightlyEnlarged ? 'scale-110' : 
+                isSmallEnlarged ? 'scale-80' : ''
               }`}
             />
           </motion.div>
