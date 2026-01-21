@@ -18,8 +18,7 @@ import FullPageScroll from '../components/FullPageScroll';
 import CoreServiceMatrix from '../components/CoreServiceMatrix';
 import {
   ServiceProcessSection, 
-  FlipCardReplicaSection,
-  PartnersSection
+  FlipCardReplicaSection
 } from '../components/LandingSections';
 import { leakRadarApi } from '../api/leakRadar';
 

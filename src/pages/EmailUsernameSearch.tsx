@@ -12,17 +12,11 @@ import {
   Loader2,
   ChevronRight,
   ChevronDown,
-  ChevronUp,
-  Eye,
-  EyeOff,
-  ChevronLeft,
   UserCheck,
-  ShieldAlert,
-  UserMinus,
-  Download
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { dataService } from '../services/dataService';
 import type { LeakedCredential, DomainSearchSummary } from '../services/dataService';
 import { leakRadarApi } from '../api/leakRadar';
 import { otxApi } from '../api/otxApi';
@@ -145,16 +139,11 @@ const EmailUsernameSearch = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
-  const autoUnlock = true; // 固定开启自动解锁
   const [totalLeaks, setTotalLeaks] = useState<string>('---,---,---,---');
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
   // 保存各个分类的数据，避免替换原始完整数据
   const [categoryCredentials, setCategoryCredentials] = useState<Record<string, LeakedCredential[]>>({});
-  
-  // 导出功能相关状态
-  const [exportLoading, setExportLoading] = useState(false);
-  const [exportMessage, setExportMessage] = useState<string>('');
   
   // 防止搜索时页面跳动：只在用户提交搜索时才处理结果显示/隐藏
   useEffect(() => {
@@ -163,78 +152,6 @@ const EmailUsernameSearch = () => {
       setShowResults(true);
     }
   }, [results, isSearching]);
-  
-  // 导出功能实现 - 只保留CSV导出
-  const handleExport = async () => {
-    if (!searchQuery || !results) return;
-    
-    setExportLoading(true);
-    setExportMessage('');
-    
-    try {
-      const domain = searchQuery.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
-      
-      // 先获取当前分类，确保使用有效的category值
-      const categoryMap: Record<string, 'employees' | 'customers' | 'third_parties'> = {
-        '员工': 'employees',
-        '客户': 'customers',
-        '第三方': 'third_parties'
-      };
-      // 默认使用employees分类，避免使用无效的'all'分类
-      const category = categoryMap[activeTab] || 'employees';
-      
-      // 使用getLeaksFull API获取完整数据，然后手动导出为CSV
-      const fullResults = await leakRadarApi.getLeaksFull(domain, category);
-      
-      // 生成CSV内容
-      const csvHeader = 'URL,TYPE,EMAIL/USERNAME,PASSWORD,Indexed At\n';
-      
-      // 生成CSV行 - 只导出前10条完整信息
-    const csvRows = fullResults.items.slice(0, 10).map((item: any) => {
-      const url = item.website || item.url || domain || '';
-      
-      // CSV转义处理函数
-      const escapeCsv = (value: string) => {
-        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        return value;
-      };
-      
-      // 前10条完整数据，包含所有字段
-      const type = item.email && item.email.includes('@') ? 'EMAIL' : 'USERNAME';
-      const emailUsername = item.email || item.username || '';
-      const password = item.password_plaintext || item.password || '';
-      const leakedAt = item.leaked_at || item.added_at || '';
-      
-      return `${escapeCsv(url)},${escapeCsv(type)},${escapeCsv(emailUsername)},${escapeCsv(password)},${escapeCsv(leakedAt)}
-`;
-    }).join('');
-      
-      // 创建CSV blob
-      const csvContent = csvHeader + csvRows;
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      
-      // 创建下载链接
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${domain}-${category}-泄露数据.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-      setExportMessage('CSV数据已成功导出');
-    } catch (error: any) {
-      console.error('导出失败:', error);
-      setExportMessage(`导出失败: ${error.message}`);
-    } finally {
-      setExportLoading(false);
-      // 3秒后清除消息
-      setTimeout(() => setExportMessage(''), 3000);
-    }
-  };
   
   // 当页签切换时，滚动到结果区域顶部并重置相关状态
   useEffect(() => {
@@ -484,6 +401,7 @@ const EmailUsernameSearch = () => {
         // 临时使用模拟数据，避免API调用失败
         setResults({
           summary: {
+            domain: searchQuery,
             total: 0,
             employees: { count: 0, strength: { strong: 0, medium: 0, weak: 0, very_weak: 0 } },
             third_parties: { count: 0, strength: { strong: 0, medium: 0, weak: 0, very_weak: 0 } },
@@ -542,9 +460,10 @@ const EmailUsernameSearch = () => {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    handleSearch(undefined, 'default', newPage);
-  };
+  // 分页功能暂时未实现，预留接口
+  // const handlePageChange = (newPage: number) => {
+  //   handleSearch(undefined, 'default', newPage);
+  // };
 
   const filteredCredentials = useMemo(() => {
     let list: LeakedCredential[] = [];
@@ -1322,7 +1241,7 @@ const EmailUsernameSearch = () => {
                                 </div>
                               </td>
                               {activeTab === 'URLs' && <td className="py-4 text-sm text-white">{cred.count || 0}</td>}
-                              {activeTab === '子域名' && <td className="py-4 text-sm text-white">{cred.subdomain || 'N/A'}</td>}
+                              {activeTab === '子域名' && <td className="py-4 text-sm text-white">{cred.website || 'N/A'}</td>}
                               <td className="py-4 text-sm text-gray-400">{formatDate(cred.leaked_at)}</td>
                             </tr>
                           ))}
