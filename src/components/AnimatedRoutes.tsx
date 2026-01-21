@@ -9,6 +9,7 @@ import Login from '../pages/Login';
 import LoginVerify from '../pages/LoginVerify';
 import Activity from '../pages/Activity';
 import OpinionAnalysis from '../pages/OpinionAnalysis';
+import EmailUsernameSearch from '../pages/EmailUsernameSearch';
 import { useAuth } from '../context/AuthContext';
 
 // 私有路由组件 - 只有登录后才能访问
@@ -197,6 +198,25 @@ const AnimatedRoutes = () => {
                   className="w-full h-full"
                 >
                   <Dashboard />
+                </motion.div>
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/email-username-search"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <motion.div
+                  initial="initial"
+                  animate="in"
+                  exit="out"
+                  variants={pageVariants}
+                  transition={pageTransition}
+                  className="w-full h-full"
+                >
+                  <EmailUsernameSearch />
                 </motion.div>
               </MainLayout>
             </PrivateRoute>

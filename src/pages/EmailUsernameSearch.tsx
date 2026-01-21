@@ -1,0 +1,1356 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
+import { 
+  Search, 
+  User,
+  Users,
+  Briefcase,
+  LayoutGrid,
+  Globe,
+  Link as LinkIcon,
+  Loader2,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeOff,
+  ChevronLeft,
+  UserCheck,
+  ShieldAlert,
+  UserMinus,
+  Download
+} from 'lucide-react';
+import { cn } from '../lib/utils';
+import { dataService } from '../services/dataService';
+import type { LeakedCredential, DomainSearchSummary } from '../services/dataService';
+import { leakRadarApi } from '../api/leakRadar';
+import { otxApi } from '../api/otxApi';
+
+const AnimatedNumber = ({ value }: { value: string }) => {
+  const numericValue = parseInt(value.replace(/,/g, '')) || 0;
+  const count = useSpring(0, {
+    mass: 1,
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
+  const display = useTransform(count, (latest) => 
+    Math.floor(latest).toLocaleString()
+  );
+
+  useEffect(() => {
+    count.set(numericValue);
+  }, [numericValue, count]);
+
+  return <motion.span>{display}</motion.span>;
+};
+
+const DetailCard = ({ title, icon: Icon, data, colorClass, onClick }: { title: string, icon: any, data: any, colorClass: string, onClick?: () => void }) => (
+  <div 
+    onClick={onClick}
+    className={cn(
+      "bg-white/[0.03] border border-white/10 rounded-3xl p-8 hover:bg-white/[0.05] transition-all group",
+      onClick && "cursor-pointer hover:border-accent/30 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)]"
+    )}
+  >
+    <div className="flex items-start justify-between mb-6">
+      <div className="flex items-center gap-4">
+        <div className={cn("group-hover:scale-110 transition-transform", colorClass)}>
+          <Icon className="w-8 h-8" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">{title}</h3>
+          <p className="text-[10px] text-gray-500 mt-1 max-w-[200px] leading-tight">
+            {title === '员工' ? "网站和邮箱域名均匹配搜索域名。" : 
+             title === '第三方' ? "邮箱域名匹配，但网站域名不匹配。" : 
+             "网站域名匹配，但邮箱域名不匹配。"}
+          </p>
+        </div>
+      </div>
+      {onClick && (
+        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-accent/20 group-hover:text-accent transition-colors">
+          <ChevronRight className="w-4 h-4" />
+        </div>
+      )}
+    </div>
+    
+    <div className="mb-8">
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter">泄露账户数</p>
+      <p className="text-4xl font-black text-white">{data.count}</p>
+    </div>
+
+    <div>
+      <p className="text-[10px] text-gray-500 mb-3 font-bold uppercase tracking-wider">密码强度分布</p>
+      <StrengthBar strength={data.strength} />
+      
+      <div className="grid grid-cols-4 gap-2 mt-6">
+        {
+          [
+            { label: 'STRONG', val: data.strength.strong || 0, color: 'text-emerald-500' },
+            { label: 'MEDIUM', val: data.strength.medium || 0, color: 'text-blue-500' },
+            { label: 'WEAK', val: data.strength.weak || 0, color: 'text-orange-500' },
+            { label: 'VERY WEAK', val: data.strength.very_weak || 0, color: 'text-red-500' },
+          ].map((item) => {
+            const total = (data.strength.strong || 0) + (data.strength.medium || 0) + (data.strength.weak || 0) + (data.strength.very_weak || 0);
+            const percentage = total > 0 ? ((item.val / total) * 100).toFixed(1) : '0.0';
+            return (
+              <div key={item.label} className="text-center">
+                <p className={cn("text-xs font-black mb-1", item.color)}>{item.val}</p>
+                <p className="text-[9px] text-white font-bold mb-0.5">{percentage} %</p>
+                <p className="text-[8px] text-gray-500 font-bold uppercase whitespace-nowrap">{item.label}</p>
+              </div>
+            );
+          })
+        }
+      </div>
+    </div>
+  </div>
+);
+
+const StrengthBar = ({ strength }: { strength: any }) => {
+  const total = (strength.strong || 0) + (strength.medium || 0) + (strength.weak || 0) + (strength.very_weak || 0);
+  if (total === 0) return <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden" />;
+  
+  const p1 = ((strength.strong || 0) / total) * 100;
+  const p2 = ((strength.medium || 0) / total) * 100;
+  const p3 = ((strength.weak || 0) / total) * 100;
+  const p4 = ((strength.very_weak || 0) / total) * 100;
+
+  return (
+    <div className="h-2 w-full flex rounded-full overflow-hidden">
+      <div style={{ width: `${p1}%` }} className="bg-emerald-500" />
+      <div style={{ width: `${p2}%` }} className="bg-blue-500" />
+      <div style={{ width: `${p3}%` }} className="bg-orange-500" />
+      <div style={{ width: `${p4}%` }} className="bg-red-500" />
+    </div>
+  );
+};
+
+const EmailUsernameSearch = () => {
+  const location = useLocation();
+  const isDnsPage = location.pathname === '/dns';
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  // DNS数据集相关状态
+  const [activeSearchType, setActiveSearchType] = useState<'ip' | 'domain' | 'url' | 'cve'>('ip');
+  const [otxResults, setOtxResults] = useState<any>(null);
+  const [otxLoading, setOtxLoading] = useState(false);
+  const [otxError, setOtxError] = useState<string>('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [activeTab, setActiveTab] = useState('报告');
+  const [filterType, setFilterType] = useState<'All' | 'Email' | 'Username'>('All');
+  const [innerSearchQuery, setInnerSearchQuery] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [results, setResults] = useState<{ summary: DomainSearchSummary, credentials: LeakedCredential[] } | null>(null);
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const autoUnlock = true; // 固定开启自动解锁
+  const [totalLeaks, setTotalLeaks] = useState<string>('---,---,---,---');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(10);
+  // 保存各个分类的数据，避免替换原始完整数据
+  const [categoryCredentials, setCategoryCredentials] = useState<Record<string, LeakedCredential[]>>({});
+  
+  // 导出功能相关状态
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string>('');
+  
+  // 防止搜索时页面跳动：只在用户提交搜索时才处理结果显示/隐藏
+  useEffect(() => {
+    // 当有搜索结果且搜索已完成时，显示结果
+    if (results && !isSearching) {
+      setShowResults(true);
+    }
+  }, [results, isSearching]);
+  
+  // 导出功能实现 - 只保留CSV导出
+  const handleExport = async () => {
+    if (!searchQuery || !results) return;
+    
+    setExportLoading(true);
+    setExportMessage('');
+    
+    try {
+      const domain = searchQuery.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase();
+      
+      // 先获取当前分类，确保使用有效的category值
+      const categoryMap: Record<string, 'employees' | 'customers' | 'third_parties'> = {
+        '员工': 'employees',
+        '客户': 'customers',
+        '第三方': 'third_parties'
+      };
+      // 默认使用employees分类，避免使用无效的'all'分类
+      const category = categoryMap[activeTab] || 'employees';
+      
+      // 使用getLeaksFull API获取完整数据，然后手动导出为CSV
+      const fullResults = await leakRadarApi.getLeaksFull(domain, category);
+      
+      // 生成CSV内容
+      const csvHeader = 'URL,TYPE,EMAIL/USERNAME,PASSWORD,Indexed At\n';
+      
+      // 生成CSV行 - 只导出前10条完整信息
+    const csvRows = fullResults.items.slice(0, 10).map((item: any) => {
+      const url = item.website || item.url || domain || '';
+      
+      // CSV转义处理函数
+      const escapeCsv = (value: string) => {
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      };
+      
+      // 前10条完整数据，包含所有字段
+      const type = item.email && item.email.includes('@') ? 'EMAIL' : 'USERNAME';
+      const emailUsername = item.email || item.username || '';
+      const password = item.password_plaintext || item.password || '';
+      const leakedAt = item.leaked_at || item.added_at || '';
+      
+      return `${escapeCsv(url)},${escapeCsv(type)},${escapeCsv(emailUsername)},${escapeCsv(password)},${escapeCsv(leakedAt)}
+`;
+    }).join('');
+      
+      // 创建CSV blob
+      const csvContent = csvHeader + csvRows;
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${domain}-${category}-泄露数据.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      setExportMessage('CSV数据已成功导出');
+    } catch (error: any) {
+      console.error('导出失败:', error);
+      setExportMessage(`导出失败: ${error.message}`);
+    } finally {
+      setExportLoading(false);
+      // 3秒后清除消息
+      setTimeout(() => setExportMessage(''), 3000);
+    }
+  };
+  
+  // 当页签切换时，滚动到结果区域顶部并重置相关状态
+  useEffect(() => {
+    // 只有当 showResults 为 true 且不是初始化状态时才触发
+    if (showResults && activeTab) {
+      // 重置筛选和页码
+      setFilterType('All');
+      setInnerSearchQuery('');
+      setCurrentPage(0);
+      
+      // 清除当前分类之外的缓存数据，避免数据混淆
+      const categoryMap: Record<string, string> = {
+        '员工': 'employees',
+        '客户': 'customers',
+        '第三方': 'third_parties',
+        'URLs': 'urls',
+        '子域名': 'subdomains'
+      };
+      const currentCategory = categoryMap[activeTab];
+      
+      // 只有当前分类的数据保留在缓存中
+      if (currentCategory) {
+        setCategoryCredentials(prev => ({ [currentCategory]: prev[currentCategory] || [] }));
+      } else {
+        // 对于报告标签，清除所有分类缓存
+        setCategoryCredentials({});
+      }
+
+      const resultElement = document.getElementById('search-results');
+      if (resultElement) {
+        // 延迟执行以确保内容已开始渲染
+        const timer = setTimeout(() => {
+          resultElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [activeTab, showResults]);
+  
+  // 当标签页切换到URLs或Subdomains时，自动加载最新数据
+  useEffect(() => {
+    if (showResults && activeTab && searchQuery) {
+      const categoryMap: Record<string, string> = {
+        '员工': 'employees',
+        '客户': 'customers',
+        '第三方': 'third_parties',
+        'URLs': 'urls',
+        '子域名': 'subdomains'
+      };
+      const currentCategory = categoryMap[activeTab];
+      
+      // 对于URLs和Subdomains标签页，总是重新加载最新数据
+      if (currentCategory && (currentCategory === 'urls' || currentCategory === 'subdomains')) {
+        // 直接调用handleSearch，不清除缓存，避免请求失败时显示错误
+        // 缓存清除逻辑移到handleSearch中，确保isSearching状态正确设置
+        handleSearch(undefined, 'default', 0);
+      }
+    }
+  }, [activeTab, showResults, searchQuery]);
+  
+  // OTX API 查询函数
+  const handleOtxSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim() || otxLoading) return;
+    
+    setOtxLoading(true);
+    setOtxError('');
+    // 不清除otxResults，避免在搜索过程中页面跳动
+    
+    try {
+      let result;
+      
+      // 为所有类型的查询添加多section数据获取
+      switch (activeSearchType) {
+        case 'ip': {
+          // 检测是IPv4还是IPv6
+          const isIpv6 = searchQuery.includes(':');
+          // 并行获取多个section的数据
+          const [ipGeneral, ipPassiveDns, ipMalware, ipUrlList] = await Promise.all([
+            otxApi.getIpInfo(searchQuery, 'general', isIpv6),
+            otxApi.getIpInfo(searchQuery, 'passive_dns', isIpv6),
+            otxApi.getIpInfo(searchQuery, 'malware', isIpv6),
+            otxApi.getIpInfo(searchQuery, 'url_list', isIpv6)
+          ]);
+          
+          // 合并IP查询数据
+          result = {
+            ...ipGeneral,
+            passive_dns: ipPassiveDns?.passive_dns || [],
+            malware: ipMalware?.malware || [],
+            url_list: ipUrlList?.url_list || [],
+            // 确保地理位置和信誉评分字段正确
+            country: ipGeneral?.country_name || ipGeneral?.country || 'N/A',
+            city: ipGeneral?.city || 'N/A',
+            reputation: ipGeneral?.reputation || (ipGeneral?.pulse_info?.count > 0 ? '恶意' : '中立')
+          };
+          break;
+        }
+        
+        case 'domain': {
+          // 并行获取多个section的数据
+          const [generalData, passiveDnsData, whoisData, malwareData] = await Promise.all([
+            otxApi.getDomainInfo(searchQuery, 'general'),
+            otxApi.getDomainInfo(searchQuery, 'passive_dns'),
+            otxApi.getDomainInfo(searchQuery, 'whois'),
+            otxApi.getDomainInfo(searchQuery, 'malware')
+          ]);
+          
+          // 合并域名查询数据
+          result = {
+            ...generalData,
+            passive_dns: passiveDnsData?.passive_dns || [],
+            whois: whoisData || {}, // 直接使用whoisData，不假设它有whois属性
+            malware: malwareData?.malware || []
+          };
+          break;
+        }
+        
+        case 'url': {
+          // 并行获取URL的多个section数据
+          const [urlGeneral, urlUrlList] = await Promise.all([
+            otxApi.getUrlInfo(searchQuery, 'general'),
+            otxApi.getUrlInfo(searchQuery, 'url_list')
+          ]);
+          
+          // 合并URL查询数据
+          result = {
+            ...urlGeneral,
+            url_list: urlUrlList?.url_list || []
+          };
+          break;
+        }
+        
+        case 'cve': {
+          // 并行获取CVE的多个section数据
+          const [cveGeneral, cveTopPulses] = await Promise.all([
+            otxApi.getCveInfo(searchQuery, 'general'),
+            otxApi.getCveInfo(searchQuery, 'top_n_pulses')
+          ]);
+          
+          // 合并CVE查询数据
+          result = {
+            ...cveGeneral,
+            top_n_pulses: cveTopPulses?.top_n_pulses || []
+          };
+          break;
+        }
+        
+        default:
+          throw new Error('未知的搜索类型');
+      }
+      
+      setOtxResults(result);
+      setShowResults(true);
+    } catch (error: any) {
+      console.error('OTX API 查询错误:', error);
+      setOtxError(error.message || '查询失败，请重试');
+    } finally {
+      setOtxLoading(false);
+    }
+  };
+  
+  // Fetch global stats
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const stats = await leakRadarApi.getStats();
+        
+        const safeNumber = (val: any) => {
+          const n = Number(val);
+          return isNaN(n) ? 0 : n;
+        };
+
+        if (stats) {
+          const statsObj = (stats as any).data || (stats as any).stats || stats;
+          const rawTotal = safeNumber(statsObj.raw_lines?.total || statsObj.total_lines);
+          const leaksTotal = safeNumber(statsObj.leaks?.total || statsObj.total_leaks);
+          const total = safeNumber(statsObj.total_indexed || (rawTotal + leaksTotal) || statsObj.total);
+
+          if (total > 0) {
+            setTotalLeaks(total.toLocaleString());
+          }
+        } else {
+          // API failed to return any stats
+          setTotalLeaks('0');
+        }
+      } catch (error) {
+        console.error('[EmailUsernameSearch] Error fetching stats:', error);
+        setTotalLeaks('0');
+      }
+    };
+
+    fetchStats();
+  }, []);
+  
+  // Filter states
+  const [sortField] = useState<keyof LeakedCredential>('leaked_at');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Fix Recharts width error by ensuring container is visible and has size
+  useEffect(() => {
+    // 增加多次触发，确保在不同渲染阶段都能捕捉到容器尺寸
+    const timers = [100, 500, 1000, 2000].map(delay => 
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, delay)
+    );
+    return () => timers.forEach(t => clearTimeout(t));
+  }, [results, activeTab]);
+
+  const handleSearch = async (e?: React.FormEvent, _type?: any, page: number = 0) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    // 立即更新currentPage，实现流畅的分页切换
+    setCurrentPage(page);
+    setIsSearching(true);
+
+    if (page === 0) {
+      // 当进行新的搜索时，只清除当前分类的缓存，保留其他分类的数据
+      const categoryMap: Record<string, string> = {
+        '员工': 'employees',
+        '客户': 'customers',
+        '第三方': 'third_parties',
+        'URLs': 'urls',
+        '子域名': 'subdomains'
+      };
+      const currentCategory = categoryMap[activeTab];
+      
+      if (currentCategory) {
+        // 只清除当前分类的缓存，避免影响其他分类
+        setCategoryCredentials(prev => ({
+          ...prev,
+          [currentCategory]: []
+        }));
+      }
+    }
+    
+    try {
+      // 预留邮件/用户名搜索接口 - 后续会实现
+      // 总是先进行完整的邮件/用户名搜索，更新results状态
+      if (page === 0) {
+        // 预留邮件/用户名搜索主接口 - 后续替换为实际API调用
+        // const data = await dataService.searchEmailUsername(searchQuery, pageSize, page * pageSize);
+        // setResults(data);
+        
+        // 临时使用模拟数据，避免API调用失败
+        setResults({
+          summary: {
+            total: 0,
+            employees: { count: 0, strength: { strong: 0, medium: 0, weak: 0, very_weak: 0 } },
+            third_parties: { count: 0, strength: { strong: 0, medium: 0, weak: 0, very_weak: 0 } },
+            customers: { count: 0, strength: { strong: 0, medium: 0, weak: 0, very_weak: 0 } },
+            urls_count: 0,
+            subdomains_count: 0
+          },
+          credentials: []
+        });
+      }
+
+      // 然后根据当前活动标签页获取对应分类的数据
+      let category: 'employees' | 'customers' | 'third_parties' | 'urls' | 'subdomains' | null = null;
+      if (activeTab === '员工') category = 'employees';
+      else if (activeTab === '客户') category = 'customers';
+      else if (activeTab === '第三方') category = 'third_parties';
+      else if (activeTab === 'URLs') category = 'urls';
+      else if (activeTab === '子域名') category = 'subdomains';
+
+      if (category) {
+        // 预留邮件/用户名分类搜索接口 - 后续替换为实际API调用
+        // const newCredentials = await dataService.searchEmailUsernameCategory(searchQuery, category, pageSize, page * pageSize);
+        
+        // 临时使用空数组，避免API调用失败
+        const newCredentials: LeakedCredential[] = [];
+        
+        // 保存当前分类的数据，根据页码决定是替换还是合并
+        setCategoryCredentials(prev => ({
+          ...prev,
+          [category]: newCredentials
+        }));
+      }
+
+      setIsSearching(false);
+    // 只有在初始搜索时（通过表单提交，e有值）且当前标签页不是URLs或子域名时，才默认显示报告子标签
+    // 避免点击URLs或子域名标签页时自动切换回报告页面，同时避免分页时切换标签页
+    if (e && page === 0 && activeTab !== 'URLs' && activeTab !== '子域名') {
+      setActiveTab('报告');
+    }
+    setShowResults(true);
+      
+      if (page === 0) {
+        setTimeout(() => {
+          const resultElement = document.getElementById('search-results');
+          if (resultElement) {
+            const rect = resultElement.getBoundingClientRect();
+            if (rect.top < 0 || rect.top > window.innerHeight * 0.8) {
+              resultElement.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+      setIsSearching(false);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    handleSearch(undefined, 'default', newPage);
+  };
+
+  const filteredCredentials = useMemo(() => {
+    let list: LeakedCredential[] = [];
+    const categoryMap: Record<string, string> = {
+      '员工': 'employees',
+      '客户': 'customers',
+      '第三方': 'third_parties',
+      'URLs': 'urls',
+      '子域名': 'subdomains'
+    };
+    
+    const currentCategory = categoryMap[activeTab];
+    
+    // 检查是否有分页数据缓存
+    const hasPagedData = currentCategory && categoryCredentials[currentCategory] && categoryCredentials[currentCategory].length > 0;
+    
+    // 检查results是否存在且有数据
+    const hasResults = results && results.credentials && results.credentials.length > 0;
+    
+    // URL和子域名标签的数据处理
+    if (activeTab === 'URLs' || activeTab === '子域名') {
+      if (hasPagedData) {
+        list = [...categoryCredentials[currentCategory]];
+      }
+      // 只有当有缓存数据时才显示，否则显示空列表，避免显示错误数据
+    } 
+    // 其他标签的数据处理
+    else if (hasResults) {
+      if (hasPagedData) {
+        list = [...categoryCredentials[currentCategory]];
+      } else {
+        // 使用原始数据并过滤
+        list = [...results.credentials];
+        
+        // Tab filtering
+        if (activeTab === '员工') {
+          list = list.filter(c => c.type === 'Employee');
+        } else if (activeTab === '第三方') {
+          list = list.filter(c => c.type === 'Third-Party');
+        } else if (activeTab === '客户') {
+          list = list.filter(c => c.type === 'Customer');
+        } 
+        // 报告标签页显示所有数据，不需要过滤
+        else if (activeTab === '报告') {
+          // 报告标签页显示所有数据
+          list = [...results.credentials];
+        }
+      }
+    }
+
+    // Category filtering (只适用于非URL/子域名标签)
+    if (activeTab !== 'URLs' && activeTab !== '子域名') {
+      if (filterType === 'Email') {
+        list = list.filter(c => c.email?.includes('@'));
+      } else if (filterType === 'Username') {
+        list = list.filter(c => c.email && !c.email.includes('@'));
+      }
+
+      // Inner search filtering
+      if (innerSearchQuery.trim()) {
+        const query = innerSearchQuery.toLowerCase();
+        list = list.filter(c => 
+          c.email?.toLowerCase().includes(query) || 
+          c.website?.toLowerCase().includes(query) ||
+          c.password_plaintext?.toLowerCase().includes(query)
+        );
+      }
+    }
+
+    // Sorting
+    list.sort((a, b) => {
+      // URLs/子域名标签按count排序
+      if (activeTab === 'URLs' || activeTab === '子域名') {
+        const countA = a.count || 0;
+        const countB = b.count || 0;
+        return sortOrder === 'asc' ? countA - countB : countB - countA;
+      }
+
+      const valA = a[sortField] || '';
+      const valB = b[sortField] || '';
+      
+      // 特殊处理强度排序
+      if (sortField === 'strength') {
+        const order = { 'Strong': 3, 'Medium': 2, 'Weak': 1, 'Very Weak': 0 };
+        const sA = order[a.strength as keyof typeof order] || 0;
+        const sB = order[b.strength as keyof typeof order] || 0;
+        return sortOrder === 'asc' ? sA - sB : sB - sA;
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return list;
+  }, [results, activeTab, sortField, sortOrder, filterType, innerSearchQuery, categoryCredentials]);
+
+  // 格式化日期为 YYYY/MM/DD
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const togglePassword = (id: string | number) => {
+    setShowPasswords(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const tabs = [
+    { name: '报告', icon: LayoutGrid, count: results?.summary.total ?? 0 },
+    { name: '员工', icon: User, count: results?.summary.employees.count ?? 0 },
+    { name: '第三方', icon: Briefcase, count: results?.summary.third_parties.count ?? 0 },
+    { name: '客户', icon: Users, count: results?.summary.customers.count ?? 0 },
+    { name: 'URLs', icon: LinkIcon, count: results?.summary.urls_count ?? 0 },
+    { name: '子域名', icon: Globe, count: results?.summary.subdomains_count ?? 0 },
+  ];
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col animate-in fade-in duration-700">
+      {/* 功能完善中横幅 */}
+      {isDnsPage && (
+        <div className="w-full bg-yellow-500/20 border-b border-yellow-500/40 p-4 text-center">
+          <p className="text-yellow-400 font-bold text-lg">功能完善中</p>
+        </div>
+      )}
+      
+      {/* 核心展示区 */}
+      <div className="relative pt-10 pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-[50px] border border-white/10 bg-[#0a0a0c] backdrop-blur-2xl p-16 lg:p-24 shadow-[0_0_100px_rgba(168,85,247,0.1)]">
+            {/* 装饰性背景 */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.1),transparent_70%)] pointer-events-none" />
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <h1 className="text-7xl md:text-[10rem] font-black text-white tracking-tighter mb-6 leading-none select-none drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                  <AnimatedNumber value={totalLeaks} />
+                </h1>
+              </motion.div>
+              
+              <div className="flex items-center gap-4 mb-12">
+                <div className="h-px w-12 bg-gradient-to-r from-transparent to-accent" />
+                <p className="text-xs font-black text-accent tracking-[0.5em] uppercase opacity-90">
+                  已索引的泄露记录总数
+                </p>
+                <div className="h-px w-12 bg-gradient-to-l from-transparent to-accent" />
+              </div>
+              
+              <p className="max-w-3xl text-xl text-gray-400 mb-14 leading-relaxed font-medium">
+                几秒钟内即可检查邮件/用户名的泄露情况。我们监控全球数千个数据泄露源。
+              </p>
+
+              <form 
+                onSubmit={(e) => isDnsPage ? handleOtxSearch(e) : handleSearch(e)} 
+                className="w-full max-w-3xl relative group"
+              >
+                {/* DNS数据集页面的搜索表单 */}
+                {isDnsPage ? (
+                  <div>
+                    {/* 搜索类型选项卡 */}
+                    <div className="flex gap-2 mb-4 justify-center bg-[#1a1a2e] p-1.5 rounded-full">
+                      {
+                        [
+                          { type: 'ip', label: 'IP', placeholder: '输入IP地址' },
+                          { type: 'domain', label: '域名', placeholder: '输入域名' },
+                          { type: 'url', label: 'URL', placeholder: '输入URL' },
+                          { type: 'cve', label: 'CVE', placeholder: '输入CVE编号' }
+                        ].map(({ type, label }) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => {
+                              setActiveSearchType(type as any);
+                            }}
+                            className={cn(
+                              "px-6 py-3 rounded-full text-sm font-bold transition-all duration-300",
+                              activeSearchType === type
+                                ? "bg-accent/50 text-white/70 shadow-lg"
+                                : "text-gray-500 hover:bg-white/10"
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))
+                      }
+                    </div>
+                    
+                    {/* 搜索框 */}
+                    <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={
+                          activeSearchType === 'ip' ? "输入IP地址" :
+                          activeSearchType === 'domain' ? "输入域名" :
+                          activeSearchType === 'url' ? "输入URL" :
+                          "输入CVE编号"
+                        }
+                        className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium"
+                      />
+                      <button
+                        type="submit"
+                        disabled={otxLoading}
+                        className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-12 py-5 rounded-[22px] font-black transition-all text-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 purple-glow"
+                      >
+                        {otxLoading ? (
+                          <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                          <Search size={20} />
+                        )}
+                      </button>
+                    </div>
+                    
+                    {/* 错误信息 */}
+                    {otxError && (
+                      <div className="mt-4 text-center text-red-400 text-sm">
+                        {otxError}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* 原始搜索表单 */
+                  <div className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[28px] overflow-hidden p-2 shadow-2xl focus-within:border-accent/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.15)] transition-all duration-500">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="输入邮件或用户名"
+                      className="flex-1 bg-transparent border-none text-white placeholder:text-gray-500 focus:ring-0 px-8 py-5 text-xl font-medium"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={isSearching}
+                      className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-12 py-5 rounded-[22px] font-black transition-all text-xl shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 purple-glow"
+                    >
+                      {isSearching ? (
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          检索中...
+                        </div>
+                      ) : (
+                        '立即检索'
+                      )}
+                    </button>
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 搜索结果区域 */}
+      <div id="search-results" className="scroll-mt-24 min-h-[600px]">
+        {/* DNS数据集页面结果 */}
+        {isDnsPage && showResults && otxResults && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+            <div className="bg-[#1a1a20] border border-white/5 rounded-xl overflow-hidden shadow-2xl">
+              <div className="p-8">
+                <h2 className="text-2xl font-black text-white mb-6">
+                  {activeSearchType === 'ip' ? 'IP查询结果' :
+                   activeSearchType === 'domain' ? '域名查询结果' :
+                   activeSearchType === 'url' ? 'URL检测结果' :
+                   'CVE漏洞情报'}
+                </h2>
+                
+                {/* IP查询结果优化展示 */}
+                {(activeSearchType === 'ip' || activeSearchType === 'domain' || activeSearchType === 'url' || activeSearchType === 'cve') && (
+                  <div className="space-y-6">
+                    {/* 概览信息 */}
+                    <div className="bg-[#25252e] rounded-lg p-6">
+                      <h3 className="text-lg font-bold text-white mb-4">概览信息</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {activeSearchType === 'ip' && (
+                          <>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">IP地址</p>
+                              <p className="text-sm font-bold text-white">{otxResults.indicator || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">ASN归属</p>
+                              <p className="text-sm font-bold text-white">{otxResults.asn || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">地理位置</p>
+                              <p className="text-sm font-bold text-white">{`${otxResults.country || 'N/A'} ${otxResults.city || ''}`}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">信誉评分</p>
+                              <p className="text-sm font-bold text-white">{otxResults.reputation || (otxResults.pulse_info?.count > 0 ? '恶意' : '中立')}</p>
+                            </div>
+                          </>
+                        )}
+                        
+                        {activeSearchType === 'domain' && (
+                          <>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">域名</p>
+                              <p className="text-sm font-bold text-white">{otxResults.indicator || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">威胁情报数量</p>
+                              <p className="text-sm font-bold text-white">{otxResults.pulse_info?.count || 0}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">信誉评分</p>
+                              <p className="text-sm font-bold text-white">{otxResults.reputation || (otxResults.pulse_info?.count > 0 ? '恶意' : '中立')}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">注册状态</p>
+                              <p className="text-sm font-bold text-white">{otxResults.whois?.registrar ? '已注册' : '未知'}</p>
+                            </div>
+                          </>
+                        )}
+                        
+                        {activeSearchType === 'url' && (
+                          <>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">URL</p>
+                              <p className="text-sm font-bold text-white break-all">{otxResults.indicator || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">域名</p>
+                              <p className="text-sm font-bold text-white">{otxResults.domain || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">IP地址</p>
+                              <p className="text-sm font-bold text-white">{otxResults.ip || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">信誉评分</p>
+                              <p className="text-sm font-bold text-white">{otxResults.reputation || (otxResults.pulse_info?.count > 0 ? '恶意' : '中立')}</p>
+                            </div>
+                          </>
+                        )}
+                        
+                        {activeSearchType === 'cve' && (
+                          <>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">CVE编号</p>
+                              <p className="text-sm font-bold text-white">{otxResults.indicator || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">CVSS评分</p>
+                              <p className="text-sm font-bold text-white">{otxResults.base_score || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">发布日期</p>
+                              <p className="text-sm font-bold text-white">{otxResults.published || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">威胁等级</p>
+                              <p className="text-sm font-bold text-white">{otxResults.pulse_info?.count > 0 ? '高' : '中'}</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* DNS反查（被动DNS） - IP和域名查询都可能有 */}
+                    {(activeSearchType === 'ip' || activeSearchType === 'domain') && otxResults.passive_dns && otxResults.passive_dns.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">被动DNS记录</h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                            <thead>
+                              <tr className="border-b border-white/10">
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">域名</th>
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">类型</th>
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">首次出现</th>
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">最后出现</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {otxResults.passive_dns.map((record: any, index: number) => (
+                                <tr key={index} className="border-b border-white/5 hover:bg-white/5">
+                                  <td className="py-3 text-sm text-white">{record.hostname}</td>
+                                  <td className="py-3 text-sm text-white">{record.type}</td>
+                                  <td className="py-3 text-sm text-white">{record.first}</td>
+                                  <td className="py-3 text-sm text-white">{record.last}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 恶意样本 - IP和域名查询都可能有 */}
+                    {(activeSearchType === 'ip' || activeSearchType === 'domain') && otxResults.malware && otxResults.malware.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">关联恶意样本</h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                            <thead>
+                              <tr className="border-b border-white/10">
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">家族</th>
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">名称</th>
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">MD5</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {otxResults.malware.map((record: any, index: number) => (
+                                <tr key={index} className="border-b border-white/5 hover:bg-white/5">
+                                  <td className="py-3 text-sm text-white">{record.family}</td>
+                                  <td className="py-3 text-sm text-white">{record.name}</td>
+                                  <td className="py-3 text-sm text-white">{record.md5}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* URL列表 - IP和URL查询都可能有 */}
+                    {(activeSearchType === 'ip' || activeSearchType === 'url') && otxResults.url_list && otxResults.url_list.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">关联URL列表</h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                            <thead>
+                              <tr className="border-b border-white/10">
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">URL</th>
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">域名</th>
+                                <th className="pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">路径</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {otxResults.url_list.map((record: any, index: number) => (
+                                <tr key={index} className="border-b border-white/5 hover:bg-white/5">
+                                  <td className="py-3 text-sm text-white break-all">{record.url}</td>
+                                  <td className="py-3 text-sm text-white">{record.domain}</td>
+                                  <td className="py-3 text-sm text-white">{record.path}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* WHOIS信息 - 域名查询特有 */}
+                    {activeSearchType === 'domain' && otxResults.whois && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">WHOIS信息</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">注册商</p>
+                            <p className="text-sm font-bold text-white">{otxResults.whois.registrar || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">注册日期</p>
+                            <p className="text-sm font-bold text-white">{otxResults.whois.creation_date || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">到期日期</p>
+                            <p className="text-sm font-bold text-white">{otxResults.whois.expiration_date || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">更新日期</p>
+                            <p className="text-sm font-bold text-white">{otxResults.whois.updated_date || 'N/A'}</p>
+                          </div>
+                          <div className="md:col-span-2">
+                            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">名称服务器</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                              {(otxResults.whois.name_servers || []).map((ns: string, index: number) => (
+                                <p key={index} className="text-sm font-bold text-white bg-white/5 p-2 rounded">{ns}</p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* CVE详情 - CVE查询特有 */}
+                    {activeSearchType === 'cve' && otxResults.description && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">漏洞描述</h3>
+                        <div className="prose prose-invert max-w-none">
+                          <p className="text-sm text-gray-300 whitespace-pre-wrap">{otxResults.description}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 相关威胁情报 - CVE查询特有 */}
+                    {activeSearchType === 'cve' && otxResults.top_n_pulses && otxResults.top_n_pulses.length > 0 && (
+                      <div className="bg-[#25252e] rounded-lg p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">相关威胁情报</h3>
+                        <div className="space-y-4">
+                          {otxResults.top_n_pulses.map((pulse: any, index: number) => (
+                            <div key={index} className="bg-white/5 p-4 rounded-lg">
+                              <h4 className="text-sm font-bold text-white">{pulse.name}</h4>
+                              <p className="text-xs text-gray-400 mt-1">{pulse.description.substring(0, 150)}...</p>
+                              <p className="text-xs text-gray-500 mt-2">{pulse.author_name} • {new Date(pulse.modified).toLocaleDateString()}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* 原始搜索结果 */}
+        {!isDnsPage && showResults && results && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+            {/* 页签导航 */}
+            <div className="flex overflow-x-auto pb-4 mb-10 gap-2 w-full scrollbar-hide">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.name}
+                  onClick={() => setActiveTab(tab.name)}
+                  className={cn(
+                    "flex items-center gap-3 px-6 py-3 rounded-2xl font-bold transition-all whitespace-nowrap",
+                    activeTab === tab.name
+                      ? "bg-accent text-white shadow-lg"
+                      : "bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+                  )}
+                >
+                  <tab.icon className="w-5 h-5" />
+                  <span>{tab.name}</span>
+                  {tab.count > 0 && (
+                    <span className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold">
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* 结果内容区域 */}
+                {activeTab === '报告' && results ? (
+                  <div className="space-y-8">
+                    {/* 详细卡片 */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <DetailCard 
+                        title="员工" 
+                        icon={User} 
+                        data={results.summary.employees} 
+                        colorClass="text-purple-400"
+                        onClick={() => setActiveTab('员工')}
+                      />
+                      <DetailCard 
+                        title="第三方" 
+                        icon={Briefcase} 
+                        data={results.summary.third_parties} 
+                        colorClass="text-blue-400"
+                        onClick={() => setActiveTab('第三方')}
+                      />
+                      <DetailCard 
+                        title="客户" 
+                        icon={Users} 
+                        data={results.summary.customers} 
+                        colorClass="text-emerald-400"
+                        onClick={() => setActiveTab('客户')}
+                      />
+                    </div>
+                    
+                    {/* 筛选区域 */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => setIsFilterOpen(!isFilterOpen)}
+                          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-gray-400 hover:bg-white/10 transition-colors"
+                        >
+                          <span className="text-sm font-bold">筛选</span>
+                          <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isFilterOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                      
+                      <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+                        <input
+                          type="text"
+                          placeholder="搜索结果..."
+                          className="w-full pl-10 pr-4 py-2 rounded-full bg-white/5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                          value={innerSearchQuery}
+                          onChange={(e) => setInnerSearchQuery(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* 筛选选项 */}
+                    <AnimatePresence>
+                      {isFilterOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="bg-white/5 rounded-2xl p-6">
+                            <h3 className="text-lg font-bold text-white mb-4">筛选选项</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div>
+                                <p className="text-sm font-bold text-gray-400 mb-3">类型</p>
+                                <div className="flex flex-col gap-2">
+                                  {[
+                                    { label: '全部', value: 'All' },
+                                    { label: '邮箱', value: 'Email' },
+                                    { label: '用户名', value: 'Username' }
+                                  ].map(({ label, value }) => (
+                                    <button
+                                      key={value}
+                                      onClick={() => setFilterType(value as any)}
+                                      className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors",
+                                        filterType === value
+                                          ? "bg-accent text-white"
+                                          : "bg-white/5 text-gray-400 hover:bg-white/10"
+                                      )}
+                                    >
+                                      <span>{label}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* 筛选区域 */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => setIsFilterOpen(!isFilterOpen)}
+                          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-gray-400 hover:bg-white/10 transition-colors"
+                        >
+                          <span className="text-sm font-bold">筛选</span>
+                          <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isFilterOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                      
+                      <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+                        <input
+                          type="text"
+                          placeholder="搜索结果..."
+                          className="w-full pl-10 pr-4 py-2 rounded-full bg-white/5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                          value={innerSearchQuery}
+                          onChange={(e) => setInnerSearchQuery(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* 筛选选项 */}
+                    <AnimatePresence>
+                      {isFilterOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="bg-white/5 rounded-2xl p-6">
+                            <h3 className="text-lg font-bold text-white mb-4">筛选选项</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div>
+                                <p className="text-sm font-bold text-gray-400 mb-3">类型</p>
+                                <div className="flex flex-col gap-2">
+                                  {[
+                                    { label: '全部', value: 'All' },
+                                    { label: '邮箱', value: 'Email' },
+                                    { label: '用户名', value: 'Username' }
+                                  ].map(({ label, value }) => (
+                                    <button
+                                      key={value}
+                                      onClick={() => setFilterType(value as any)}
+                                      className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors",
+                                        filterType === value
+                                          ? "bg-accent text-white"
+                                          : "bg-white/5 text-gray-400 hover:bg-white/10"
+                                      )}
+                                    >
+                                      <span>{label}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+                
+                {/* 结果表格 */}
+                <div className="bg-[#1a1a20] border border-white/5 rounded-xl overflow-hidden shadow-2xl">
+                  <div className="p-6">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b border-white/10">
+                            <th className="pb-5 text-xs font-bold text-gray-500 uppercase tracking-wider">#</th>
+                            <th className="pb-5 text-xs font-bold text-gray-500 uppercase tracking-wider">邮箱/用户名</th>
+                            <th className="pb-5 text-xs font-bold text-gray-500 uppercase tracking-wider">密码</th>
+                            {activeTab === 'URLs' && <th className="pb-5 text-xs font-bold text-gray-500 uppercase tracking-wider">泄露次数</th>}
+                            {activeTab === '子域名' && <th className="pb-5 text-xs font-bold text-gray-500 uppercase tracking-wider">子域名</th>}
+                            <th className="pb-5 text-xs font-bold text-gray-500 uppercase tracking-wider">泄露日期</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredCredentials.map((cred, index) => (
+                            <tr key={`${cred.id || index}-${cred.website}-${cred.email}`} className="border-b border-white/5 hover:bg-white/5">
+                              <td className="py-4 text-sm text-white">{index + 1 + currentPage * pageSize}</td>
+                              <td className="py-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center">
+                                    <UserCheck className="w-4 h-4 text-white" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold text-white">{cred.email}</p>
+                                    <p className="text-xs text-gray-500">{cred.website || 'N/A'}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4">
+                                <div className="flex items-center gap-2">
+                                  {showPasswords[cred.id || index] ? (
+                                    <>
+                                      <span className="text-sm font-mono text-red-400">{cred.password_plaintext}</span>
+                                      <button onClick={() => togglePassword(cred.id || index)} className="text-gray-500 hover:text-gray-300 transition-colors">
+                                        <EyeOff className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="text-sm font-mono text-gray-600">••••••••</span>
+                                      <button onClick={() => togglePassword(cred.id || index)} className="text-gray-500 hover:text-gray-300 transition-colors">
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  )}
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-bold",
+                                    cred.strength === 'Strong' ? "bg-emerald-500/20 text-emerald-400"
+                                    : cred.strength === 'Medium' ? "bg-blue-500/20 text-blue-400"
+                                    : cred.strength === 'Weak' ? "bg-orange-500/20 text-orange-400"
+                                    : "bg-red-500/20 text-red-400"
+                                  )}>
+                                    {cred.strength}
+                                  </span>
+                                </div>
+                              </td>
+                              {activeTab === 'URLs' && <td className="py-4 text-sm text-white">{cred.count || 0}</td>}
+                              {activeTab === '子域名' && <td className="py-4 text-sm text-white">{cred.subdomain || 'N/A'}</td>}
+                              <td className="py-4 text-sm text-gray-400">{formatDate(cred.leaked_at)}</td>
+                            </tr>
+                          ))}
+                          {filteredCredentials.length === 0 && (
+                            <tr>
+                              <td colSpan={activeTab === 'URLs' || activeTab === '子域名' ? 5 : 4} className="py-12 text-center">
+                                <div className="flex flex-col items-center gap-4">
+                                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                                    <Search className="w-8 h-8 text-gray-500" />
+                                  </div>
+                                  <p className="text-lg font-bold text-gray-500">暂无数据</p>
+                                  <p className="text-sm text-gray-600 max-w-md">未找到与搜索条件匹配的结果。请尝试调整筛选条件或使用其他搜索词。</p>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default EmailUsernameSearch;

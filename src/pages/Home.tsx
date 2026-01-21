@@ -333,12 +333,12 @@ const Home: React.FC = () => {
         {/* 第二屏：核心服务矩阵 */}
         <CoreServiceMatrix />
 
-        {/* 第三屏：合作案例展示区 */}
-        <div className="h-full relative z-10 flex items-center justify-center bg-gray-900">
+        {/* 第三屏：合作案例展示区 - 暂时隐藏 */}
+        {/* <div className="h-full relative z-10 flex items-center justify-center bg-gray-900">
           <div className="relative z-10 w-full">
             <PartnersSection />
           </div>
-        </div>
+        </div> */}
 
         {/* 核心功能壁垒展示 - 已移除 */}
         
