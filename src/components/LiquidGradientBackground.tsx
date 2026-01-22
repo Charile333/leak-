@@ -492,15 +492,16 @@ class App {
     uniforms.uDarkNavy.value.set(0.039, 0.055, 0.153); // #0a0e27 - Navy blue base color
     
     // 保持其他优化设置
-    uniforms.uIntensity.value = 1.8;
+    uniforms.uIntensity.value = 0.0; // 禁用液体效果，使其完全静态
     uniforms.uGrainIntensity.value = 0.08;
 
     this.render();
     this.tick();
 
     window.addEventListener('resize', () => this.onResize());
-    window.addEventListener('mousemove', (ev) => this.onMouseMove(ev));
-    window.addEventListener('touchmove', (ev) => this.onTouchMove(ev));
+    // 禁用鼠标和触摸事件监听，确保背景静态
+    // window.addEventListener('mousemove', (ev) => this.onMouseMove(ev));
+    // window.addEventListener('touchmove', (ev) => this.onTouchMove(ev));
 
     // 处理可见性变化，防止节流
     document.addEventListener('visibilitychange', () => {
