@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # 1. TrendRadar 原生服务 (负责抓取和分析)
+  trend-radar:
+    # 改为从本地子目录构建
+    build: 
+      context: ./TrendRadar
+      dockerfile: docker/Dockerfile
+    container_name: trend-radar
+    restart: always
+    volumes:
+      - ./data:/app/output:z      # 将数据目录挂载到 TrendRadar 的输出目录
+      - ./TrendRadar/config:/app/config:z # 配置文件 (加上 :z)
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+    # 我们不需要暴露 Streamlit 的端口给公网，只需要它在后台跑
+    # ports:
+    #   - "8501:8501" 
+
+  # 2. RSSHub (可选，TrendRadar 依赖)
+  rsshub:
+    image: diygod/rsshub:latest
+    container_name: rsshub
+    restart: always
+    environment:
+      NODE_ENV: production
+      CACHE_TYPE: redis
+      REDIS_URL: 'redis://redis:6379/'
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    restart: always
+
+  # 3. API 适配层 (负责给 Vercel 前端提供 JSON 数据)
+  trend-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: trend-api
+    restart: always
+    ports:
+      - "8000:8000" # 暴露 8000 端口给外网 (注意配置 AWS 安全组)
+    volumes:
+      - ./data:/app/output:z # 同样挂载到 output，以便读取数据
+      - ./api.py:/app/api.py:z # 挂载代码，方便热更新
+    depends_on:
+      - trend-radar
+
+# 自动创建 network
+networks:
+  default:
+    driver: bridge

@@ -11,6 +11,10 @@ import Activity from '../pages/Activity';
 import OpinionAnalysis from '../pages/OpinionAnalysis';
 import EmailUsernameSearch from '../pages/EmailUsernameSearch';
 import IocSearch from '../pages/IocSearch';
+import DarkWeb from '../pages/DarkWeb';
+import CodeLeak from '../pages/CodeLeak';
+import FileLeak from '../pages/FileLeak';
+import AssetCompromise from '../pages/AssetCompromise';
 import { useAuth } from '../context/AuthContext';
 
 // 私有路由组件 - 只有登录后才能访问
@@ -160,7 +164,7 @@ const AnimatedRoutes = () => {
                   transition={pageTransition}
                   className="w-full h-full"
                 >
-                  <div className="p-8 text-center text-gray-500">互联网舆情监测模块正在开发中...</div>
+                  <OpinionAnalysis />
                 </motion.div>
               </MainLayout>
             </PrivateRoute>
@@ -274,7 +278,7 @@ const AnimatedRoutes = () => {
                   transition={pageTransition}
                   className="w-full h-full"
                 >
-                  <div className="p-8 text-center text-gray-500">暗网及黑产泄露情报监测模块正在开发中...</div>
+                  <DarkWeb />
                 </motion.div>
               </MainLayout>
             </PrivateRoute>
@@ -293,7 +297,7 @@ const AnimatedRoutes = () => {
                   transition={pageTransition}
                   className="w-full h-full"
                 >
-                  <div className="p-8 text-center text-gray-500">敏感代码泄露情报模块正在开发中...</div>
+                  <CodeLeak />
                 </motion.div>
               </MainLayout>
             </PrivateRoute>
@@ -312,7 +316,7 @@ const AnimatedRoutes = () => {
                   transition={pageTransition}
                   className="w-full h-full"
                 >
-                  <div className="p-8 text-center text-gray-500">敏感文件泄露情报模块正在开发中...</div>
+                  <FileLeak />
                 </motion.div>
               </MainLayout>
             </PrivateRoute>
@@ -331,7 +335,7 @@ const AnimatedRoutes = () => {
                   transition={pageTransition}
                   className="w-full h-full"
                 >
-                  <div className="p-8 text-center text-gray-500">资产失陷监测模块正在开发中...</div>
+                  <AssetCompromise />
                 </motion.div>
               </MainLayout>
             </PrivateRoute>

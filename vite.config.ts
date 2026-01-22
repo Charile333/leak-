@@ -16,15 +16,30 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       proxy: {
-        // 所有API请求转发到本地后端服务
+        // TrendRadar API 代理 (AWS)
+        '/api/trend': {
+          target: env.VITE_TRENDRADAR_API_URL, // http://13.236.132.48:8000
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/trend/, '/api'), // 前端 /api/trend -> 后端 /api
+          configure: (proxy) => {
+            proxy.on('proxyReq', (_proxyReq, req) => {
+              const target = env.VITE_TRENDRADAR_API_URL;
+              console.log(`[Trend Proxy] ${req.method} ${req.url} -> ${target}${req.url?.replace('/api/trend', '/api')}`);
+            });
+          }
+        },
+        // 所有其他 API 请求转发到本地后端服务
         '/api': {
           target: env.VITE_BACKEND_URL || 'http://localhost:3001',
           changeOrigin: true,
           secure: false,
-          timeout: 10000, // 增加超时时间到10秒
+          timeout: 20000, // 增加超时时间到20秒
           configure: (proxy) => {
             proxy.on('proxyReq', (_proxyReq, req) => {
-              console.log(`[Vite Proxy] ${req.method} ${req.url} -> http://localhost:3001${req.url}`);
+              // 修正日志中的目标端口
+              const target = env.VITE_BACKEND_URL || 'http://localhost:3001';
+              console.log(`[Vite Proxy] ${req.method} ${req.url} -> ${target}${req.url}`);
             });
             
             // 添加代理错误处理
