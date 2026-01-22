@@ -475,9 +475,11 @@ class App {
     
     // 应用源文件的Scheme 1设置
     const uniforms = this.gradientBackground.uniforms;
+    // 暂停动画：设置速度为0
+    uniforms.uSpeed.value = 0.0;
+    
     uniforms.uGradientSize.value = 0.45;
     uniforms.uGradientCount.value = 12.0;
-    uniforms.uSpeed.value = 1.5;
     uniforms.uColor1Weight.value = 0.5;
     uniforms.uColor2Weight.value = 1.8;
     // 恢复原始的橙色+海军蓝配色方案
