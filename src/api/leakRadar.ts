@@ -141,7 +141,7 @@ class LeakRadarAPI {
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
       headers['X-API-Key'] = apiKey;
-      console.log(`[LeakRadar API] Using API Key: ${apiKey.substring(0, 20)}...${apiKey.substring(apiKey.length - 10)}`);
+      // console.log(`[LeakRadar API] Using API Key: ${apiKey.substring(0, 20)}...${apiKey.substring(apiKey.length - 10)}`);
     } else {
       console.warn('[LeakRadar API] No API Key found!');
     }
@@ -159,11 +159,11 @@ class LeakRadarAPI {
       const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
       const url = `${BASE_URL}${API_PREFIX}${formattedEndpoint}`;
       
-      console.log(`[LeakRadar API] Sending request: ${url}`);
-      console.log(`[LeakRadar API] Request Method: ${options.method || 'GET'}`);
-      console.log(`[LeakRadar API] Request Headers:`, JSON.stringify(headers, null, 2));
+      // console.log(`[LeakRadar API] Sending request: ${url}`);
+      // console.log(`[LeakRadar API] Request Method: ${options.method || 'GET'}`);
+      // console.log(`[LeakRadar API] Request Headers:`, JSON.stringify(headers, null, 2));
       if (options.body) {
-        console.log(`[LeakRadar API] Request Body:`, options.body);
+        // console.log(`[LeakRadar API] Request Body:`, options.body);
       }
       
       const response = await fetch(url, {
