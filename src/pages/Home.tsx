@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ParticleWaves from '../components/ParticleWaves';
-import LiquidGradientBackground from '../components/LiquidGradientBackground';
+// import LiquidGradientBackground from '../components/LiquidGradientBackground'; // Removed as requested
 import {
   XAxis,
   YAxis,
@@ -377,8 +377,18 @@ const Home: React.FC = () => {
       {/* 全屏滚动区域 */}
       <FullPageScroll config={{ animationType: 'slide', animationDuration: 1000 }}>
         {/* 第一屏：英雄区域 - 优化响应式布局 */}
-        <div className="h-full flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-[#0a0a0c] via-[#1a1a2e] to-[#0a0a0c]">
-          <LiquidGradientBackground />
+        <div className="h-full flex items-center justify-center relative overflow-hidden">
+          {/* 背景图片 */}
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+            style={{ 
+              backgroundImage: 'url(/background/banner-1.jpg)',
+              filter: 'brightness(0.6)' // 稍微压暗背景，确保文字清晰
+            }}
+          />
+          {/* 渐变遮罩，增强底部融合 */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80 z-0 pointer-events-none" />
+          
           <section className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center relative z-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
