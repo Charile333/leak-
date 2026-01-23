@@ -232,6 +232,7 @@ const DataDashboard: React.FC = () => {
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentSection, setCurrentSection] = useState(0);
 
   return (
     <div className="min-h-screen relative overflow-hidden text-white">
@@ -239,7 +240,11 @@ const Home: React.FC = () => {
       {/* 移除全局的 LiquidGradientBackground，因为它现在只在第一屏使用 */}
       
       {/* 导航栏 - 固定在顶层，优化响应式设计 */}
-      <div className="fixed top-0 left-0 w-full z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
+      <div className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${
+        currentSection === 0 
+          ? 'bg-transparent border-transparent' 
+          : 'bg-black/80 backdrop-blur-lg border-b border-white/10'
+      }`}>
         <nav className="container mx-auto px-4 sm:px-6 py-4 md:py-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img 
@@ -375,7 +380,10 @@ const Home: React.FC = () => {
       </div>
 
       {/* 全屏滚动区域 */}
-      <FullPageScroll config={{ animationType: 'slide', animationDuration: 1000 }}>
+      <FullPageScroll 
+        config={{ animationType: 'slide', animationDuration: 1000 }}
+        onSectionChange={(index) => setCurrentSection(index)}
+      >
         {/* 第一屏：英雄区域 - 优化响应式布局 */}
         <div className="h-full flex items-center justify-center relative overflow-hidden">
           {/* 背景图片 */}

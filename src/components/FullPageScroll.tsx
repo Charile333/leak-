@@ -15,12 +15,14 @@ interface FullPageScrollProps {
   children: React.ReactNode;
   config?: FullPageScrollConfig;
   className?: string;
+  onSectionChange?: (index: number) => void;
 }
 
 const FullPageScroll: React.FC<FullPageScrollProps> = ({ 
   children, 
   config = {},
-  className = '' 
+  className = '',
+  onSectionChange
 }) => {
   // 默认配置
   const defaultConfig: Required<FullPageScrollConfig> = {
@@ -119,6 +121,9 @@ const FullPageScroll: React.FC<FullPageScrollProps> = ({
     setTimeout(() => {
       setActiveIndex(nextIndex);
       setIsAnimating(false);
+      if (onSectionChange) {
+        onSectionChange(nextIndex);
+      }
     }, animationDuration);
   };
 
@@ -374,6 +379,9 @@ const FullPageScroll: React.FC<FullPageScrollProps> = ({
                 setTimeout(() => {
                   setActiveIndex(index);
                   setIsAnimating(false);
+                  if (onSectionChange) {
+                    onSectionChange(index);
+                  }
                 }, animationDuration);
               }
             }}
