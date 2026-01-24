@@ -486,7 +486,7 @@ const Home: React.FC = () => {
                       准备好保护您的数据了吗？
                     </h2>
                     <p className="text-base sm:text-lg md:text-xl text-white/80 mb-6 sm:mb-8 md:mb-10 max-w-2xl sm:max-w-3xl mx-auto px-2">
-                      立即加入我们，访问超过千万的泄露数据索引，保护您的企业和客户数据安全。
+                      让安全，从被动防御升级为情报驱动的主动防御。
                     </p>
                     <motion.button
                       whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(0, 224, 255, 0.3)" }}

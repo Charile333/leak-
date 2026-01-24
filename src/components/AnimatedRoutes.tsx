@@ -9,6 +9,7 @@ import Login from '../pages/Login';
 import LoginVerify from '../pages/LoginVerify';
 import Activity from '../pages/Activity';
 import OpinionAnalysis from '../pages/OpinionAnalysis';
+import OpinionAI from '../pages/OpinionAI';
 import EmailUsernameSearch from '../pages/EmailUsernameSearch';
 import IocSearch from '../pages/IocSearch';
 import DarkWeb from '../pages/DarkWeb';
@@ -259,7 +260,7 @@ const AnimatedRoutes = () => {
                   transition={pageTransition}
                   className="w-full h-full"
                 >
-                  <OpinionAnalysis />
+                  <OpinionAI />
                 </motion.div>
               </MainLayout>
             </PrivateRoute>
