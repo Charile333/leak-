@@ -1,18 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Globe, 
-  MessageSquare, 
-  Code, 
-  FileText, 
-  Server, 
-  Key,
-  Shield,
-  Zap,
-  Activity,
-  Search,
-  AlertTriangle
-} from 'lucide-react';
+    Globe, 
+    MessageSquare, 
+    Code, 
+    FileText, 
+    Server, 
+    Key,
+    Shield,
+    Zap,
+    Activity,
+    Search,
+    AlertTriangle,
+    ShieldAlert,
+    Lock
+  } from 'lucide-react';
 
 // 核心服务数据
 const coreServices = [
@@ -76,26 +78,26 @@ const coreServices = [
 const serviceProcess = [
   {
     step: "01",
-    title: "首次排查",
-    desc: "多维度扫描资产，建立敏感数据基线，输出处置建议",
+    title: "快速接入",
+    desc: "配置监测对象（域名，账号，企业邮箱等），自动生成企业专属监测范围，无需部署探针，不影响业务运行",
     icon: Search
   },
   {
     step: "02",
-    title: "实时监测",
-    desc: "AI 动态指纹追踪，7×24 小时异常识别，分钟级预警",
+    title: "自动运行",
+    desc: "按配置规则自动监测风险变化，命中规则自动记录与告警，支持平台内通知与订阅提醒",
     icon: Activity
   },
   {
     step: "03",
-    title: "专家支撑",
-    desc: "合规解读 + 攻防优化 + 溯源服务，48 小时闭环处置",
+    title: "事件处理",
+    desc: "风险事件自动归档与跟踪，提供标准化处置建议，支持复杂事件人工介入",
     icon: Shield
   },
   {
     step: "04",
-    title: "持续优化",
-    desc: "月度 / 年度报告，可视化风险趋势，迭代防护体系（风险暴露面降低 30%+）",
+    title: "持续运营",
+    desc: "风险状态持续更新，自动生成阶段性运行报告，支持长期安全运营管理（风险暴露面降低 30%+）",
     icon: AlertTriangle
   }
 ];
@@ -163,33 +165,9 @@ export const CoreServicesSection: React.FC = () => (
 
 import { FlipCardStack } from './FlipCardStack';
 import { FlipCardOriginal } from './FlipCardOriginal';
+import Aurora from './Aurora';
 
-export const TechAdvantagesSection: React.FC = () => {
-  return (
-    <section className="h-full flex flex-col justify-between relative overflow-hidden pb-0 bg-gradient-to-br from-purple-900/30 via-black to-orange-900/20">
-      {/* 橙色渐变光晕 - 调整位置和强度 */}
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none z-0" />
-      
-      {/* 紫色渐变光晕 - 添加在右下角 */}
-      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none z-0" />
-      
-      <div className="absolute inset-0 bg-accent/5 skew-y-3 transform origin-top-left scale-110" />
-      <div className="container mx-auto px-4 relative z-10 h-full flex flex-col justify-center items-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-5xl font-bold mb-4">核心优势壁垒</h2>
-          <div className="w-20 h-1 bg-accent mx-auto rounded-full" />
-        </motion.div>
 
-        <FlipCardStack />
-      </div>
-    </section>
-  );
-};
 
 export const FlipCardDemoSection: React.FC = () => (
   <section className="h-full flex items-center justify-center bg-black relative overflow-hidden">
@@ -201,40 +179,28 @@ export const FlipCardDemoSection: React.FC = () => (
 );
 
 export const FlipCardReplicaSection: React.FC = () => (
-  <section className="h-full flex flex-col items-center justify-center bg-black relative overflow-hidden">
-    {/* 背景光效 */}
-    <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-      {/* 顶部柔和的紫色顶光 */}
-      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80%] h-[50%] bg-purple-900/20 blur-[120px] rounded-full mix-blend-screen" />
-      
-      {/* 底部蓝紫色底光 */}
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-900/10 blur-[100px] rounded-full mix-blend-screen" />
-      
-      {/* 动态呼吸光斑 */}
-      <motion.div 
-        className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-accent/5 blur-[80px] rounded-full"
-        animate={{ 
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3] 
-        }}
-        transition={{ 
-          duration: 8, 
-          repeat: Infinity, 
-          ease: "easeInOut" 
-        }}
-      />
+  <section className="h-full flex flex-col items-center justify-center relative overflow-hidden bg-black z-20">
+    <div className="absolute inset-0 z-0">
+        <Aurora 
+            colorStops={["#7cff67","#B19EEF","#5227FF"]} 
+            blend={1.0} 
+            amplitude={3.0} 
+            speed={0.5} 
+        />
     </div>
+
+    <div className="absolute inset-0 bg-accent/5 skew-y-3 transform origin-top-left scale-110 opacity-20 pointer-events-none z-10" />
 
     <motion.div
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
-      className="text-center mb-16 relative z-10"
+      className="text-center mb-16 relative z-20 pointer-events-auto"
     >
-      <h2 className="text-3xl md:text-5xl font-bold mb-4 text-white">核心技术壁垒</h2>
-      <div className="w-20 h-1 bg-accent mx-auto rounded-full" />
+      <h2 className="text-3xl md:text-5xl font-bold mb-4 text-white tracking-tight">核心技术壁垒</h2>
+      <div className="w-20 h-1 bg-gradient-to-r from-cyan-500 to-blue-600 mx-auto rounded-full" />
     </motion.div>
-    <div className="container mx-auto px-4 flex flex-col items-center">
+    <div className="container mx-auto px-4 flex flex-col items-center relative z-20 pointer-events-auto">
       <FlipCardOriginal />
     </div>
   </section>
@@ -242,56 +208,77 @@ export const FlipCardReplicaSection: React.FC = () => (
 
 
 
-export const ServiceProcessSection: React.FC = () => (
-  <section className="h-full flex items-center justify-center bg-gradient-to-b from-transparent to-black/30">
-    <div className="container mx-auto px-4 w-full -mt-32">
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        className="text-center mb-16 flex flex-col items-center"
-      >
-        <img 
-          src="/diewei-w.png" 
-          alt="Diewei Logo" 
-          className="h-16 w-auto object-contain mb-6 opacity-80" 
-        />
-        <h2 className="text-3xl md:text-5xl font-bold mb-4">从部署到防护，全程无忧</h2>
-        <p className="text-white/60">标准化四步服务流程，确保安全落地</p>
-      </motion.div>
+export const ServiceProcessSection: React.FC = () => {
+  const steps = [
+    {
+      step: "01",
+      title: "全网资产发现",
+      desc: "自动化扫描企业暴露在互联网和暗网的资产指纹，建立完整的攻击面档案",
+      icon: Search
+    },
+    {
+      step: "02",
+      title: "风险情报监测",
+      desc: "7x24小时持续监测暗网、黑产市场、TG群组，实时捕获针对性威胁情报",
+      icon: ShieldAlert
+    },
+    {
+      step: "03",
+      title: "深度关联分析",
+      desc: "基于多维情报库，自动关联攻击组织、恶意样本与历史事件，研判风险等级",
+      icon: Activity
+    },
+    {
+      step: "04",
+      title: "应急响应处置",
+      desc: "提供专业的处置建议与协助，快速封禁恶意源，修复漏洞，控制泄露影响",
+      icon: Lock
+    }
+  ];
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-        {/* Connecting Line (Desktop) */}
-        <div className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-gradient-to-r from-accent/0 via-accent/50 to-accent/0" />
+  return (
+    <section className="h-full flex items-center justify-center relative z-20">
+      <div className="container mx-auto px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-3xl md:text-5xl font-bold mb-4 text-white">服务流程</h2>
+          <div className="w-20 h-1 bg-accent mx-auto rounded-full" />
+        </motion.div>
 
-        {serviceProcess.map((step, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.2 }}
-            className="relative text-center group"
-          >
-            <div className="w-24 h-24 mx-auto bg-black border-4 border-accent rounded-full flex items-center justify-center mb-6 relative z-10 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_20px_rgba(168,85,247,0.3)]">
-              <step.icon className="w-8 h-8 text-white" />
-              <div className="absolute -top-2 -right-2 bg-accent text-white text-xs font-bold px-2 py-1 rounded-full">
-                {step.step}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {steps.map((item, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.2 }}
+              className="relative group"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl blur-xl" />
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 p-8 rounded-2xl h-full hover:border-accent/50 transition-colors duration-300">
+                <div className="text-6xl font-bold text-white/5 absolute top-4 right-4 font-mono">
+                  {item.step}
+                </div>
+                <div className="w-12 h-12 bg-accent/20 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <item.icon className="text-accent w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-4">{item.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  {item.desc}
+                </p>
               </div>
-            </div>
-            
-            <h3 className="text-xl font-bold mb-3 group-hover:text-accent transition-colors">
-              {step.title}
-            </h3>
-            <p className="text-sm text-white/60 leading-relaxed px-4">
-              {step.desc}
-            </p>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 import { ParticleLogo } from './ParticleLogo';
 
@@ -397,6 +384,7 @@ const LandingSections: React.FC = () => (
   <div className="w-full">
     <CoreServicesSection />
     <TechAdvantagesSection />
+    <FlipCardReplicaSection />
     <ServiceProcessSection />
     <PartnersSection />
   </div>

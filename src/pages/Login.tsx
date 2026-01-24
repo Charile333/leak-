@@ -100,8 +100,18 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* 粒子波背景 */}
-      <ParticleWaves />
+      {/* 背景图片 */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{ 
+          backgroundImage: 'url(/background/login-bg.jpg)',
+        }}
+      />
+      {/* 黑色遮罩，确保文字可读性 */}
+      <div className="absolute inset-0 z-0 bg-black/50" />
+      
+      {/* 粒子波背景 - 可选保留或移除，这里保留作为叠加效果 */}
+      {/* <ParticleWaves /> */}
       
       {/* 返回按钮 */}
       <motion.div

@@ -1,50 +1,60 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Database, 
-  Search, 
-  FileText,
-  Eye,
-  Server,
-  Lock
+  Radar,
+  Eye, 
+  ShieldAlert,
+  Activity
 } from 'lucide-react';
 import SphereScan from './ui/SphereScan';
 
 const services = [
   {
-    icon: Search,
-    title: "暗网情报检索",
-    description: "实时监控 Tor/I2P 网络，捕获地下交易市场的敏感数据泄露。",
+    icon: Radar,
+    title: "外部威胁态势感知",
+    description: [
+      "第一时间感知来自互联网与攻击者侧的真实威胁",
+      "AI 自动分析全网安全舆情，识别与企业相关的风险信号",
+      "7×24 监控暗网论坛、黑产市场与私密交易渠道",
+      "实时接入全球安全社区威胁情报流",
+      "在漏洞爆发、攻击扩散初期即可获取关键信息"
+    ],
     position: "left-top"
   },
   {
-    icon: Database,
-    title: "资产泄露监测",
-    description: "7x24小时全网扫描，第一时间发现企业凭证、代码及文档泄露。",
-    position: "left-center"
-  },
-  {
-    icon: Lock,
-    title: "账户接管防御",
-    description: "基于AI的行为分析，精准识别撞库攻击与异常登录行为。",
+    icon: Eye,
+    title: "敏感信息泄露监测",
+    description: [
+      "全面发现企业在外部世界中的真实暴露面",
+      "持续监测代码平台中的源码、密钥、配置泄露",
+      "实时发现员工账号、系统账密在暗网或黑市流通",
+      "监测合同、架构图、配置文件等敏感文件外泄",
+      "评估泄露信息可被利用的风险等级与影响范围"
+    ],
     position: "left-bottom"
   },
   {
-    icon: Eye,
-    title: "员工隐私保护",
-    description: "定期扫描高管及核心员工的个人隐私暴露面，降低社工风险。",
+    icon: ShieldAlert,
+    title: "资产失陷与入侵监测",
+    description: [
+      "找出已经被攻破或正在被利用的企业资产",
+      "发现被植入 WebShell、后门、挖矿程序的系统",
+      "监测暗网中被标记为“已入侵”的企业资产",
+      "识别被用于攻击跳板或 C2 通信的风险主机",
+      "弥补传统防火墙、WAF、EDR 的监测盲区"
+    ],
     position: "right-top"
   },
   {
-    icon: FileText,
-    title: "威胁情报分析",
-    description: "提供定制化的威胁情报报告，辅助安全团队进行决策。",
-    position: "right-center"
-  },
-  {
-    icon: Server,
-    title: "代码泄露监测",
-    description: "12 大代码库（GitHub/GitLab 等）全覆盖，21 种编程语言敏感信息识别。",
+    icon: Activity,
+    title: "威胁分析与 IOC 中心",
+    description: [
+      "10 秒完成一次安全判断",
+      "快速查询 IP、域名、Hash、CVE、IOC 威胁状态",
+      "自动关联攻击组织、恶意家族与历史攻击事件",
+      "支持一键导出恶意 IP、域名，用于封禁与处置",
+      "降低人工分析成本，提高安全响应效率"
+    ],
     position: "right-bottom"
   }
 ];
@@ -57,9 +67,9 @@ const CoreServiceMatrix: React.FC = () => {
   // but viewport={{ once: true }} should handle it.
   
   return (
-    <div className="h-full flex items-center justify-center relative z-10 overflow-hidden py-10">
+    <div className="h-full flex items-center justify-center relative z-20 overflow-hidden py-10 bg-[#EDE3E9]">
       {/* 紫色光效 - 从右侧投射 */}
-      <div className="absolute right-[-10%] top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-900/30 rounded-full blur-[150px] pointer-events-none z-0" />
+      <div className="absolute right-[-10%] top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-900/10 rounded-full blur-[150px] pointer-events-none z-0" />
       
       <div className="container mx-auto px-4 relative z-10">
         <motion.div
@@ -68,17 +78,17 @@ const CoreServiceMatrix: React.FC = () => {
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-3xl md:text-5xl font-bold text-black mb-4">
             核心服务<span className="text-accent">矩阵</span>
           </h2>
-          <p className="text-white/60 max-w-2xl mx-auto">
+          <p className="text-black/60 max-w-2xl mx-auto">
             以数据为核心，构建全方位的数字资产防御体系
           </p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
           {/* Left Column */}
-          <div className="space-y-12">
+          <div className="space-y-16">
             {services.filter(s => s.position.startsWith('left')).map((service, idx) => (
               <motion.div
                 key={idx}
@@ -93,15 +103,25 @@ const CoreServiceMatrix: React.FC = () => {
                 }}
                 className="flex flex-col md:flex-row items-center md:items-start gap-4 text-center md:text-right group"
               >
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-accent transition-colors">
+                <div className="flex-1 md:text-right text-center w-full">
+                  <h3 className="text-xl font-bold text-black mb-3 group-hover:text-accent transition-colors">
                     {service.title}
                   </h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    {service.description}
-                  </p>
+                  <ul className="text-xs sm:text-sm text-gray-600 leading-relaxed space-y-1.5 inline-block md:block text-left md:text-right w-full">
+                    {Array.isArray(service.description) && service.description.map((item, i) => (
+                      <li key={i} className="flex items-start md:justify-end justify-start gap-2">
+                         {/* Mobile bullet */}
+                         <div className="md:hidden w-1.5 h-1.5 rounded-full bg-accent/50 mt-1.5 shrink-0" />
+                         
+                         <span>{item}</span>
+                         
+                         {/* Desktop bullet */}
+                         <div className="hidden md:block w-1.5 h-1.5 rounded-full bg-accent/50 mt-1.5 shrink-0" />
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="p-3 rounded-xl bg-white/5 border border-white/10 group-hover:border-accent/50 group-hover:bg-accent/10 transition-all duration-300">
+                <div className="p-3 rounded-xl bg-black/5 border border-black/10 group-hover:border-accent/50 group-hover:bg-accent/10 transition-all duration-300 md:mt-1 shrink-0">
                   <service.icon className="w-6 h-6 text-accent" />
                 </div>
               </motion.div>
@@ -127,18 +147,18 @@ const CoreServiceMatrix: React.FC = () => {
               
               {/* Central Label */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                <div className="text-2xl font-bold text-white tracking-widest mb-1">CORE</div>
+                <div className="text-2xl font-bold text-black tracking-widest mb-1">CORE</div>
                 <div className="text-[10px] text-accent uppercase tracking-[0.3em]">System</div>
               </div>
 
               {/* Orbital Rings */}
-              <div className="absolute inset-0 border border-white/5 rounded-full animate-[spin_10s_linear_infinite]" />
-              <div className="absolute inset-10 border border-white/5 rounded-full animate-[spin_15s_linear_infinite_reverse]" />
+              <div className="absolute inset-0 border border-black/10 rounded-full animate-[spin_10s_linear_infinite]" />
+              <div className="absolute inset-10 border border-black/10 rounded-full animate-[spin_15s_linear_infinite_reverse]" />
             </div>
           </motion.div>
 
           {/* Right Column */}
-          <div className="space-y-12">
+          <div className="space-y-16">
             {services.filter(s => s.position.startsWith('right')).map((service, idx) => (
               <motion.div
                 key={idx}
@@ -153,15 +173,20 @@ const CoreServiceMatrix: React.FC = () => {
                 }}
                 className="flex flex-col md:flex-row-reverse items-center md:items-start gap-4 text-center md:text-left group"
               >
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-accent transition-colors">
+                <div className="flex-1 md:text-left text-center w-full">
+                  <h3 className="text-xl font-bold text-black mb-3 group-hover:text-accent transition-colors">
                     {service.title}
                   </h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    {service.description}
-                  </p>
+                  <ul className="text-xs sm:text-sm text-gray-600 leading-relaxed space-y-1.5 inline-block md:block text-left w-full">
+                    {Array.isArray(service.description) && service.description.map((item, i) => (
+                      <li key={i} className="flex items-start justify-start gap-2">
+                         <div className="w-1.5 h-1.5 rounded-full bg-accent/50 mt-1.5 shrink-0" />
+                         <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="p-3 rounded-xl bg-white/5 border border-white/10 group-hover:border-accent/50 group-hover:bg-accent/10 transition-all duration-300">
+                <div className="p-3 rounded-xl bg-black/5 border border-black/10 group-hover:border-accent/50 group-hover:bg-accent/10 transition-all duration-300 md:mt-1 shrink-0">
                   <service.icon className="w-6 h-6 text-accent" />
                 </div>
               </motion.div>
