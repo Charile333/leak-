@@ -3,8 +3,7 @@ import {
   Construction,
   Shield,
   Radio,
-  Globe,
-  Wrench
+  Globe
 } from 'lucide-react';
 
 const Activity = () => {

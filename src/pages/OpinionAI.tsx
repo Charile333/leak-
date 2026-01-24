@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { 
   Construction,
-  Wrench,
   Server,
   Database,
   Cpu
