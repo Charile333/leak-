@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// 临时硬编码 AWS 后端地址，绕过 Vite 代理，排查连接问题
-// baseURL 只保留主机地址，具体路径在 get 方法里写
-const TREND_API_BASE_URL = 'http://13.236.132.48:8000';
+// 使用 Vercel 代理地址，避免 Mixed Content 问题
+// 生产环境为空字符串（相对路径），开发环境可以配置 VITE_BACKEND_URL
+const TREND_API_BASE_URL = '/api/opinion';
 
 const trendAxios = axios.create({
   baseURL: TREND_API_BASE_URL,

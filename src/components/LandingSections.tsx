@@ -11,7 +11,7 @@ import {
     Zap,
     Activity,
     Search,
-    // AlertTriangle,
+    AlertTriangle,
     ShieldAlert,
     Lock
   } from 'lucide-react';
@@ -184,27 +184,27 @@ export const ServiceProcessSection: React.FC = () => {
   const steps = [
     {
       step: "01",
-      title: "全网资产发现",
-      desc: "自动化扫描企业暴露在互联网和暗网的资产指纹，建立完整的攻击面档案",
+      title: "快速接入",
+      desc: "配置监测对象（域名，账号，企业邮箱等），自动生成企业专属监测范围，无需部署探针，不影响业务运行",
       icon: Search
     },
     {
       step: "02",
-      title: "风险情报监测",
-      desc: "7x24小时持续监测暗网、黑产市场、TG群组，实时捕获针对性威胁情报",
-      icon: ShieldAlert
-    },
-    {
-      step: "03",
-      title: "深度关联分析",
-      desc: "基于多维情报库，自动关联攻击组织、恶意样本与历史事件，研判风险等级",
+      title: "自动运行",
+      desc: "按配置规则自动监测风险变化，命中规则自动记录与告警，支持平台内通知与订阅提醒",
       icon: Activity
     },
     {
+      step: "03",
+      title: "事件处理",
+      desc: "风险事件自动归档与跟踪，提供标准化处置建议，支持复杂事件人工介入",
+      icon: ShieldAlert
+    },
+    {
       step: "04",
-      title: "应急响应处置",
-      desc: "提供专业的处置建议与协助，快速封禁恶意源，修复漏洞，控制泄露影响",
-      icon: Lock
+      title: "持续运营",
+      desc: "风险状态持续更新，自动生成阶段性运行报告，支持长期安全运营管理（风险暴露面降低 30%+）",
+      icon: AlertTriangle
     }
   ];
 
