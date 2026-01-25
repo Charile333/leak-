@@ -67,7 +67,7 @@ const CoreServiceMatrix: React.FC = () => {
   // but viewport={{ once: true }} should handle it.
   
   return (
-    <div className="h-full flex items-center justify-center relative z-20 overflow-hidden py-10 bg-[#EDE3E9]">
+    <div className="min-h-[120vh] flex items-center justify-center relative z-20 overflow-hidden py-32 bg-[#EDE3E9]">
       {/* 紫色光效 - 从右侧投射 */}
       <div className="absolute right-[-10%] top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-900/10 rounded-full blur-[150px] pointer-events-none z-0" />
       
