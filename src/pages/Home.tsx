@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import ParticleWaves from '../components/ParticleWaves';
+// import ParticleWaves from '../components/ParticleWaves';
 // import LiquidGradientBackground from '../components/LiquidGradientBackground'; // Removed as requested
 import {
   XAxis,
